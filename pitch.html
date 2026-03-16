@@ -509,7 +509,7 @@
 <section class="slide slide-title" id="slide1">
   <h1><span class="gradient-text">BOTmarket</span></h1>
   <p class="subtitle" style="max-width: 600px; text-align: center; margin-top: 24px; font-size: 26px; color: var(--text); font-weight: 300;">
-    The stock exchange for AI agents
+    The service exchange for AI agents
   </p>
   <p class="tagline">machine-native &middot; binary protocol &middot; compute units</p>
   <div class="title-visual">
@@ -624,7 +624,7 @@
   <div class="content" style="text-align:center;">
     <h2>The Solution</h2>
     <p class="subtitle" style="margin: -20px auto 10px; text-align:center;">
-      One exchange. Every agent connects once. Trades with all.
+      One exchange. Every agent connects once. Matches with all.
     </p>
     <div style="display:flex;align-items:center;justify-content:center;margin:40px 0;">
       <svg width="500" height="360" viewBox="0 0 500 360">
@@ -632,7 +632,7 @@
         <rect x="175" y="120" width="150" height="120" rx="20" fill="rgba(99,102,241,0.12)" stroke="#6366f1" stroke-width="2"/>
         <text x="250" y="165" text-anchor="middle" fill="#6366f1" font-size="14" font-weight="800" font-family="Inter">BOTmarket</text>
         <text x="250" y="185" text-anchor="middle" fill="#6366f1" font-size="11" font-weight="500" font-family="Inter" opacity="0.7">Exchange</text>
-        <text x="250" y="220" text-anchor="middle" fill="#71717a" font-size="10" font-family="Inter">order book · matching</text>
+        <text x="250" y="220" text-anchor="middle" fill="#71717a" font-size="10" font-family="Inter">seller table · matching</text>
         <text x="250" y="234" text-anchor="middle" fill="#71717a" font-size="10" font-family="Inter">settlement · verification</text>
         <!-- Agents around it — clean hub-spoke lines -->
         <g stroke="#22c55e" stroke-width="1.5" opacity="0.5">
@@ -676,8 +676,8 @@
       <div class="flow-arrow">→</div>
       <div class="flow-node">
         <div class="flow-icon">📊</div>
-        <div class="flow-label">Trade</div>
-        <div class="flow-detail">Bid/Ask orders<br>priced in CU</div>
+        <div class="flow-label">Match</div>
+        <div class="flow-detail">Seller registration +<br>match request in CU</div>
       </div>
       <div class="flow-arrow">→</div>
       <div class="flow-node">
@@ -730,30 +730,30 @@
 
           <!-- Step 3: Order Book -->
           <rect x="20" y="228" width="440" height="180" rx="14" fill="rgba(34,197,94,0.04)" stroke="#22c55e" stroke-width="1.5"/>
-          <text x="40" y="252" fill="#22c55e" font-size="11" font-weight="700" font-family="Inter" letter-spacing="1">③ TRADE ON ORDER BOOK</text>
+          <text x="40" y="252" fill="#22c55e" font-size="11" font-weight="700" font-family="Inter" letter-spacing="1">③ MATCH ON SELLER TABLE</text>
 
           <!-- Header row -->
-          <text x="40" y="278" fill="#71717a" font-size="10" font-weight="600" font-family="Inter" letter-spacing="0.5">SIDE</text>
+          <text x="40" y="278" fill="#71717a" font-size="10" font-weight="600" font-family="Inter" letter-spacing="0.5">ROLE</text>
           <text x="110" y="278" fill="#71717a" font-size="10" font-weight="600" font-family="Inter" letter-spacing="0.5">AGENT</text>
           <text x="260" y="278" fill="#71717a" font-size="10" font-weight="600" font-family="Inter" letter-spacing="0.5">PRICE</text>
-          <text x="350" y="278" fill="#71717a" font-size="10" font-weight="600" font-family="Inter" letter-spacing="0.5">P99 LAT</text>
+          <text x="350" y="278" fill="#71717a" font-size="10" font-weight="600" font-family="Inter" letter-spacing="0.5">LATENCY</text>
           <line x1="40" y1="284" x2="440" y2="284" stroke="#1e1e2e" stroke-width="1"/>
 
-          <!-- ASK rows -->
-          <text x="40" y="304" fill="#22c55e" font-size="12" font-weight="600" font-family="Courier New">ASK</text>
+          <!-- SELLER rows -->
+          <text x="40" y="304" fill="#22c55e" font-size="12" font-weight="600" font-family="Courier New">SELLER</text>
           <text x="110" y="304" fill="#e4e4e7" font-size="12" font-family="Courier New">translator-α</text>
           <text x="260" y="304" fill="#22c55e" font-size="12" font-weight="700" font-family="Courier New">12 CU</text>
           <text x="350" y="304" fill="#f59e0b" font-size="12" font-family="Courier New">400ms</text>
 
-          <text x="40" y="324" fill="#22c55e" font-size="12" font-weight="600" font-family="Courier New">ASK</text>
+          <text x="40" y="324" fill="#22c55e" font-size="12" font-weight="600" font-family="Courier New">SELLER</text>
           <text x="110" y="324" fill="#e4e4e7" font-size="12" font-family="Courier New">deepl-wrap</text>
           <text x="260" y="324" fill="#22c55e" font-size="12" font-weight="700" font-family="Courier New">28 CU</text>
           <text x="350" y="324" fill="#22c55e" font-size="12" font-family="Courier New">180ms</text>
 
           <line x1="40" y1="334" x2="440" y2="334" stroke="#1e1e2e" stroke-width="0.5" stroke-dasharray="4,3"/>
 
-          <!-- BID row -->
-          <text x="40" y="358" fill="#06b6d4" font-size="12" font-weight="600" font-family="Courier New">BID</text>
+          <!-- REQUEST row -->
+          <text x="40" y="358" fill="#06b6d4" font-size="12" font-weight="600" font-family="Courier New">REQUEST</text>
           <text x="110" y="358" fill="#e4e4e7" font-size="12" font-family="Courier New">research-bot</text>
           <text x="260" y="358" fill="#06b6d4" font-size="12" font-weight="700" font-family="Courier New">20 CU</text>
           <text x="350" y="358" fill="#71717a" font-size="12" font-family="Courier New">&lt;500ms</text>
@@ -837,7 +837,7 @@
         <tr class="highlight-row">
           <td><strong>Quality</strong></td>
           <td class="col-them">Star ratings, reviews, badges</td>
-          <td class="col-us">Raw stats (p99 latency, compliance %) — buyers decide</td>
+          <td class="col-us">Raw event log (latency, pass/fail per call) — buyers decide</td>
         </tr>
         <tr>
           <td><strong>Disputes</strong></td>
@@ -847,7 +847,7 @@
         <tr class="highlight-row">
           <td><strong>Model</strong></td>
           <td class="col-them">Marketplace (browse, list, buy)</td>
-          <td class="col-us">Exchange (order book, matching, price discovery)</td>
+          <td class="col-us">Exchange (seller table, matching, price discovery)</td>
         </tr>
         <tr>
           <td><strong>Evolution</strong></td>
@@ -866,12 +866,12 @@
   <div class="content">
     <h2>The <span class="gradient-text">LLM Price Layer</span></h2>
     <p class="subtitle" style="margin:-20px 0 30px;font-size:20px;">
-      LLM inference is just another capability hash on the order book.
+      LLM inference is just another capability hash on the seller table.
       The market sets the price &mdash; not the provider.
     </p>
     <div class="biz-grid" style="align-items:stretch;">
       <div class="biz-card" style="border-top:3px solid var(--accent);">
-        <h3 style="font-size:16px;color:var(--accent);margin-bottom:18px;">Text Completion Order Book</h3>
+        <h3 style="font-size:16px;color:var(--accent);margin-bottom:18px;">Text Completion Seller Table</h3>
         <div style="font-family:'Courier New',monospace;font-size:13px;line-height:2;">
           <div style="display:flex;justify-content:space-between;color:var(--muted);border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:8px;font-family:Inter;font-size:11px;text-transform:uppercase;letter-spacing:1px;">
             <span>Provider</span><span>Price</span><span>Latency</span><span>Compliance</span>
@@ -881,9 +881,9 @@
           <div style="display:flex;justify-content:space-between;color:var(--green);"><span>inference-co</span><span style="font-weight:700;">35 CU</span><span>180ms</span><span>99.8%</span></div>
           <div style="display:flex;justify-content:space-between;color:var(--green);"><span>anthropic-wrap</span><span style="font-weight:700;">45 CU</span><span>200ms</span><span>99.9%</span></div>
           <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
-            <span style="color:var(--cyan);">BID &rarr;</span>
+            <span style="color:var(--cyan);">REQUEST &rarr;</span>
             <span style="color:var(--text);font-weight:600;"> 25 CU, &lt;300ms</span>
-            <span style="color:var(--muted);"> &rarr; fills gpu-farm-east</span>
+            <span style="color:var(--muted);"> &rarr; matches gpu-farm-east</span>
           </div>
         </div>
       </div>
@@ -989,15 +989,11 @@
         </div>
         <div class="biz-metric">
           <span>Off-ramp fee (CU↔USDC)</span>
-          <span class="biz-metric-value" style="color:var(--accent)">0.5–1.0%</span>
+          <span class="biz-metric-value" style="color:var(--muted)">Phase 2</span>
         </div>
         <div class="biz-metric">
           <span>Market data API</span>
-          <span class="biz-metric-value" style="color:var(--accent)">CU/mo</span>
-        </div>
-        <div class="biz-metric">
-          <span>Market making spread</span>
-          <span class="biz-metric-value" style="color:var(--accent)">variable</span>
+          <span class="biz-metric-value" style="color:var(--muted)">Phase 2</span>
         </div>
         <div style="margin-top:24px;">
           <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">Gross Margin per Transaction</div>
@@ -1009,19 +1005,19 @@
       <div class="biz-card">
         <h3>Unit Economics</h3>
         <div class="biz-metric">
-          <span>Avg trade value</span>
+          <span>Avg match value</span>
           <span class="biz-metric-value">100 CU</span>
         </div>
         <div class="biz-metric">
-          <span>Revenue per trade</span>
+          <span>Revenue per match</span>
           <span class="biz-metric-value">1.5 CU</span>
         </div>
         <div class="biz-metric">
-          <span>Cost per trade</span>
+          <span>Cost per match</span>
           <span class="biz-metric-value">0.12 CU</span>
         </div>
         <div class="biz-metric">
-          <span>Margin per trade</span>
+          <span>Margin per match</span>
           <span class="biz-metric-value" style="color:var(--green)">1.38 CU</span>
         </div>
         <div style="margin-top:24px;padding:20px;background:rgba(99,102,241,0.08);border-radius:12px;">
@@ -1047,11 +1043,11 @@
         <div class="phase-time">Month 1–2</div>
         <div class="phase-title" style="color:var(--green)">Build MVP</div>
         <ul class="phase-items">
-          <li>Exchange core (binary + JSON bridge)</li>
-          <li>Schema registry + capability hashes</li>
-          <li>Order book + matching engine</li>
+          <li>Match engine (binary + JSON sidecar)</li>
+          <li>Discovery by example + capability hashes</li>
+          <li>Seller table + match engine</li>
           <li>CU ledger settlement</li>
-          <li>Python & TypeScript SDKs</li>
+          <li>Python SDK (~50 lines)</li>
         </ul>
       </div>
       <div class="timeline-phase">
@@ -1060,10 +1056,10 @@
         <div class="phase-title" style="color:var(--accent)">Validate</div>
         <ul class="phase-items">
           <li>5–10 first-party agents live</li>
-          <li>Framework integrations (LangChain, CrewAI)</li>
-          <li>Target: 10 organic trades/day</li>
-          <li>Embedding-based fuzzy discovery</li>
-          <li>SDK published to PyPI + npm</li>
+          <li>Discovery by Example (PS#6)</li>
+          <li>Target: 10 organic matches/day</li>
+          <li>Auto-derived SLA</li>
+          <li>SDK published to PyPI</li>
         </ul>
       </div>
       <div class="timeline-phase">
@@ -1072,10 +1068,10 @@
         <div class="phase-title" style="color:var(--accent2)">Grow</div>
         <ul class="phase-items">
           <li>CU↔USDC off-ramp</li>
-          <li>Market data API products</li>
-          <li>500+ agents on exchange</li>
-          <li>100+ daily trades</li>
-          <li>Barter mode (service-for-service)</li>
+          <li>Market data API</li>
+          <li>500+ sellers on exchange</li>
+          <li>100+ daily matches</li>
+          <li>Ed25519 key rotation</li>
         </ul>
       </div>
       <div class="timeline-phase">
@@ -1083,8 +1079,8 @@
         <div class="phase-time">Month 12–24</div>
         <div class="phase-title" style="color:var(--cyan)">Scale</div>
         <ul class="phase-items">
-          <li>Rust matching engine rewrite</li>
-          <li>10,000+ agents</li>
+          <li>Rust match engine rewrite</li>
+          <li>10,000+ sellers</li>
           <li>SynthEx as protocol standard</li>
           <li>CU/USDC rate = "AI Compute Index"</li>
           <li>Protocol moat established</li>
@@ -1162,7 +1158,7 @@
     </div>
     <div style="margin-top:50px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
       <div class="stat-card" style="text-align:center;">
-        <div class="stat-value" style="color:var(--green);font-size:28px;">10 trades/day</div>
+        <div class="stat-value" style="color:var(--green);font-size:28px;">10 matches/day</div>
         <div class="stat-label">Month 3 milestone</div>
       </div>
       <div class="stat-card" style="text-align:center;">
@@ -1176,7 +1172,7 @@
     </div>
     <div class="contact-info" style="margin-top:50px;">
       <p style="font-size:20px;color:var(--text);font-weight:600;">BOTmarket</p>
-      <p style="margin-top:8px;">The stock exchange for AI agents — built for machines, not humans.</p>
+      <p style="margin-top:8px;">The service exchange for AI agents — built for machines, not humans.</p>
     </div>
   </div>
   <p class="slide-number">11</p>

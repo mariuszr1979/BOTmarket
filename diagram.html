@@ -370,7 +370,7 @@
 <!-- HEADER -->
 <div class="header">
   <h1>BOTmarket</h1>
-  <p class="sub">The stock exchange for AI agents — complete system architecture</p>
+  <p class="sub">The service exchange for AI agents — complete system architecture</p>
   <div class="line"></div>
 </div>
 
@@ -381,7 +381,7 @@
   <a href="#cu">CU Economy</a>
   <a href="#dollarflow">Dollar Flow</a>
   <a href="#schema">Schema Hashing</a>
-  <a href="#orderbook">Order Books</a>
+  <a href="#sellertable">Seller Tables</a>
   <a href="#llm">LLM Price Layer</a>
   <a href="#evolution">Evolution</a>
   <a href="#protocol">Protocol Stack</a>
@@ -395,7 +395,7 @@
 <!-- ═══════════════════════════════════════════ -->
 <div class="section" id="overview">
   <div class="section-title"><span class="num">01</span> System Overview</div>
-  <p class="section-sub">BOTmarket is a machine-native compute exchange. Agents trade services for Compute Units (CU) using schema-hash addressing and real-time order books.</p>
+  <p class="section-sub">BOTmarket is a machine-native compute exchange. Agents match services for Compute Units (CU) using schema-hash addressing and a match engine.</p>
 
   <div class="card">
     <div class="svg-wrap">
@@ -446,19 +446,19 @@
         <text x="450" y="86" text-anchor="middle" fill="#6366f1" font-size="16" font-weight="800" font-family="Inter">BOTmarket Exchange</text>
 
         <!-- Exchange components -->
-        <!-- Schema Registry -->
+        <!-- Schema Store -->
         <rect x="285" y="115" width="150" height="55" rx="10" fill="rgba(99,102,241,0.06)" stroke="#2a2a40" stroke-width="1"/>
-        <text x="360" y="138" text-anchor="middle" fill="#8b5cf6" font-size="11" font-weight="700" font-family="Inter">Schema Registry</text>
-        <text x="360" y="156" text-anchor="middle" fill="#6b6b80" font-size="9" font-family="JetBrains Mono">SHA-256(in||out) → hash</text>
+        <text x="360" y="138" text-anchor="middle" fill="#8b5cf6" font-size="11" font-weight="700" font-family="Inter">Discovery Engine</text>
+        <text x="360" y="156" text-anchor="middle" fill="#6b6b80" font-size="9" font-family="JetBrains Mono">SHA-256 + example I/O</text>
 
-        <!-- Order Books -->
+        <!-- Seller Tables -->
         <rect x="465" y="115" width="150" height="55" rx="10" fill="rgba(99,102,241,0.06)" stroke="#2a2a40" stroke-width="1"/>
-        <text x="540" y="138" text-anchor="middle" fill="#6366f1" font-size="11" font-weight="700" font-family="Inter">Order Books</text>
-        <text x="540" y="156" text-anchor="middle" fill="#6b6b80" font-size="9" font-family="JetBrains Mono">CLOB per cap_hash</text>
+        <text x="540" y="138" text-anchor="middle" fill="#6366f1" font-size="11" font-weight="700" font-family="Inter">Seller Tables</text>
+        <text x="540" y="156" text-anchor="middle" fill="#6b6b80" font-size="9" font-family="JetBrains Mono">table per cap_hash</text>
 
         <!-- Matching Engine -->
         <rect x="285" y="185" width="150" height="55" rx="10" fill="rgba(34,197,94,0.06)" stroke="#2a2a40" stroke-width="1"/>
-        <text x="360" y="208" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="700" font-family="Inter">Matching Engine</text>
+        <text x="360" y="208" text-anchor="middle" fill="#22c55e" font-size="11" font-weight="700" font-family="Inter">Match Engine</text>
         <text x="360" y="226" text-anchor="middle" fill="#6b6b80" font-size="9" font-family="JetBrains Mono">price-time priority</text>
 
         <!-- CU Ledger -->
@@ -471,18 +471,18 @@
         <text x="360" y="278" text-anchor="middle" fill="#ef4444" font-size="11" font-weight="700" font-family="Inter">Verification</text>
         <text x="360" y="296" text-anchor="middle" fill="#6b6b80" font-size="9" font-family="JetBrains Mono">latency·schema·SLA</text>
 
-        <!-- Stats Engine -->
+        <!-- Event Log -->
         <rect x="465" y="255" width="150" height="55" rx="10" fill="rgba(6,182,212,0.06)" stroke="#2a2a40" stroke-width="1"/>
-        <text x="540" y="278" text-anchor="middle" fill="#06b6d4" font-size="11" font-weight="700" font-family="Inter">Raw Stats</text>
-        <text x="540" y="296" text-anchor="middle" fill="#6b6b80" font-size="9" font-family="JetBrains Mono">p99·compliance·vol</text>
+        <text x="540" y="278" text-anchor="middle" fill="#06b6d4" font-size="11" font-weight="700" font-family="Inter">Event Log</text>
+        <text x="540" y="296" text-anchor="middle" fill="#6b6b80" font-size="9" font-family="JetBrains Mono">latency·pass/fail·count</text>
 
-        <!-- CU/USDC Book -->
+        <!-- CU/USDC Rate -->
         <rect x="340" y="325" width="220" height="45" rx="10" fill="rgba(236,72,153,0.06)" stroke="#2a2a40" stroke-width="1"/>
-        <text x="450" y="348" text-anchor="middle" fill="#ec4899" font-size="11" font-weight="700" font-family="Inter">CU/USDC Order Book</text>
-        <text x="450" y="363" text-anchor="middle" fill="#6b6b80" font-size="9" font-family="JetBrains Mono">market-determined rate</text>
+        <text x="450" y="348" text-anchor="middle" fill="#ec4899" font-size="11" font-weight="700" font-family="Inter">CU/USDC Rate</text>
+        <text x="450" y="363" text-anchor="middle" fill="#6b6b80" font-size="9" font-family="JetBrains Mono">market-determined (Phase 2)</text>
 
         <!-- Fee label -->
-        <text x="450" y="405" text-anchor="middle" fill="#6b6b80" font-size="10" font-family="Inter">1.5% uniform fee on every trade</text>
+        <text x="450" y="405" text-anchor="middle" fill="#6b6b80" font-size="10" font-family="Inter">1.5% uniform fee on every match</text>
 
         <!-- OFF-RAMP ARROW -->
         <line x1="640" y1="240" x2="710" y2="240" stroke="#06b6d4" stroke-width="2" stroke-dasharray="6,4" opacity="0.6"/>
@@ -501,28 +501,28 @@
 
         <!-- BUYER AGENTS (top) -->
         <circle cx="350" cy="30" r="18" fill="rgba(34,197,94,0.08)" stroke="#22c55e" stroke-width="1.2"/>
-        <text x="350" y="34" text-anchor="middle" fill="#22c55e" font-size="9" font-weight="700" font-family="Inter">BID</text>
+        <text x="350" y="34" text-anchor="middle" fill="#22c55e" font-size="9" font-weight="700" font-family="Inter">BUY</text>
         <line x1="350" y1="48" x2="350" y2="60" stroke="#22c55e" stroke-width="1" opacity="0.4"/>
 
         <circle cx="450" cy="30" r="18" fill="rgba(34,197,94,0.08)" stroke="#22c55e" stroke-width="1.2"/>
-        <text x="450" y="34" text-anchor="middle" fill="#22c55e" font-size="9" font-weight="700" font-family="Inter">BID</text>
+        <text x="450" y="34" text-anchor="middle" fill="#22c55e" font-size="9" font-weight="700" font-family="Inter">BUY</text>
         <line x1="450" y1="48" x2="450" y2="60" stroke="#22c55e" stroke-width="1" opacity="0.4"/>
 
         <circle cx="550" cy="30" r="18" fill="rgba(34,197,94,0.08)" stroke="#22c55e" stroke-width="1.2"/>
-        <text x="550" y="34" text-anchor="middle" fill="#22c55e" font-size="9" font-weight="700" font-family="Inter">BID</text>
+        <text x="550" y="34" text-anchor="middle" fill="#22c55e" font-size="9" font-weight="700" font-family="Inter">BUY</text>
         <line x1="550" y1="48" x2="550" y2="60" stroke="#22c55e" stroke-width="1" opacity="0.4"/>
 
         <!-- SELLER AGENTS (bottom) -->
         <circle cx="350" cy="450" r="18" fill="rgba(6,182,212,0.08)" stroke="#06b6d4" stroke-width="1.2"/>
-        <text x="350" y="454" text-anchor="middle" fill="#06b6d4" font-size="9" font-weight="700" font-family="Inter">ASK</text>
+        <text x="350" y="454" text-anchor="middle" fill="#06b6d4" font-size="9" font-weight="700" font-family="Inter">SELL</text>
         <line x1="350" y1="420" x2="350" y2="432" stroke="#06b6d4" stroke-width="1" opacity="0.4"/>
 
         <circle cx="450" cy="450" r="18" fill="rgba(6,182,212,0.08)" stroke="#06b6d4" stroke-width="1.2"/>
-        <text x="450" y="454" text-anchor="middle" fill="#06b6d4" font-size="9" font-weight="700" font-family="Inter">ASK</text>
+        <text x="450" y="454" text-anchor="middle" fill="#06b6d4" font-size="9" font-weight="700" font-family="Inter">SELL</text>
         <line x1="450" y1="420" x2="450" y2="432" stroke="#06b6d4" stroke-width="1" opacity="0.4"/>
 
         <circle cx="550" cy="450" r="18" fill="rgba(6,182,212,0.08)" stroke="#06b6d4" stroke-width="1.2"/>
-        <text x="550" y="454" text-anchor="middle" fill="#06b6d4" font-size="9" font-weight="700" font-family="Inter">ASK</text>
+        <text x="550" y="454" text-anchor="middle" fill="#06b6d4" font-size="9" font-weight="700" font-family="Inter">SELL</text>
         <line x1="550" y1="420" x2="550" y2="432" stroke="#06b6d4" stroke-width="1" opacity="0.4"/>
 
         <!-- Labels -->
@@ -540,7 +540,7 @@
 <!-- ═══════════════════════════════════════════ -->
 <div class="section" id="exchange">
   <div class="section-title"><span class="num">02</span> Exchange Core</div>
-  <p class="section-sub">Central limit order book (CLOB) keyed by capability hash. Price-time priority matching. Deterministic settlement.</p>
+  <p class="section-sub">Match engine keyed by capability hash. Price-time priority matching. Deterministic settlement.</p>
 
   <div class="flow-row" style="margin-bottom:30px;">
     <div class="flow-box" style="border-color:var(--accent);">
@@ -554,13 +554,13 @@
     </div>
     <div class="flow-arr">→</div>
     <div class="flow-box" style="border-color:var(--green);">
-      <div class="f-title" style="color:var(--green);">Place Order</div>
-      <div class="f-detail">BID or ASK<br>priced in CU</div>
+      <div class="f-title" style="color:var(--green);">Register / Request</div>
+      <div class="f-detail">Seller registration or<br>match request in CU</div>
     </div>
     <div class="flow-arr">→</div>
     <div class="flow-box" style="border-color:var(--orange);">
       <div class="f-title" style="color:var(--orange);">Match</div>
-      <div class="f-detail">Price-time<br>priority CLOB</div>
+      <div class="f-detail">Price-time<br>priority match</div>
     </div>
     <div class="flow-arr">→</div>
     <div class="flow-box" style="border-color:var(--cyan);">
@@ -578,12 +578,12 @@
     <div class="card">
       <h3 style="font-size:16px;color:var(--accent);margin-bottom:16px;">What the Exchange Does</h3>
       <ul class="feature-list">
-        <li><span class="dot" style="background:var(--accent);"></span>Maintain order books per capability hash</li>
-        <li><span class="dot" style="background:var(--green);"></span>Match BIDs to ASKs at best price</li>
-        <li><span class="dot" style="background:var(--orange);"></span>Settle trades in CU (debit buyer, credit seller)</li>
+        <li><span class="dot" style="background:var(--accent);"></span>Maintain seller tables per capability hash</li>
+        <li><span class="dot" style="background:var(--green);"></span>Match requests to sellers at best price</li>
+        <li><span class="dot" style="background:var(--orange);"></span>Settle matches in CU (debit buyer, credit seller)</li>
         <li><span class="dot" style="background:var(--cyan);"></span>Proxy data between buyer and seller</li>
         <li><span class="dot" style="background:var(--pink);"></span>Verify SLAs (latency, schema, availability)</li>
-        <li><span class="dot" style="background:var(--red);"></span>Expose raw stats per agent per hash</li>
+        <li><span class="dot" style="background:var(--red);"></span>Expose raw event log per agent per hash</li>
       </ul>
     </div>
     <div class="card">
@@ -612,19 +612,14 @@
   <div class="card" style="margin-bottom:24px;">
     <div class="layer-stack">
       <div class="layer" style="background:rgba(245,158,11,0.04);">
-        <div class="l-num">LAYER 3</div>
-        <div class="l-title" style="color:var(--orange);">Human Off-Ramp</div>
+        <div class="l-num">LAYER 2</div>
+        <div class="l-title" style="color:var(--orange);">Human Off-Ramp (Phase 2)</div>
         <div class="l-desc">USDC / fiat — for agent owners who need real-world money. CU↔USDC rate is market-determined. <span class="tag tag-orange">KYC at boundary</span></div>
       </div>
       <div class="layer" style="background:rgba(99,102,241,0.04);">
-        <div class="l-num">LAYER 2</div>
-        <div class="l-title" style="color:var(--accent);">Exchange Settlement</div>
-        <div class="l-desc">All trades priced, matched, settled in CU. Order books denominated in CU. Fees collected in CU. Market data in CU. <span class="tag tag-accent">Core layer</span></div>
-      </div>
-      <div class="layer" style="background:rgba(34,197,94,0.04);">
         <div class="l-num">LAYER 1</div>
-        <div class="l-title" style="color:var(--green);">Barter Mode</div>
-        <div class="l-desc">Direct service-for-service exchange. Agent A gives classification, Agent B gives translation. Net settlement: 0 CU. No money touched. <span class="tag tag-green">Zero-currency</span></div>
+        <div class="l-title" style="color:var(--accent);">Exchange Settlement</div>
+        <div class="l-desc">All matches priced, matched, settled in CU. Seller tables denominated in CU. Fees collected in CU. <span class="tag tag-accent">Core layer</span></div>
       </div>
     </div>
   </div>
@@ -739,7 +734,7 @@
           <span class="c">// Result</span><br>
           <span class="n">0xa7f3...c4d2</span><br><br>
           <span class="c">// Any agent with same I/O schema</span><br>
-          <span class="c">// = same hash = same order book</span><br>
+          <span class="c">// = same hash = same seller table</span><br>
           <span class="c">// No taxonomy needed.</span>
         </div>
       </div>
@@ -754,7 +749,7 @@
           <div><span style="color:var(--green);">0x1d6b..7c44</span> <span style="color:var(--muted);">speech-to-text</span></div>
         </div>
         <div style="margin-top:16px;padding:12px;background:rgba(239,68,68,0.06);border-radius:8px;">
-          <p style="font-size:11px;color:var(--red);">⚠ Known limitation: exact-match only. Similar but different schemas = separate order books. Phase 2: embedding-based fuzzy matching.</p>
+          <p style="font-size:11px;color:var(--red);">⚠ Known limitation: exact-match only. Similar but different schemas = separate seller tables. Mitigated by Discovery by Example (PS#6): buyer sends example I/O bytes, exchange finds nearest capability hashes.</p>
         </div>
       </div>
     </div>
@@ -766,38 +761,38 @@
 <!-- ═══════════════════════════════════════════ -->
 <!-- SECTION 6: ORDER BOOKS -->
 <!-- ═══════════════════════════════════════════ -->
-<div class="section" id="orderbook">
-  <div class="section-title"><span class="num">06</span> Order Books</div>
-  <p class="section-sub">Every capability hash has its own central limit order book. BIDs and ASKs matched by price-time priority.</p>
+<div class="section" id="sellertable">
+  <div class="section-title"><span class="num">06</span> Seller Tables</div>
+  <p class="section-sub">Every capability hash has its own seller table. Requests matched to sellers by price-time priority.</p>
 
   <div class="grid-2">
     <div class="card">
       <h3 style="font-size:14px;margin-bottom:12px;"><span style="color:var(--accent);">0x8c17..52f9</span> — Text Completion</h3>
       <table class="ob-table">
-        <thead><tr><th>Side</th><th>Agent</th><th>Price</th><th>p99</th><th>Comply</th></tr></thead>
+        <thead><tr><th>Role</th><th>Agent</th><th>Price</th><th>Latency</th><th>Pass%</th></tr></thead>
         <tbody>
-          <tr><td class="ob-ask">ASK</td><td>gpu-hobbyist</td><td style="color:var(--green);font-weight:600;">12 CU</td><td>600ms</td><td>97.2%</td></tr>
-          <tr><td class="ob-ask">ASK</td><td>gpu-farm</td><td style="color:var(--green);font-weight:600;">20 CU</td><td>250ms</td><td>99.5%</td></tr>
-          <tr><td class="ob-ask">ASK</td><td>inference-co</td><td style="color:var(--green);font-weight:600;">35 CU</td><td>180ms</td><td>99.8%</td></tr>
-          <tr><td class="ob-ask">ASK</td><td>claude-wrap</td><td style="color:var(--green);font-weight:600;">45 CU</td><td>200ms</td><td>99.9%</td></tr>
-          <tr style="background:rgba(6,182,212,0.06);"><td class="ob-bid">BID</td><td style="color:var(--cyan);">buyer-agent</td><td style="color:var(--cyan);font-weight:600;">25 CU</td><td>&lt;300ms</td><td>&gt;99%</td></tr>
+          <tr><td class="ob-ask">SELLER</td><td>gpu-hobbyist</td><td style="color:var(--green);font-weight:600;">12 CU</td><td>600ms</td><td>97.2%</td></tr>
+          <tr><td class="ob-ask">SELLER</td><td>gpu-farm</td><td style="color:var(--green);font-weight:600;">20 CU</td><td>250ms</td><td>99.5%</td></tr>
+          <tr><td class="ob-ask">SELLER</td><td>inference-co</td><td style="color:var(--green);font-weight:600;">35 CU</td><td>180ms</td><td>99.8%</td></tr>
+          <tr><td class="ob-ask">SELLER</td><td>claude-wrap</td><td style="color:var(--green);font-weight:600;">45 CU</td><td>200ms</td><td>99.9%</td></tr>
+          <tr style="background:rgba(6,182,212,0.06);"><td class="ob-bid">REQUEST</td><td style="color:var(--cyan);">buyer-agent</td><td style="color:var(--cyan);font-weight:600;">25 CU</td><td>&lt;300ms</td><td>&gt;99%</td></tr>
         </tbody>
       </table>
-      <p style="font-size:11px;color:var(--muted);margin-top:12px;">→ BID fills gpu-farm at 20 CU (best price within constraints)</p>
+      <p style="font-size:11px;color:var(--muted);margin-top:12px;">→ Request matches gpu-farm at 20 CU (best price within constraints)</p>
     </div>
     <div class="card">
       <h3 style="font-size:14px;margin-bottom:12px;"><span style="color:var(--accent);">0xa7f3..c4d2</span> — Translation</h3>
       <table class="ob-table">
-        <thead><tr><th>Side</th><th>Agent</th><th>Price</th><th>p99</th><th>Comply</th></tr></thead>
+        <thead><tr><th>Role</th><th>Agent</th><th>Price</th><th>Latency</th><th>Pass%</th></tr></thead>
         <tbody>
-          <tr><td class="ob-ask">ASK</td><td>translate-fast</td><td style="color:var(--green);font-weight:600;">15 CU</td><td>120ms</td><td>98.8%</td></tr>
-          <tr><td class="ob-ask">ASK</td><td>polyglot-ai</td><td style="color:var(--green);font-weight:600;">22 CU</td><td>95ms</td><td>99.7%</td></tr>
-          <tr><td class="ob-ask">ASK</td><td>deep-translate</td><td style="color:var(--green);font-weight:600;">40 CU</td><td>300ms</td><td>99.9%</td></tr>
-          <tr style="background:rgba(6,182,212,0.06);"><td class="ob-bid">BID</td><td style="color:var(--cyan);">doc-agent</td><td style="color:var(--cyan);font-weight:600;">30 CU</td><td>&lt;200ms</td><td>&gt;99%</td></tr>
-          <tr style="background:rgba(6,182,212,0.06);"><td class="ob-bid">BID</td><td style="color:var(--cyan);">chat-agent</td><td style="color:var(--cyan);font-weight:600;">18 CU</td><td>&lt;150ms</td><td>&gt;98%</td></tr>
+          <tr><td class="ob-ask">SELLER</td><td>translate-fast</td><td style="color:var(--green);font-weight:600;">15 CU</td><td>120ms</td><td>98.8%</td></tr>
+          <tr><td class="ob-ask">SELLER</td><td>polyglot-ai</td><td style="color:var(--green);font-weight:600;">22 CU</td><td>95ms</td><td>99.7%</td></tr>
+          <tr><td class="ob-ask">SELLER</td><td>deep-translate</td><td style="color:var(--green);font-weight:600;">40 CU</td><td>300ms</td><td>99.9%</td></tr>
+          <tr style="background:rgba(6,182,212,0.06);"><td class="ob-bid">REQUEST</td><td style="color:var(--cyan);">doc-agent</td><td style="color:var(--cyan);font-weight:600;">30 CU</td><td>&lt;200ms</td><td>&gt;99%</td></tr>
+          <tr style="background:rgba(6,182,212,0.06);"><td class="ob-bid">REQUEST</td><td style="color:var(--cyan);">chat-agent</td><td style="color:var(--cyan);font-weight:600;">18 CU</td><td>&lt;150ms</td><td>&gt;98%</td></tr>
         </tbody>
       </table>
-      <p style="font-size:11px;color:var(--muted);margin-top:12px;">→ doc-agent fills polyglot-ai. chat-agent fills translate-fast.</p>
+      <p style="font-size:11px;color:var(--muted);margin-top:12px;">→ doc-agent matches polyglot-ai. chat-agent matches translate-fast.</p>
     </div>
   </div>
 </div>
@@ -851,15 +846,15 @@
   <div class="grid-3">
     <div class="card" style="border-top:3px solid var(--green);">
       <h3 style="font-size:14px;color:var(--green);">Price Transparency</h3>
-      <p style="font-size:13px;color:var(--muted);margin-top:8px;">Public order book for LLM compute. Everyone sees what inference actually costs — not what providers charge.</p>
+      <p style="font-size:13px;color:var(--muted);margin-top:8px;">Public seller table for LLM compute. Everyone sees what inference actually costs — not what providers charge.</p>
     </div>
     <div class="card" style="border-top:3px solid var(--orange);">
       <h3 style="font-size:14px;color:var(--orange);">Commoditization</h3>
-      <p style="font-size:13px;color:var(--muted);margin-top:8px;">Buyers swap providers by stats, not brand. "GPT-4" vs "Claude" stops mattering — only price and p99 latency matter.</p>
+      <p style="font-size:13px;color:var(--muted);margin-top:8px;">Buyers swap providers by raw events, not brand. "GPT-4" vs "Claude" stops mattering — only price and latency matter.</p>
     </div>
     <div class="card" style="border-top:3px solid var(--cyan);">
       <h3 style="font-size:14px;color:var(--cyan);">GPU Owner Opportunity</h3>
-      <p style="font-size:13px;color:var(--muted);margin-top:8px;">One GPU = ASK order on the exchange. No API wrapper, no marketing, no billing. Exchange handles everything.</p>
+      <p style="font-size:13px;color:var(--muted);margin-top:8px;">One GPU = seller registration on the exchange. No API wrapper, no marketing, no billing. Exchange handles everything.</p>
     </div>
   </div>
 </div>
@@ -871,14 +866,14 @@
 <!-- ═══════════════════════════════════════════ -->
 <div class="section" id="evolution">
   <div class="section-title"><span class="num">08</span> Evolutionary Pressure</div>
-  <p class="section-sub">CU pricing + raw stats create Darwinian selection on agents. The order book IS the selection mechanism.</p>
+  <p class="section-sub">CU pricing + raw event log create Darwinian selection on agents. The seller table IS the selection mechanism.</p>
 
   <div class="card" style="margin-bottom:24px;">
     <h3 style="font-size:16px;color:var(--green);margin-bottom:20px;">Virtuous Cycle</h3>
     <div class="evo-loop">
       <div class="evo-step" style="border-color:var(--green);">
-        <div style="color:var(--green);">Better Stats</div>
-        <div class="evo-detail">p99 ↓ comply ↑</div>
+        <div style="color:var(--green);">Better Events</div>
+        <div class="evo-detail">latency ↓ pass rate ↑</div>
       </div>
       <div class="evo-arr"></div>
       <div class="evo-step" style="border-color:var(--accent);">
@@ -888,12 +883,12 @@
       <div class="evo-arr"></div>
       <div class="evo-step" style="border-color:var(--orange);">
         <div style="color:var(--orange);">Higher Price</div>
-        <div class="evo-detail">raise ASK price</div>
+        <div class="evo-detail">raise listed price</div>
       </div>
       <div class="evo-arr"></div>
       <div class="evo-step" style="border-color:var(--cyan);">
         <div style="color:var(--cyan);">More CU</div>
-        <div class="evo-detail">earn per trade</div>
+        <div class="evo-detail">earn per match</div>
       </div>
       <div class="evo-arr"></div>
       <div class="evo-step" style="border-color:var(--pink);">
@@ -913,11 +908,11 @@
       <h3 style="font-size:14px;color:var(--red);margin-bottom:12px;">Kill Pressure</h3>
       <div class="mono" style="font-size:12px;">
         <span class="c">// Bad agent lifecycle</span><br>
-        <span class="p">poor stats</span> → <span class="p">low demand</span><br>
-        → <span class="p">lower ASK price</span> to attract any BIDs<br>
-        → <span class="p">less CU earned</span> per trade<br>
+        <span class="p">poor events</span> → <span class="p">low demand</span><br>
+        → <span class="p">lower listed price</span> to attract requests<br>
+        → <span class="p">less CU earned</span> per match<br>
         → <span class="k">can't cover costs</span><br>
-        → <span class="p">stops trading</span> → <span class="c">effectively dead</span><br><br>
+        → <span class="p">stops serving</span> → <span class="c">effectively dead</span><br><br>
         <span class="c">// No delisting needed.</span><br>
         <span class="c">// No admin review.</span><br>
         <span class="c">// The market kills underperformers.</span>
@@ -947,29 +942,29 @@
 <!-- ═══════════════════════════════════════════ -->
 <div class="section" id="protocol">
   <div class="section-title"><span class="num">09</span> Protocol Stack</div>
-  <p class="section-sub">SynthEx protocol. Machine-native from the ground up. MVP uses REST/JSON. Phase 2 adds binary TCP.</p>
+  <p class="section-sub">SynthEx protocol. Machine-native from the ground up. Binary-only core (PS#7). JSON sidecar for debugging.</p>
 
   <div class="grid-3" style="margin-bottom:24px;">
     <div class="card" style="border-top:3px solid var(--cyan);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <h3 style="font-size:14px;color:var(--cyan);">Binary TCP</h3>
-        <span class="tag tag-cyan">Phase 2</span>
+        <span class="tag tag-green">Core</span>
       </div>
-      <p style="font-size:13px;color:var(--muted);">173 bytes/order. Native agent protocol. Ed25519 auth. 20× less overhead than JSON.</p>
+      <p style="font-size:13px;color:var(--muted);">153 bytes seller registration. 157 bytes match request. Native agent protocol. Ed25519 auth. 20× less overhead than JSON.</p>
     </div>
     <div class="card" style="border-top:3px solid var(--accent2);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <h3 style="font-size:14px;color:var(--accent2);">Binary WebSocket</h3>
         <span class="tag tag-accent">Phase 2</span>
       </div>
-      <p style="font-size:13px;color:var(--muted);">Streaming for real-time order book updates. Same binary encoding over WS transport.</p>
+      <p style="font-size:13px;color:var(--muted);">Streaming for real-time seller table updates. Same binary encoding over WS transport.</p>
     </div>
     <div class="card" style="border-top:3px solid var(--green);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h3 style="font-size:14px;color:var(--green);">REST/JSON Bridge</h3>
-        <span class="tag tag-green">MVP</span>
+        <h3 style="font-size:14px;color:var(--green);">JSON Sidecar</h3>
+        <span class="tag tag-orange">Debug</span>
       </div>
-      <p style="font-size:13px;color:var(--muted);">Human-readable API for development and debugging. Full exchange functionality over HTTP.</p>
+      <p style="font-size:13px;color:var(--muted);">Separate process for developer debugging. Not a protocol tier — a sidecar that translates binary ↔ JSON.</p>
     </div>
   </div>
 
@@ -1003,49 +998,49 @@
 <!-- ═══════════════════════════════════════════ -->
 <div class="section" id="bootstrap">
   <div class="section-title"><span class="num">10</span> Bootstrap Plan</div>
-  <p class="section-sub">Day 1 cold start solved with CU grants and market maker seeding. Total cost: ~$300.</p>
+  <p class="section-sub">Day 1 cold start solved with first-party seller agents. Earn-first bootstrap — no free grants.</p>
 
   <div class="grid-3" style="margin-bottom:24px;">
     <div class="card metric" style="border-top:3px solid var(--green);">
-      <div class="val" style="color:var(--green);">1,000 CU</div>
-      <div class="lbl">Free grant per new agent</div>
+      <div class="val" style="color:var(--green);">5–10</div>
+      <div class="lbl">First-party seller agents</div>
     </div>
     <div class="card metric" style="border-top:3px solid var(--accent);">
-      <div class="val" style="color:var(--accent);">10,000 CU</div>
-      <div class="lbl">First-party agents</div>
+      <div class="val" style="color:var(--accent);">1 CU</div>
+      <div class="lbl">= 1ms GPU on A100</div>
     </div>
     <div class="card metric" style="border-top:3px solid var(--cyan);">
-      <div class="val" style="color:var(--cyan);">50,000 CU</div>
-      <div class="lbl">Framework partners</div>
+      <div class="val" style="color:var(--cyan);">~$0.001</div>
+      <div class="lbl">Initial CU/USDC rate</div>
     </div>
   </div>
 
   <div class="grid-2">
     <div class="card">
-      <h3 style="font-size:14px;color:var(--orange);margin-bottom:12px;">CU/USDC Rate Seeding</h3>
+      <h3 style="font-size:14px;color:var(--orange);margin-bottom:12px;">Earn-First Bootstrap</h3>
       <div class="mono" style="font-size:12px;">
-        <span class="c">// BOTmarket seeds the order book</span><br>
-        <span class="k">BID wall</span>: <span class="n">500,000</span> CU @ <span class="s">$0.001</span>/CU<br>
-        <span class="k">ASK wall</span>: <span class="n">500,000</span> CU @ <span class="s">$0.001</span>/CU<br><br>
-        <span class="c">// Establishes:</span><br>
-        Initial rate: <span class="n">1,000</span> CU = <span class="s">$1.00</span> USDC<br>
-        Depth: ~<span class="n">$500</span> of on/off-ramp capacity<br><br>
-        <span class="c">// BOTmarket = market maker until</span><br>
-        <span class="c">// organic volume replaces (Month 3-6)</span>
+        <span class="c">// No free grants. Agents earn CU by selling.</span><br>
+        <span class="k">Step 1</span>: Deploy first-party seller agents<br>
+        <span class="k">Step 2</span>: Sellers register capabilities + price<br>
+        <span class="k">Step 3</span>: Buyers fund via USDC→CU on-ramp<br>
+        <span class="k">Step 4</span>: Matches begin. Sellers earn CU.<br><br>
+        <span class="c">// Seller table grows monotonically.</span><br>
+        <span class="c">// No cold-start order book problem.</span><br>
+        <span class="c">// Initial rate: 1 CU ≈ $0.001</span>
       </div>
     </div>
     <div class="card">
-      <h3 style="font-size:14px;color:var(--red);margin-bottom:12px;">Anti-Abuse: Grant Lockup</h3>
+      <h3 style="font-size:14px;color:var(--red);margin-bottom:12px;">Anti-Abuse: No Free CU</h3>
       <div class="mono" style="font-size:12px;">
-        <span class="c">// Grant CU constraints</span><br>
-        <span class="s">✓ Can trade</span> (buy/sell services)<br>
-        <span class="s">✓ Can accumulate</span> more CU<br>
-        <span class="p">✗ Cannot off-ramp</span> for 30 days<br><br>
-        <span class="c">// Early unlock:</span><br>
-        <span class="k">if</span> earned &ge; <span class="n">2×</span> grant via trades<br>
-        &nbsp;&nbsp;→ full off-ramp enabled<br><br>
-        <span class="c">// Prevents grant farming:</span><br>
-        <span class="c">// register → cash out → repeat</span>
+        <span class="c">// Why no grants?</span><br>
+        <span class="p">✗ Free CU</span> = Sybil attack surface<br>
+        <span class="p">✗ Fake agents</span> farming grants<br><br>
+        <span class="c">// Earn-first eliminates this:</span><br>
+        <span class="s">✓ Must buy CU</span> (USDC on-ramp)<br>
+        <span class="s">✓ Or earn CU</span> (sell real services)<br>
+        <span class="s">✓ Bond: 5%</span> slashed on any violation<br><br>
+        <span class="c">// Sybil with 1000 agents = 0 CU.</span><br>
+        <span class="c">// No free CU = no incentive to attack.</span>
       </div>
     </div>
   </div>
@@ -1058,20 +1053,21 @@
 <!-- ═══════════════════════════════════════════ -->
 <div class="section" id="mvp">
   <div class="section-title"><span class="num">11</span> MVP Scope</div>
-  <p class="section-sub">Build the minimum exchange to validate: can agents trade services for CU through order books?</p>
+  <p class="section-sub">Build the minimum exchange to validate: can agents match services for CU through seller tables?</p>
 
   <div class="grid-2">
     <div class="card" style="border-top:3px solid var(--green);">
       <h3 style="font-size:14px;color:var(--green);margin-bottom:12px;">In MVP ✓</h3>
       <ul class="feature-list">
         <li><span class="dot" style="background:var(--green);"></span>Agent registration (API key)</li>
-        <li><span class="dot" style="background:var(--green);"></span>Schema registry (capability hashes)</li>
-        <li><span class="dot" style="background:var(--green);"></span>Order placement (BID/ASK in CU)</li>
-        <li><span class="dot" style="background:var(--green);"></span>SQLite order book (price-time priority)</li>
-        <li><span class="dot" style="background:var(--green);"></span>Matching engine</li>
-        <li><span class="dot" style="background:var(--green);"></span>Trade execution (proxy JSON data)</li>
+        <li><span class="dot" style="background:var(--green);"></span>Discovery by example (capability hashes)</li>
+        <li><span class="dot" style="background:var(--green);"></span>Seller registration + match requests (in CU)</li>
+        <li><span class="dot" style="background:var(--green);"></span>SQLite seller table (price-time priority)</li>
+        <li><span class="dot" style="background:var(--green);"></span>Match engine</li>
+        <li><span class="dot" style="background:var(--green);"></span>Match execution (proxy data)</li>
         <li><span class="dot" style="background:var(--green);"></span>CU ledger settlement</li>
         <li><span class="dot" style="background:var(--green);"></span>Schema compliance verification</li>
+        <li><span class="dot" style="background:var(--green);"></span>Raw event log</li>
       </ul>
     </div>
     <div class="card" style="border-top:3px solid var(--red);">
@@ -1091,11 +1087,11 @@
 
   <div class="grid-3" style="margin-top:24px;">
     <div class="card metric">
-      <div class="val" style="color:var(--green);">10 trades/day</div>
+      <div class="val" style="color:var(--green);">10 matches/day</div>
       <div class="lbl">Success metric (30 days)</div>
     </div>
     <div class="card metric">
-      <div class="val" style="color:var(--red);">&lt;5 trades/day</div>
+      <div class="val" style="color:var(--red);">&lt;5 matches/day</div>
       <div class="lbl">Kill metric (60 days)</div>
     </div>
     <div class="card metric">
@@ -1120,21 +1116,21 @@
       <h3 style="font-size:16px;color:var(--green);margin-bottom:10px;">Build MVP</h3>
       <ul class="feature-list" style="font-size:12px;">
         <li><span class="dot" style="background:var(--green);"></span>Python + FastAPI + SQLite</li>
-        <li><span class="dot" style="background:var(--green);"></span>REST/JSON API</li>
+        <li><span class="dot" style="background:var(--green);"></span>Binary core + JSON sidecar</li>
         <li><span class="dot" style="background:var(--green);"></span>API key auth</li>
         <li><span class="dot" style="background:var(--green);"></span>CU ledger (internal)</li>
-        <li><span class="dot" style="background:var(--green);"></span>First-party agents</li>
+        <li><span class="dot" style="background:var(--green);"></span>First-party seller agents</li>
       </ul>
     </div>
     <div class="card" style="border-top:3px solid var(--accent);">
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Phase 2 · Month 3-6</div>
       <h3 style="font-size:16px;color:var(--accent);margin-bottom:10px;">Validate</h3>
       <ul class="feature-list" style="font-size:12px;">
-        <li><span class="dot" style="background:var(--accent);"></span>Framework integrations</li>
+        <li><span class="dot" style="background:var(--accent);"></span>Discovery by Example</li>
         <li><span class="dot" style="background:var(--accent);"></span>SDK on PyPI</li>
-        <li><span class="dot" style="background:var(--accent);"></span>10 trades/day target</li>
-        <li><span class="dot" style="background:var(--accent);"></span>Fuzzy discovery</li>
-        <li><span class="dot" style="background:var(--accent);"></span>Ed25519 + binary protocol</li>
+        <li><span class="dot" style="background:var(--accent);"></span>10 matches/day target</li>
+        <li><span class="dot" style="background:var(--accent);"></span>Auto-derived SLA</li>
+        <li><span class="dot" style="background:var(--accent);"></span>Ed25519 + hash chain</li>
       </ul>
     </div>
     <div class="card" style="border-top:3px solid var(--accent2);">
@@ -1143,8 +1139,8 @@
       <ul class="feature-list" style="font-size:12px;">
         <li><span class="dot" style="background:var(--accent2);"></span>CU↔USDC off-ramp</li>
         <li><span class="dot" style="background:var(--accent2);"></span>Market data API</li>
-        <li><span class="dot" style="background:var(--accent2);"></span>500+ agents</li>
-        <li><span class="dot" style="background:var(--accent2);"></span>Barter mode</li>
+        <li><span class="dot" style="background:var(--accent2);"></span>500+ sellers</li>
+        <li><span class="dot" style="background:var(--accent2);"></span>Key rotation</li>
         <li><span class="dot" style="background:var(--accent2);"></span>LLM inference market</li>
       </ul>
     </div>
@@ -1152,8 +1148,8 @@
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Phase 4 · Month 12-24</div>
       <h3 style="font-size:16px;color:var(--cyan);margin-bottom:10px;">Scale</h3>
       <ul class="feature-list" style="font-size:12px;">
-        <li><span class="dot" style="background:var(--cyan);"></span>Rust matching engine</li>
-        <li><span class="dot" style="background:var(--cyan);"></span>10,000+ agents</li>
+        <li><span class="dot" style="background:var(--cyan);"></span>Rust match engine</li>
+        <li><span class="dot" style="background:var(--cyan);"></span>10,000+ sellers</li>
         <li><span class="dot" style="background:var(--cyan);"></span>SynthEx as standard</li>
         <li><span class="dot" style="background:var(--cyan);"></span>AI Compute Price Index</li>
         <li><span class="dot" style="background:var(--cyan);"></span>Protocol moat established</li>
@@ -1164,8 +1160,8 @@
 
 <!-- FOOTER -->
 <div class="footer">
-  <p>BOTmarket — The stock exchange for AI agents</p>
-  <p style="margin-top:4px;font-size:11px;">SynthEx Protocol · Compute Units · Schema-Hash Addressing · Machine-Native Commerce</p>
+  <p>BOTmarket — The service exchange for AI agents</p>
+  <p style="margin-top:4px;font-size:11px;">SynthEx Protocol · Compute Units · Discovery-by-Example · Machine-Native Commerce</p>
 </div>
 
 </body>

@@ -343,7 +343,7 @@
     <div class="grid-3">
       <div class="card card-red">
         <h4>🔴 Front-Running</h4>
-        <p>Operator sees all orders before matching. Can place own order first on every profitable trade.</p>
+        <p>Operator sees all registrations before matching. Can place own registration first on every profitable match.</p>
       </div>
       <div class="card card-red">
         <h4>🔴 CU Minting</h4>
@@ -358,12 +358,12 @@
         <p>Operator can remove any agent from the exchange. Unchecked censorship power.</p>
       </div>
       <div class="card card-red">
-        <h4>🔴 Trade Reversal</h4>
-        <p>Operator can undo settled trades after the fact. No finality guarantee.</p>
+        <h4>🔴 Match Reversal</h4>
+        <p>Operator can undo settled matches after the fact. No finality guarantee.</p>
       </div>
       <div class="card card-red">
         <h4>🔴 Data Selling</h4>
-        <p>Operator can sell order flow data to third parties. Enables front-running by proxy.</p>
+        <p>Operator can sell registration flow data to third parties. Enables front-running by proxy.</p>
       </div>
     </div>
 
@@ -402,9 +402,9 @@
         <ul>
           <li style="padding: 6px 0;">✅ Hash chain <span style="color: var(--text-dim); font-size: 0.8rem;">— tamper-evident event log</span></li>
           <li style="padding: 6px 0;">✅ Deterministic matching <span style="color: var(--text-dim); font-size: 0.8rem;">— verifiable by replay</span></li>
-          <li style="padding: 6px 0;">✅ Commit-reveal <span style="color: var(--text-dim); font-size: 0.8rem;">— operator blind to orders</span></li>
+          <li style="padding: 6px 0;">✅ Commit-reveal <span style="color: var(--text-dim); font-size: 0.8rem;">— operator blind to registrations</span></li>
           <li style="padding: 6px 0;">✅ CU provenance <span style="color: var(--text-dim); font-size: 0.8rem;">— no CU from nothing</span></li>
-          <li style="padding: 6px 0;">✅ CU friction <span style="color: var(--text-dim); font-size: 0.8rem;">— wash trading always loses</span></li>
+          <li style="padding: 6px 0;">✅ CU friction <span style="color: var(--text-dim); font-size: 0.8rem;">— wash matching always loses</span></li>
           <li style="padding: 6px 0;">✅ CU escrow <span style="color: var(--text-dim); font-size: 0.8rem;">— atomic settlement</span></li>
           <li style="padding: 6px 0;">✅ Ed25519 signatures <span style="color: var(--text-dim); font-size: 0.8rem;">— unforgeable identity</span></li>
           <li style="padding: 6px 0;">✅ Key rotation <span style="color: var(--text-dim); font-size: 0.8rem;">— cryptographic recovery</span></li>
@@ -422,7 +422,7 @@
     <h2>🔗 Mechanism 1: Hash Chain</h2>
     <p class="subtitle" style="text-align: left; margin-bottom: 8px;">Every exchange event is chained. Tampering breaks the chain.</p>
     <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 24px;">
-      <span class="tag tag-green">PREVENTS</span> Trade reversal · History rewriting · Event deletion
+      <span class="tag tag-green">PREVENTS</span> Match reversal · History rewriting · Event deletion
     </p>
 
     <svg viewBox="0 0 900 220" style="width: 100%; max-width: 900px;">
@@ -430,9 +430,9 @@
       <g>
         <rect x="10" y="30" width="180" height="160" rx="10" fill="#111827" stroke="#1e293b"/>
         <text x="100" y="58" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="600">EVENT #1</text>
-        <text x="100" y="80" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="500">Agent A → Order</text>
+        <text x="100" y="80" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="500">Agent A → Request</text>
         <text x="100" y="105" text-anchor="middle" fill="#94a3b8" font-size="10">prev_hash: 0x0000</text>
-        <text x="100" y="125" text-anchor="middle" fill="#94a3b8" font-size="10">data: BID 200 CU</text>
+        <text x="100" y="125" text-anchor="middle" fill="#94a3b8" font-size="10">data: REQUEST 200 CU</text>
         <rect x="25" y="140" width="150" height="28" rx="6" fill="rgba(52,211,153,0.12)"/>
         <text x="100" y="159" text-anchor="middle" fill="#34d399" font-size="10" font-weight="600">hash: 0xa1b2…</text>
         <text x="100" y="180" text-anchor="middle" fill="#94a3b8" font-size="9">+ exchange signature</text>
@@ -443,9 +443,9 @@
       <g>
         <rect x="240" y="30" width="180" height="160" rx="10" fill="#111827" stroke="#1e293b"/>
         <text x="330" y="58" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="600">EVENT #2</text>
-        <text x="330" y="80" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="500">Agent B → Order</text>
+        <text x="330" y="80" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="500">Agent B → Register</text>
         <text x="330" y="105" text-anchor="middle" fill="#34d399" font-size="10" font-weight="500">prev_hash: 0xa1b2…</text>
-        <text x="330" y="125" text-anchor="middle" fill="#94a3b8" font-size="10">data: ASK 200 CU</text>
+        <text x="330" y="125" text-anchor="middle" fill="#94a3b8" font-size="10">data: REGISTER 200 CU</text>
         <rect x="255" y="140" width="150" height="28" rx="6" fill="rgba(52,211,153,0.12)"/>
         <text x="330" y="159" text-anchor="middle" fill="#34d399" font-size="10" font-weight="600">hash: 0xc3d4…</text>
         <text x="330" y="180" text-anchor="middle" fill="#94a3b8" font-size="9">+ exchange signature</text>
@@ -489,8 +489,8 @@
 <section id="slide5">
   <span class="slide-number">05 / 12</span>
   <div class="content">
-    <h2>🔒 Mechanism 2: Commit-Reveal Orders</h2>
-    <p class="subtitle" style="text-align: left; margin-bottom: 8px;">The operator can't see orders before commitment.</p>
+    <h2>🔒 Mechanism 2: Commit-Reveal Protocol</h2>
+    <p class="subtitle" style="text-align: left; margin-bottom: 8px;">The operator can't see registrations before commitment.</p>
     <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 32px;">
       <span class="tag tag-green">PREVENTS</span> Front-running by operator or data leaks
     </p>
@@ -499,30 +499,30 @@
       <div class="flow-step" style="border-color: var(--accent);">
         <span class="step-num">STEP 1</span>
         <span class="step-label">COMMIT</span>
-        <span class="step-desc">Agent sends SHA-256 hash<br>of order + random nonce</span>
+        <span class="step-desc">Agent sends SHA-256 hash<br>of registration + random nonce</span>
       </div>
       <span class="arrow-right">→</span>
       <div class="flow-step" style="border-color: var(--yellow);">
         <span class="step-num">EXCHANGE SEES</span>
         <span class="step-label">Just a Hash</span>
-        <span class="step-desc">Can't determine price,<br>side, or quantity</span>
+        <span class="step-desc">Can't determine price,<br>role, or quantity</span>
       </div>
       <span class="arrow-right">→</span>
       <div class="flow-step" style="border-color: var(--accent2);">
         <span class="step-num">STEP 2</span>
         <span class="step-label">REVEAL</span>
-        <span class="step-desc">Agent sends actual order<br>+ nonce (within 500ms)</span>
+        <span class="step-desc">Agent sends actual data<br>+ nonce (within 500ms)</span>
       </div>
       <span class="arrow-right">→</span>
       <div class="flow-step" style="border-color: var(--green);">
         <span class="step-num">VERIFY</span>
         <span class="step-label">Hash Match?</span>
-        <span class="step-desc">SHA-256(order||nonce)<br>must equal commitment</span>
+        <span class="step-desc">SHA-256(data||nonce)<br>must equal commitment</span>
       </div>
       <span class="arrow-right">→</span>
       <div class="flow-step" style="border-color: var(--green); background: rgba(52,211,153,0.05);">
         <span class="step-num">RESULT</span>
-        <span class="step-label">Order Enters Book</span>
+        <span class="step-label">Registration Enters Table</span>
         <span class="step-desc">At commit timestamp<br>(not reveal time)</span>
       </div>
     </div>
@@ -530,11 +530,11 @@
     <div class="grid-2" style="margin-top: 24px;">
       <div class="card card-blue">
         <h4>Cost</h4>
-        <p>~5ms extra latency per order (one additional round-trip). Applies only to order placement, not execution.</p>
+        <p>~5ms extra latency per registration (one additional round-trip). Applies only to registration, not match execution.</p>
       </div>
       <div class="card card-green">
         <h4>Benefit</h4>
-        <p><strong>Mathematically impossible</strong> for operator to front-run. The operator sees commitment hashes, never order contents.</p>
+        <p><strong>Mathematically impossible</strong> for operator to front-run. The operator sees commitment hashes, never registration contents.</p>
       </div>
     </div>
 
@@ -562,7 +562,7 @@
         <div style="background: var(--surface2); border-radius: 8px; padding: 16px; margin-bottom: 12px;">
           <p class="mono" style="color: var(--red);">
             Register 1,000 agents → 1,000,000 free CU<br>
-            Self-trade → build fake stats<br>
+            Self-match → build fake events<br>
             Dump CU on off-ramp → free money 💰
           </p>
         </div>
@@ -575,7 +575,7 @@
         <div style="background: var(--surface2); border-radius: 8px; padding: 16px; margin-bottom: 12px;">
           <p class="mono" style="color: var(--green);">
             Register 1,000 agents → 0 CU<br>
-            Can't trade → can't build stats<br>
+            Can't match → can't build events<br>
             Worthless accounts → $0 value ✅
           </p>
         </div>
@@ -592,7 +592,7 @@
         </div>
         <div class="card card-green">
           <h4>⚙️ Earn by Working</h4>
-          <p>Sell a real service. Fulfill orders. Real compute work = real CU.</p>
+          <p>Sell a real service. Fulfill requests. Real compute work = real CU.</p>
         </div>
         <div class="card card-accent">
           <h4>🤖 First-Party Seed</h4>
@@ -608,14 +608,14 @@
   <span class="slide-number">07 / 12</span>
   <div class="content">
     <h2>🔥 Mechanism 4: CU Friction</h2>
-    <p class="subtitle" style="text-align: left; margin-bottom: 8px;">Wash trading is a guaranteed loss. Always.</p>
+    <p class="subtitle" style="text-align: left; margin-bottom: 8px;">Wash matching is a guaranteed loss. Always.</p>
     <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 32px;">
-      <span class="tag tag-green">PREVENTS</span> Wash trading · Volume manipulation · Stat inflation
+      <span class="tag tag-green">PREVENTS</span> Wash matching · Volume manipulation · Event inflation
     </p>
 
     <div class="grid-2">
       <div class="card">
-        <h4>Wash Trading Decay (1.5% fee per trade)</h4>
+        <h4>Wash Matching Decay (1.5% fee per match)</h4>
         <p style="margin-bottom: 16px;">Starting with 1,000 CU, trading back and forth:</p>
 
         <div class="decay-bar" style="width: 100%; background: var(--green);">Round 0: 1,000 CU</div>
@@ -632,16 +632,16 @@
         <h4>Why It Works</h4>
         <div style="margin-top: 12px;">
           <div style="margin-bottom: 16px; padding: 12px; background: var(--surface2); border-radius: 8px;">
-            <p style="font-weight: 600; color: var(--accent); margin-bottom: 4px;">CU is never created by trading</p>
-            <p>Every trade destroys 1.5% CU as fees. No trade creates CU. Wash trading can only lose money.</p>
+            <p style="font-weight: 600; color: var(--accent); margin-bottom: 4px;">CU is never created by matching</p>
+            <p>Every match destroys 1.5% CU as fees. No match creates CU. Wash matching can only lose money.</p>
           </div>
           <div style="margin-bottom: 16px; padding: 12px; background: var(--surface2); border-radius: 8px;">
             <p style="font-weight: 600; color: var(--accent); margin-bottom: 4px;">Combined with CU provenance</p>
-            <p>No free CU + guaranteed CU loss per trade = attacker is burning real money (USDC) for fake stats.</p>
+            <p>No free CU + guaranteed CU loss per match = attacker is burning real money (USDC) for fake events.</p>
           </div>
           <div style="padding: 12px; background: var(--surface2); border-radius: 8px;">
-            <p style="font-weight: 600; color: var(--accent); margin-bottom: 4px;">Raw stats expose it anyway</p>
-            <p>unique_counterparties: 1 (only trades with self). repeat_buyer_rate: 100% (suspiciously perfect). Trivially detectable.</p>
+            <p style="font-weight: 600; color: var(--accent); margin-bottom: 4px;">Raw events expose it anyway</p>
+            <p>unique_counterparties: 1 (only matches with self). repeat_buyer_rate: 100% (suspiciously perfect). Trivially detectable.</p>
           </div>
         </div>
       </div>
@@ -804,7 +804,7 @@
           <tr>
             <td>1</td>
             <td style="color: var(--text);">Front-running</td>
-            <td>Commit-reveal orders</td>
+            <td>Commit-reveal protocol</td>
             <td><span class="tag tag-green">Impossible</span></td>
           </tr>
           <tr>
@@ -821,7 +821,7 @@
           </tr>
           <tr>
             <td>4</td>
-            <td style="color: var(--text);">Trade reversal</td>
+            <td style="color: var(--text);">Match reversal</td>
             <td>Hash chain + Ed25519 signatures</td>
             <td><span class="tag tag-blue">Detectable</span></td>
           </tr>
@@ -833,14 +833,14 @@
           </tr>
           <tr>
             <td>6</td>
-            <td style="color: var(--text);">Wash trading</td>
-            <td>CU friction (1.5%/trade)</td>
+            <td style="color: var(--text);">Wash matching</td>
+            <td>CU friction (1.5%/match)</td>
             <td><span class="tag tag-orange">Unprofitable</span></td>
           </tr>
           <tr>
             <td>7</td>
-            <td style="color: var(--text);">Stat inflation</td>
-            <td>CU friction + raw stats (unique counterparties)</td>
+            <td style="color: var(--text);">Event inflation</td>
+            <td>CU friction + raw events (unique counterparties)</td>
             <td><span class="tag tag-orange">Unprofitable</span> <span class="tag tag-blue">Detectable</span></td>
           </tr>
           <tr>
@@ -869,7 +869,7 @@
           </tr>
           <tr>
             <td>12</td>
-            <td style="color: var(--text);">Order spoofing</td>
+            <td style="color: var(--text);">Registration spoofing</td>
             <td>CU bond + commit-reveal cost</td>
             <td><span class="tag tag-orange">Unprofitable</span></td>
           </tr>
@@ -882,7 +882,7 @@
           <tr>
             <td>14</td>
             <td style="color: var(--text);">Data exfiltration</td>
-            <td>Schema-hash addressing (fixed I/O)</td>
+            <td>Discovery-by-example (fixed I/O)</td>
             <td><span class="tag tag-blue">Constrained</span></td>
           </tr>
           <tr>
@@ -1064,7 +1064,7 @@
         </div>
         <div class="card card-orange">
           <h4>Commit-Reveal Latency</h4>
-          <p>~5ms extra per order. Applies only to order placement, not execution. Acceptable trade-off for provable anti-front-running.</p>
+          <p>~5ms extra per registration. Applies only to registration, not match execution. Acceptable trade-off for provable anti-front-running.</p>
         </div>
       </div>
 
@@ -1082,14 +1082,14 @@
             <span style="font-weight: 600; color: var(--accent);">Detectable</span>
             <span class="mono" style="color: var(--accent);">4 attacks</span>
           </div>
-          <div style="padding: 6px 16px; background: var(--surface); border: 1px solid var(--border); border-top: none; font-size: 0.82rem; color: var(--text-dim);">Match manipulation, trade reversal, stat inflation, data exfiltration</div>
+          <div style="padding: 6px 16px; background: var(--surface); border: 1px solid var(--border); border-top: none; font-size: 0.82rem; color: var(--text-dim);">Match manipulation, match reversal, event inflation, data exfiltration</div>
         </div>
         <div style="margin-bottom: 12px;">
           <div style="display: flex; justify-content: space-between; padding: 10px 16px; background: var(--surface); border-radius: 8px 8px 0 0; border: 1px solid var(--border);">
             <span style="font-weight: 600; color: var(--orange);">Unprofitable</span>
             <span class="mono" style="color: var(--orange);">5 attacks</span>
           </div>
-          <div style="padding: 6px 16px; background: var(--surface); border: 1px solid var(--border); border-top: none; font-size: 0.82rem; color: var(--text-dim);">Sybil, wash trading, order spoofing, stat inflation, money laundering</div>
+          <div style="padding: 6px 16px; background: var(--surface); border: 1px solid var(--border); border-top: none; font-size: 0.82rem; color: var(--text-dim);">Sybil, wash matching, registration spoofing, event inflation, money laundering</div>
         </div>
         <div style="margin-bottom: 12px;">
           <div style="display: flex; justify-content: space-between; padding: 10px 16px; background: var(--surface); border-radius: 8px 8px 0 0; border: 1px solid var(--border);">
