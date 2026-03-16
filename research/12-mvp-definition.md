@@ -41,25 +41,29 @@ That's it. Everything else is noise at this stage.
 
 ```
 ┌───────────────────────────────────┐
-│           REST API (Hono/Fastify) │
+│  Binary Protocol Layer (TCP)      │
+│  + REST/JSON Bridge for humans    │
 │                                   │
-│   POST /agents/register           │
-│   POST /orders (bid/ask)          │
-│   GET  /orders                    │
-│   GET  /book/:service_type        │
-│   POST /trades/:id/execute        │
-│   GET  /trades                    │
+│  Binary:  place_order, cancel,    │
+│           execute, query_book     │
+│  Bridge:  POST /v1/orders (JSON)  │
+│           GET /v1/book/:hash      │
 │                                   │
 ├───────────────────────────────────┤
-│   In-Memory Order Book            │
-│   (Simple price-time priority)    │
+│  In-Memory Order Book              │
+│  (Keyed by capability hash,       │
+│   price-time priority, CU prices) │
 ├───────────────────────────────────┤
-│   PostgreSQL                      │
-│   (Agents, orders, trades)        │
+│  Schema Registry                   │
+│  (capability_hash → I/O schema)   │
 ├───────────────────────────────────┤
-│   Settlement: Simple ledger       │
-│   (Debit buyer, credit seller)    │
-│   (Real crypto settlement later)  │
+│  PostgreSQL                        │
+│  (Agents, orders, trades, CU      │
+│   balances, schema registry)      │
+├───────────────────────────────────┤
+│  Settlement: CU Ledger             │
+│  (Debit buyer CU, credit seller)  │
+│  (USDC off-ramp later)            │
 └───────────────────────────────────┘
 ```
 
@@ -67,10 +71,12 @@ That's it. Everything else is noise at this stage.
 ```
 Language:    TypeScript (fast to build, good enough for MVP throughput)
 Framework:   Hono on Bun (fast, minimal, modern)
-Database:    PostgreSQL (single instance, no fancy stuff)
-Order Book:  In-memory (Map<ServiceType, OrderBook>)
-Auth:        API key (HMAC-SHA256 signing)
+Database:    PostgreSQL (single instance)
+Order Book:  In-memory (Map<CapabilityHash, OrderBook>)
+Protocol:    Binary over TCP (core) + REST/JSON bridge (humans)
+Auth:        Ed25519 keypair (agent identity = public key)
 Deploy:      Single VPS (Fly.io or Railway), $5-20/month
+Currency:    Compute Units (CU) — internal ledger
 ```
 
 ### Why NOT Rust for MVP?
@@ -81,16 +87,16 @@ Because MVP is about **speed of learning**, not speed of execution. TypeScript l
 ### Must Have (Week 1-4)
 | Feature | Details | Effort |
 |---------|---------|--------|
-| Agent registration | Register with capabilities, get API key | 2 days |
-| Service catalog | List, search, filter services by type | 2 days |
-| Order placement | Place bid/ask orders (limit orders only) | 3 days |
-| Order book | In-memory CLOB with price-time priority | 3 days |
+| Agent registration | Ed25519 keypair generation, register public key | 2 days |
+| Schema registry | Register capability hashes (I/O schemas) | 2 days |
+| Order placement | Place bid/ask orders by capability hash, priced in CU | 3 days |
+| Order book | In-memory CLOB keyed by capability hash, CU price-time priority | 3 days |
 | Matching engine | Match incoming orders against book | 3 days |
-| Trade execution | Connect matched buyer/seller, execute service call | 3 days |
-| Ledger settlement | In-app balance system (deposit credits, settle trades) | 3 days |
-| Basic API auth | API key + HMAC signing | 1 day |
+| Trade execution | Connect matched buyer/seller, proxy binary data | 3 days |
+| CU Ledger | In-app CU balance system (deposit CU, settle trades) | 3 days |
+| Binary protocol + JSON bridge | Binary TCP for agents, REST/JSON bridge for humans | 3 days |
 
-**Total: ~20 dev-days (4 weeks for solo dev, 2 weeks with two devs)**
+**Total: ~22 dev-days (5 weeks for solo dev, 2.5 weeks with two devs)**
 
 ### Should Have (Week 5-8)
 | Feature | Details | Effort |
@@ -131,7 +137,7 @@ If we hit 10 daily organic trades (not our own test agents), the thesis is valid
 | Registered agents | 50 | Supply side health |
 | Active agents (traded in 7d) | 20 | Engagement |
 | Listed services (unique types) | 10 | Catalog breadth |
-| Avg trade value | > $0.01 | Real economic activity |
+| Avg trade value | > 1 CU | Real economic activity |
 | Match rate | > 50% | Order book liquidity |
 | Avg time to match | < 60s | Exchange utility |
 | Trade completion rate | > 90% | Service reliability |
@@ -156,37 +162,44 @@ PIVOT if:
 ### The "Hello World" of BOTmarket
 
 ```
-# Terminal 1: Register a summarization agent
-$ curl -X POST https://api.botmarket.exchange/v1/agents/register \
-  -d '{"name": "summarizer-v1", "capabilities": ["text-summarization"]}'
-→ {"agent_id": "agent_abc", "api_key": "key_xyz"}
+# Agent A: Summarization service
+# Generates Ed25519 keypair, registers on exchange
 
-# Terminal 2: Register an agent that NEEDS summarization
-$ curl -X POST https://api.botmarket.exchange/v1/agents/register \
-  -d '{"name": "research-bot", "capabilities": ["web-research"]}'
-→ {"agent_id": "agent_def", "api_key": "key_uvw"}
+# Agent A registers its capability schema:
+#   input:  { type: "text", encoding: "utf8", max_bytes: 100000 }
+#   output: { type: "text", encoding: "utf8", max_bytes: 5000 }
+#   capability_hash = SHA-256(input_schema || output_schema) = 0xd4e5...
 
-# Terminal 1: Summarizer lists service (ASK order)
+# Via JSON bridge (for demo readability):
+$ curl -X POST https://api.botmarket.exchange/v1/agents/register \
+  -d '{"pubkey": "ed25519:7xKX..."}'
+→ {"agent_id": "7xKX...", "cu_balance": 0}
+
+$ curl -X POST https://api.botmarket.exchange/v1/schemas/register \
+  -d '{"input": {"type":"text","encoding":"utf8"}, "output": {"type":"text","encoding":"utf8"}}'
+→ {"capability_hash": "0xd4e5..."}
+
+# Agent A places ASK: "I offer 0xd4e5... for 20 CU per call"
 $ curl -X POST https://api.botmarket.exchange/v1/orders \
-  -H "X-API-Key: key_xyz" \
-  -d '{"side": "ask", "service": "text-summarization", "price": 0.01, "quantity": 100}'
+  -d '{"side": "ask", "capability_hash": "0xd4e5...", "price_cu": 20, "quantity": 100}'
 → {"order_id": "ord_111", "status": "open", "resting_on_book": true}
 
-# Terminal 2: Research bot needs summarization (BID order)
+# Agent B needs capability 0xd4e5... (or searches by embedding)
 $ curl -X POST https://api.botmarket.exchange/v1/orders \
-  -H "X-API-Key: key_uvw" \
-  -d '{"side": "bid", "service": "text-summarization", "price": 0.02, "quantity": 5}'
-→ {"order_id": "ord_222", "status": "matched", "trade_id": "trade_001", "price": 0.01}
+  -d '{"side": "bid", "capability_hash": "0xd4e5...", "price_cu": 25, "quantity": 5}'
+→ {"order_id": "ord_222", "status": "matched", "trade_id": "trade_001", "price_cu": 20}
 
-# Both agents notified of match
-# Research bot sends text to summarizer via trade execution endpoint
+# Execute: Agent B sends raw input bytes, Agent A returns raw output bytes
 $ curl -X POST https://api.botmarket.exchange/v1/trades/trade_001/execute \
-  -H "X-API-Key: key_uvw" \
-  -d '{"input": {"text": "Long article about AI agents..."}}'
-→ {"output": {"summary": "AI agents are becoming autonomous..."}, "status": "completed"}
+  -d '{"input": "Long article about AI agent commerce..."}'
+→ {"output": "AI agents are forming autonomous markets...", "latency_ms": 145}
 
-# Settlement: 5 × $0.01 = $0.05 transferred from research-bot to summarizer
-# Minus 1.5% fee = $0.0493 to summarizer, $0.0007 to BOTmarket
+# Settlement: 5 × 20 CU = 100 CU transferred from B to A
+# Minus 1.5% fee = 1.5 CU to BOTmarket
+# Agent A receives: 98.5 CU
+
+# Native binary protocol would do this in ~500 bytes total.
+# JSON bridge adds ~10× overhead but works for demos.
 ```
 
 ## Implementation Plan
@@ -196,23 +209,24 @@ $ curl -X POST https://api.botmarket.exchange/v1/trades/trade_001/execute \
 Day 1-2: Project setup
   - TypeScript + Hono + PostgreSQL + Drizzle ORM
   - Docker Compose for local dev
-  - Basic project structure
+  - Binary message types + serialization helpers
 
-Day 3-4: Agent Registry
-  - Register agent with capabilities
-  - API key generation
-  - Agent CRUD endpoints
+Day 3-4: Agent Registry + Schema Registry
+  - Ed25519 keypair-based registration
+  - Schema registration (I/O schema → capability hash)
+  - Agent CRUD endpoints (JSON bridge)
 
-Day 5: Service Catalog
-  - Service type taxonomy (flat list for MVP)
-  - Search/filter endpoints
+Day 5: Schema Discovery
+  - Query by capability hash (exact match)
+  - List all registered schemas
+  - (Embedding-based fuzzy search deferred to Phase 2)
 ```
 
 ### Week 2: Exchange Core
 ```
 Day 6-7: Order Book
-  - In-memory CLOB implementation
-  - Price-time priority sorting
+  - In-memory CLOB keyed by capability hash
+  - CU price-time priority sorting
   - Bid/ask data structures
 
 Day 8-9: Matching Engine
@@ -223,41 +237,45 @@ Day 8-9: Matching Engine
 Day 10: Order Management
   - Place, cancel, query orders
   - Order status transitions
+  - Both binary and JSON bridge endpoints
 ```
 
 ### Week 3: Trade Execution & Settlement
 ```
 Day 11-12: Trade Execution
   - Connect matched buyer/seller
-  - Proxy service execution
-  - Result delivery
+  - Proxy raw bytes (input → seller → output → buyer)
+  - Schema verification (output matches declared schema)
+  - Latency measurement
 
-Day 13-14: Ledger System
-  - In-app balance (credit-based system for MVP)
-  - Debit buyer, credit seller on completion
+Day 13-14: CU Ledger System
+  - CU balance per agent
+  - Debit buyer CU, credit seller CU on completion
+  - Fee deduction (1.5% in CU)
   - Transaction history
 
-Day 15: API Auth
-  - HMAC-SHA256 request signing
-  - Rate limiting
+Day 15: Binary Protocol Core
+  - TCP server with binary framing
+  - Message types: order, cancel, trade, execute
+  - Ed25519 signature verification
 ```
 
-### Week 4: Polish & Deploy
+### Week 4-5: Polish & Deploy
 ```
-Day 16-17: Testing
+Day 16-17: JSON Bridge
+  - REST API that translates JSON ↔ binary protocol
+  - Human-readable dashboard endpoint (exchange stats)
+
+Day 18-19: Testing
   - Integration tests for full trade lifecycle
   - Load testing (100 concurrent orders)
-  - Edge cases (partial fills, cancellations)
+  - Edge cases (partial fills, cancellations, schema mismatches)
 
-Day 18-19: Deployment
+Day 20-22: Deployment
   - Fly.io or Railway deployment
   - PostgreSQL managed instance
   - Basic monitoring (health check, error tracking)
-
-Day 20: Documentation
-  - API documentation (OpenAPI spec)
-  - Quick start guide
-  - Demo script (the "Hello World" scenario above)
+  - API documentation + quick start guide
 ```
 
 ## Post-MVP Roadmap
@@ -265,15 +283,15 @@ Day 20: Documentation
 ```
 MVP validates → then:
 
-Month 2-3: WebSocket feeds, Python SDK, MCP integration
-Month 3-4: Reputation system, SLA tracking
-Month 4-6: USDC settlement on Solana, market data products
+Month 2-3: Embedding-based fuzzy discovery, Python SDK, WebSocket feeds
+Month 3-4: Reputation system, CU quality staking
+Month 4-6: CU/USDC off-ramp on Solana, market data products
 Month 6-9: Rust matching engine rewrite, horizontal scaling
-Month 9-12: SYNTH token launch (if warranted by traction)
+Month 9-12: Barter mode (direct service-for-service CU swaps)
 ```
 
 ## Score: 9/10
 
-**Completeness:** Clear MVP definition with explicit scope, anti-scope, schedule, and success metrics.
-**Actionability:** Can start building tomorrow. 20 dev-day plan is concrete.
-**Gap:** Need to validate tech stack choice with a quick spike (Day 0). Need to identify first 10 agent builders to recruit during development.
+**Completeness:** Clear MVP definition with CU currency, schema-hash addressing, binary protocol.
+**Actionability:** Can start building tomorrow. 22 dev-day plan is concrete.
+**Gap:** Need to prototype binary framing format on Day 0. Need to identify first 10 agent builders.

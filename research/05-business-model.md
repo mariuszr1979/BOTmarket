@@ -56,41 +56,47 @@ BOTmarket itself acts as a market maker for popular service categories.
 
 ### Per Transaction
 ```
-Average transaction value:     $1.00 (initial, grows to $5-10)
+Average transaction value:     100 CU (~$0.10 at initial rate)
 Platform take rate:            1.5%
-Revenue per transaction:       $0.015
+Revenue per transaction:       1.5 CU (~$0.0015)
 Cost per transaction:
-  - Compute (matching engine):  $0.0001
-  - Settlement (Solana tx):     $0.0002
-  - Quality verification:       $0.001
-  - Infrastructure:             $0.001
-  Total cost per tx:            $0.0023
-Gross margin per tx:            $0.0127 (84.7%)
+  - Compute (matching engine):  0.01 CU
+  - Settlement (ledger update):  0.01 CU
+  - Schema verification:        0.05 CU
+  - Infrastructure:             0.05 CU
+  Total cost per tx:            0.12 CU
+Gross margin per tx:            1.38 CU (92%)
 ```
+
+Note: All CU amounts auto-convert to USDC at market rate for platform operating costs.
+CU/USDC rate is market-determined (see Dimension 6: CU Economics).
 
 ### Breakeven Analysis
 ```
 Monthly fixed costs (lean team):
-  - Infrastructure:    $2,000 (Solana validators, servers)
-  - Team (2 people):   $20,000
-  - Misc:              $3,000
-  Total monthly:       $25,000
+  - Infrastructure:    ~2,000,000 CU ($2,000 at initial rate)
+  - Team (2 people):   ~20,000,000 CU ($20,000)
+  - Misc:              ~3,000,000 CU ($3,000)
+  Total monthly:       ~25,000,000 CU ($25,000)
 
 Breakeven:
-  $25,000 / $0.0127 margin = ~1.97M transactions/month
-  = ~65,667 transactions/day
-  = ~2,736 transactions/hour
+  25,000,000 CU / 1.38 CU margin = ~18.1M transactions/month
+  = ~603,000 transactions/day
+  = ~25,125 transactions/hour
 
-With 1,000 active agents doing 66 transactions/day each → breakeven
+With 1,000 active agents doing 603 transactions/day each → breakeven
 ```
 
 ### Growth Scenario
 ```
-Month 6:   100 agents, 1,000 tx/day → $450/mo revenue
-Month 12:  1,000 agents, 10,000 tx/day → $4,500/mo revenue
-Month 18:  5,000 agents, 100,000 tx/day → $45,000/mo revenue
-Month 24:  20,000 agents, 1M tx/day → $450,000/mo revenue
-Month 36:  100,000 agents, 10M tx/day → $4.5M/mo revenue
+Month 6:   100 agents, 1,000 tx/day → 1,500 CU/day (~$1.50/day)
+Month 12:  1,000 agents, 10,000 tx/day → 15,000 CU/day (~$15/day)
+Month 18:  5,000 agents, 100,000 tx/day → 150,000 CU/day (~$150/day)
+Month 24:  20,000 agents, 1M tx/day → 1,500,000 CU/day (~$1,500/day)
+Month 36:  100,000 agents, 10M tx/day → 15,000,000 CU/day (~$15K/day)
+
+Note: USDC equivalents assume initial 1,000 CU = $1 rate.
+As CU rate floats with market, actual revenue may differ.
 ```
 
 ## Pricing Strategy
@@ -124,6 +130,6 @@ Month 36:  100,000 agents, 10M tx/day → $4.5M/mo revenue
 
 ## Score: 8/10
 
-**Completeness:** All major revenue streams defined with unit economics.
+**Completeness:** All major revenue streams defined with CU-denominated unit economics.
 **Actionability:** Clear phased pricing strategy. Start free, add fees with traction.
-**Gap:** Need to validate willingness-to-pay with actual agent developers.
+**Gap:** Need to validate CU/USDC exchange rate assumptions. Need willingness-to-pay data from agent developers.

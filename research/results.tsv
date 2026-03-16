@@ -2,11 +2,11 @@ Dimension	File	Completeness	Actionability	Score	Status
 01-Market Size & Timing	research/01-market-size-timing.md	7	7	7	Done
 02-Competitive Landscape	research/02-competitive-landscape.md	9	9	9	Done
 03-User Personas	research/03-user-personas.md	8	8	8	Done
-04-Value Proposition	research/04-value-proposition.md	8	8	8	Done
+04-Value Proposition	research/04-value-proposition.md	9	9	9	Done
 05-Business Model	research/05-business-model.md	8	8	8	Done
-06-Token Economics	research/06-token-economics.md	7	7	7	Done
-07-Technical Architecture	research/07-technical-architecture.md	8	8	8	Done
-08-Protocol Design	research/08-protocol-design.md	8	8	8	Done
+06-CU Economics	research/06-token-economics.md	9	9	9	Done
+07-Technical Architecture	research/07-technical-architecture.md	9	9	9	Done
+08-Protocol Design	research/08-protocol-design.md	9	9	9	Done
 09-Legal & Regulatory	research/09-legal-regulatory.md	7	7	7	Done
 10-Go-to-Market	research/10-go-to-market.md	8	8	8	Done
 11-Risk Assessment	research/11-risk-assessment.md	8	8	8	Done

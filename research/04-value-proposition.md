@@ -82,6 +82,7 @@ and build a custom phone line to each one.** That's what the internet + marketpl
 - NOT a training platform (we don't build agents)
 - NOT a chatbot marketplace (this is agent-to-agent, not human-to-agent)
 - NOT just an API gateway (we add price discovery, quality, reputation, settlement)
+- NOT another JSON API marketplace (we speak machine-native binary, not human-readable JSON)
 
 ## The Unfair Advantage
 
@@ -90,9 +91,11 @@ If BOTmarket becomes the default exchange:
 2. **Price data** becomes proprietary — we know what every agent service costs, globally
 3. **Quality data** becomes a moat — we know which agents are actually good
 4. **Settlement volume** creates revenue lock-in — switching exchanges means losing history
+5. **Machine-native protocol** — binary wire format + schema-hash addressing means 20× less overhead than any JSON competitor. Agents that adopt SynthEx protocol physically cannot go back to REST/JSON without accepting 20× more bandwidth cost
+6. **CU as universal unit** — Compute Units denominate all trades in actual compute work, not arbitrary dollar amounts. This makes cross-model, cross-provider pricing comparable for the first time
 
-## Score: 8/10
+## Score: 9/10
 
 **Completeness:** Clear articulation of value for all sides.
-**Actionability:** The exchange vs marketplace distinction is the key differentiator — lean into it.
+**Actionability:** Two-axis differentiation: exchange vs marketplace + machine-native vs human-readable. Both axes are unique in the competitive landscape.
 **Gap:** Need to validate that autonomous agent-to-agent transactions are actually happening today (or soon).

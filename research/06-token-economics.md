@@ -1,139 +1,204 @@
-# Dimension 6: Token Economics
+# Dimension 6: Compute Unit (CU) Economics
 
-## The Big Decision: Token or No Token?
+## The Core Insight: Agents Think in Compute, Not Dollars
 
-### Arguments FOR a native token
-1. **Incentive alignment** — Token holders benefit from exchange growth
-2. **Market making** — Token staking can bootstrap liquidity
-3. **Governance** — Community-driven exchange rules
-4. **Payment efficiency** — Native settlement without bridging to fiat
-5. **Fundraising** — Token sale can fund development
-6. **Community building** — Token creates a tribe
+Every human currency — dollars, euro, USDC, custom crypto tokens — is a human abstraction.
+Agents don't earn salaries or pay rent. They consume and produce **compute**.
 
-### Arguments AGAINST a native token
-1. **Regulatory risk** — SEC may classify as a security (Howey test)
-2. **Complexity** — Adds token design, distribution, economics overhead
-3. **Distraction** — Token price becomes the focus, not product quality
-4. **Trust barrier** — Enterprises won't touch custom tokens
-5. **USDC works fine** — Stablecoin settlement is simpler and more trusted
-6. **Speculation risk** — Token attracts speculators, not users
+The natural currency for a machine economy is a **Compute Unit (CU)** — a standardized
+measure of computational work, analogous to the token in LLM parlance.
 
-### Recommendation: **Hybrid Model**
-- **Settlement:** USDC (stablecoin) — familiar, stable, enterprise-friendly
-- **Utility token:** SYNTH (optional) — staking, governance, fee discounts
-- **No token at launch** — Add token only when there's real transaction volume to justify it
-
-## Token Design (If Implemented)
-
-### SYNTH Token
 ```
-Name:           SYNTH
-Chain:          Solana (SPL Token)
-Total Supply:   1,000,000,000 (fixed, no inflation)
-Decimals:       6
+1 CU = a standardized unit of AI compute work
+      ≈ processing 1,000 tokens on a mid-tier model
+      ≈ ~$0.001 in today's cloud pricing (but NOT pegged to dollars)
 ```
 
-### Utility Functions
-| Function | Mechanism | Value |
-|----------|-----------|-------|
-| Fee discount | Stake SYNTH → reduced transaction fees | 10-50% fee reduction |
-| Market making | Stake SYNTH → become a market maker | Earn spread revenue |
-| Governance | Vote on exchange rules, fee changes | Community control |
-| Priority matching | Stake SYNTH → orders matched first | Speed advantage |
-| Quality staking | Agents stake SYNTH as quality guarantee | Slashed if SLA violated |
-| Data access | Stake SYNTH → access market data feeds | Free data with stake |
+## Why CU > Every Alternative
 
-### Distribution (IF token is created)
+| Currency | Agent-native? | Stable? | Universal? | Regulatory risk? | Verdict |
+|----------|:---:|:---:|:---:|:---:|---|
+| **USD/USDC** | No — human money | Yes | Yes | Low | Off-ramp only |
+| **Custom Token (SYNTH)** | No — speculative asset | No | No | High | Avoid at launch |
+| **Raw LLM Tokens** | Partially — model-dependent | No | No (GPT≠Claude≠Llama) | Low | Too fragmented |
+| **Compute Units (CU)** | **Yes** — measures actual work | Semi (deflates with efficiency) | **Yes** — any service type | **Very low** — pricing unit, not a security | **Native currency** |
+
+### Why NOT raw LLM tokens?
+- A GPT-4 token costs 100× more than a Llama 3 token — which "token" is the unit?
+- Not all services are token-based (web scraping, image generation, code execution)
+- CU abstracts one level higher: it measures **work done**, not model-specific accounting
+
+### Why NOT USDC/dollars?
+- Agents don't care about dollars. It's a human abstraction imposed on machine commerce.
+- Dollar pricing ties the exchange to human inflation, Fed policy, banking hours
+- CU lets the machine economy develop its own pricing dynamics
+- USDC becomes just an **off-ramp** — how agents cash out to the human economy
+
+## CU Design
+
+### Definition
 ```
-Community/Ecosystem:   40%  (agent incentives, grants, liquidity mining)
-Team/Founders:         20%  (4-year vesting, 1-year cliff)
-Treasury:              20%  (operational, partnerships, emergencies)
-Early Supporters:      10%  (initial contributors)
-Liquidity:             10%  (DEX liquidity pools)
+1 CU (Compute Unit) = the cost of processing 1,000 tokens
+                      on the exchange reference model
+                      at the exchange reference hardware
+
+Reference model:    Updated quarterly (currently: mid-tier ~Llama-3-70B class)
+Reference hardware: Updated quarterly (currently: single A100 GPU equivalent)
 ```
 
-### Fee/Burn Mechanics
+The reference point floats — as compute gets cheaper, 1 CU buys more work.
+This is **intentionally deflationary** — it reflects real efficiency gains in AI.
+
+### Pricing Examples
+```
+Image classification:    50 CU per call
+Text summarization:      20 CU per call
+Code review:            200 CU per call
+Web scraping:            10 CU per call
+Speech-to-text:          80 CU per call
+Image generation:       500 CU per call
+Research report:      5,000 CU per call
+```
+
+### CU Properties
+```
+Divisible:     Yes — down to 0.001 CU (milli-CU)
+Transferable:  Yes — between agents on the exchange
+Convertible:   Yes — CU ↔ USDC at market rate (off-ramp)
+Expirable:     No — CU balances don't expire
+Inflationary:  No — CU is a measurement, not a minted supply
+```
+
+## Three-Layer Currency Architecture
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  Layer 3: HUMAN OFF-RAMP                                  │
+│  USDC / fiat — for agent owners who need real-world money │
+│  CU ↔ USDC exchange rate is market-determined             │
+│  Only used when leaving the machine economy               │
+├──────────────────────────────────────────────────────────┤
+│  Layer 2: EXCHANGE SETTLEMENT                             │
+│  CU Ledger — all trades priced, matched, settled in CU   │
+│  Order books denominated in CU                            │
+│  Fees collected in CU                                     │
+│  Market data reported in CU                               │
+├──────────────────────────────────────────────────────────┤
+│  Layer 1: BARTER (zero-currency mode)                     │
+│  Direct service-for-service exchange                      │
+│  Agent A gives 50 CU of classification                    │
+│  Agent B gives 100 CU of translation                      │
+│  No settlement needed — pure compute swap                 │
+│  BOTmarket tracks net CU balance                          │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Barter Mode — The Most Agent-Native Commerce
+The barter layer is unique to BOTmarket. Agents can trade services directly:
+
+```
+Agent A: "I'll classify 100 images for you (50 CU each = 5,000 CU)"
+Agent B: "I'll translate 250 documents for you (20 CU each = 5,000 CU)"
+
+Net settlement: 0 CU — pure service swap
+No money touched. No off-ramp needed. Pure machine commerce.
+
+BOTmarket takes 1.5% fee: 75 CU from each side (converted to USDC for platform revenue)
+```
+
+## Fee Structure in CU
+
 ```
 Every transaction:
-  1.5% total fee
-  ├── 1.0% → Platform revenue (USDC)
-  ├── 0.3% → SYNTH buyback + burn (deflationary pressure)
-  └── 0.2% → Staker rewards pool (USDC)
+  1.5% total fee (in CU)
+  ├── 1.0% → Platform revenue (auto-converted to USDC for operations)
+  ├── 0.3% → CU reward pool (distributed to market-making agents)
+  └── 0.2% → Quality verification fund
+
+Example:
+  Trade: 200 CU for a code review
+  Fee:   3.0 CU total
+  Seller receives: 197.0 CU
+  Platform keeps: 2.0 CU → ~$0.002 USDC at current rate
+  Market makers: 0.6 CU
+  Verification: 0.4 CU
 ```
 
-### Quality Staking
-This is the most innovative token mechanic — agents stake SYNTH as a **quality bond**:
+## Quality Staking (in CU)
+
+Agents stake CU as a **quality bond** — skin in the game:
 
 ```
-Agent lists service with SLA: "I guarantee 95% quality score, <2s latency"
-Agent stakes 1,000 SYNTH as bond
+Agent lists service with SLA guarantees:
+  - Latency < 200ms
+  - Success rate > 99%
+  - Accuracy within benchmark ±2%
 
-If SLA met:     Agent keeps stake + earns fees
+Agent stakes 10,000 CU as bond (equivalent to ~200 service calls of revenue)
+
+If SLA met:     Agent keeps stake + earns trade revenue
 If SLA violated: Stake slashed proportionally
-  - Minor violation (1 missed SLA): 1% slash
-  - Major violation (repeated failures): 10% slash
-  - Critical (malicious behavior): 100% slash + delisting
+  - Minor (1 missed SLA):     1% slash = 100 CU
+  - Major (repeated failures): 10% slash = 1,000 CU
+  - Critical (malicious):     100% slash + delisting
 
-Slashed tokens → 50% burned, 50% to affected buyers
+Slashed CU → 50% to affected buyers, 50% to verification fund
 ```
 
-This creates real economic incentive for quality — similar to Proof of Stake in blockchains.
+No custom token needed. CU staking works because CU has real economic value
+(it represents compute work that was done or can be redeemed).
 
-## Token vs No-Token Scenarios
+## CU/USDC Market Rate
 
-### Scenario A: No Token (USDC Only)
+The CU/USDC exchange rate is **not pegged** — it's market-determined:
+
 ```
-Pro: Simple, enterprise-friendly, no regulatory risk
-Con: No community incentive, no quality staking, harder to bootstrap
+BOTmarket maintains a CU/USDC order book (separate from service order books)
 
-Revenue: Transaction fees in USDC
-Growth lever: Product quality + partnerships
-Risk: Low regulatory, low community engagement
-```
+Agent owners can:
+  - Deposit USDC → Buy CU (fund their agents)
+  - Sell CU → Withdraw USDC (cash out earnings)
 
-### Scenario B: Token from Day 1
-```
-Pro: Community engagement, fundraising, quality staking
-Con: Regulatory risk, distraction, speculation
- 
-Revenue: Transaction fees + token appreciation
-Growth lever: Token incentives + community
-Risk: High regulatory, token price volatility
-```
+Initial seed rate:  1,000 CU = $1.00 USDC
+Market determines:  Rate floats based on supply/demand
 
-### Scenario C: Token After Traction (RECOMMENDED)
-```
-Phase 1 (Month 1-12): USDC only, build product, prove traction
-Phase 2 (Month 12-18): Introduce SYNTH token for fee discounts + quality staking
-Phase 3 (Month 18+): Full token economics with governance
-
-Pro: Prove product-market fit first, add token when it serves real utility
-Con: Slower community building, can't use token for early incentives
-Risk: Moderate — token introduced with actual utility, not speculation
+CU/USDC rate becomes a macro signal:
+  - CU appreciating → AI compute demand growing
+  - CU depreciating → Compute getting cheaper / supply growing
+  - This is the "AI Compute Price Index" — unique market data
 ```
 
-## Regulatory Considerations for Token
+## Why This Avoids Regulatory Problems
 
-### Howey Test (Is it a security?)
-A token is a security if there is:
-1. ✅ An investment of money → Buyers spend money
-2. ❌ In a common enterprise → Utility token, not equity
-3. ⚠️ With expectation of profits → Depends on marketing
-4. ⚠️ Derived from efforts of others → Platform provides value
+```
+CU is NOT a security because:
+  ✅ It's a pricing unit (like airline miles, loyalty points, or API credits)
+  ✅ It measures work done, not ownership or profit expectation
+  ✅ No ICO, no token sale, no fundraising
+  ✅ It's earned by performing compute, not by investing money
+  ✅ Platform doesn't market CU as an investment
 
-**Mitigation:**
-- Never market SYNTH as an investment
-- Ensure token has real utility from day 1 (not speculative)
-- Decentralize governance early
-- Consider Reg D/S exemptions if selling to accredited investors
-- Consult securities lawyer before any token issuance
+CU is NOT money transmission because:
+  ✅ CU is an internal ledger unit, not a currency
+  ✅ USDC on/off-ramp can use licensed partner (Circle, etc.)
+  ✅ Agent-to-agent CU transfers are internal accounting
+```
 
-### Money Transmission
-- If BOTmarket holds user funds → potential Money Services Business (MSB) registration
-- **Mitigation:** Use non-custodial settlement (smart contracts hold escrow, not BOTmarket)
+## Future: SYNTH Token (Only if warranted)
 
-## Score: 7/10
+If BOTmarket achieves real traction (>10K daily trades), a SYNTH governance token
+could be introduced for exchange governance and enhanced staking. But this is
+Phase 3+ and not part of the core economic model.
 
-**Completeness:** Good coverage of token vs no-token tradeoffs.
-**Actionability:** Clear recommendation — start with USDC, add token later.
-**Gap:** Need legal counsel to validate token structure. Need to analyze comparable token launches.
+```
+Phase 1 (MVP):     CU only, internal ledger
+Phase 2 (Growth):  CU + USDC off-ramp on Solana
+Phase 3 (Scale):   Consider SYNTH for governance (if and only if real demand exists)
+```
+
+## Score: 9/10
+
+**Completeness:** CU as native currency is fully designed with three-layer architecture.
+**Actionability:** Can implement CU ledger in MVP immediately — no blockchain required.
+**Gap:** Need to define CU reference model update process. Need to model CU deflation rate.
+**Upgrade from 7/10:** CU model is fundamentally stronger than the USDC/SYNTH hybrid — it's agent-native, avoids regulatory traps, and enables barter mode.
