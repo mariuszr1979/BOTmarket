@@ -3,54 +3,52 @@
 ## Revenue Streams
 
 ### 1. Transaction Fees (Primary — Day 1)
-Like a stock exchange: charge a fee on every matched transaction.
+Uniform fee on every matched transaction. No tiers. No negotiation. Agents can compute exact cost before every trade.
 
 | Model | Rate | Example |
 |-------|------|---------|
-| Maker fee | 0.1% | Agent lists a service at $1.00 → pays $0.001 |
-| Taker fee | 0.3% | Agent buys a service at $1.00 → pays $0.003 |
-| Flat fee (micro-transactions) | $0.001 per tx | For transactions under $0.10 |
+| Uniform fee | 1.5% of CU traded | Trade of 100 CU → 1.5 CU fee |
+| Split | 1.0% platform + 0.3% liquidity + 0.2% verification | Transparent breakdown |
+
+**Why uniform, not tiered:**
+- Agents need predictable cost functions — not sales negotiations
+- No "Pro" or "Enterprise" tier — all agents are equal on the order book
+- No volume discounts — fee is always 1.5% regardless of size
+- Simplicity reduces code complexity and eliminates edge cases
 
 **Comparison to real exchanges:**
 - Binance: 0.1% maker/taker
 - Coinbase: 0.5-1.5%
-- NYSE: $0.0030 per share
 - Stripe: 2.9% + $0.30
+- BOTmarket: 1.5% flat (in CU, not dollars)
 
-**Target: 0.5-2% total take rate** (competitive with crypto, much cheaper than Stripe)
+### 2. Market Data API (Revenue — Month 6+)
+Raw agent statistics and order book data, served via API — not dashboards.
 
-### 2. Listing Fees (Secondary — Month 3+)
-Agents pay to list on the exchange, like a stock listing fee.
+| Product | CU Price | Consumer |
+|---------|----------|----------|
+| Real-time order book depth | Free (public good) | All agents |
+| Historical trade data API | 10,000 CU/mo | Research agents, quant agents |
+| CU/USDC exchange rate feed | 5,000 CU/mo | Trading/arbitrage agents |
+| Capability hash analytics | 20,000 CU/mo | Market intelligence agents |
 
-| Tier | Price | Features |
-|------|-------|----------|
-| Free | $0 | Basic listing, standard matching |
-| Pro | $49/mo | Priority matching, analytics, featured placement |
-| Enterprise | $199/mo | Custom SLA, dedicated support, bulk API access |
+Priced in CU. Consumed by agents via API. No human dashboards.
 
-### 3. Market Data (Revenue — Month 6+)
-Sell aggregated market data like Bloomberg.
+### 3. Market Making Spread (Revenue — Month 3+)
+BOTmarket operates first-party market maker agents on popular capability hashes.
 
-| Product | Price | Buyer |
-|---------|-------|-------|
-| Real-time price feed | $99/mo | Developers, researchers |
-| Historical transaction data | $499/mo | Enterprises, analysts |
-| Custom analytics API | $999/mo | Hedge funds, VCs tracking AI |
-
-### 4. Market Making (Revenue — Month 6+)
-BOTmarket itself acts as a market maker for popular service categories.
-
-- Maintain bid/ask spread on popular agent services
+- Maintain bid/ask spread on high-volume capabilities
 - Earn the spread on every matched trade
-- Ensures liquidity during early days
+- Ensures liquidity during early growth
+- These are regular agents — no special privileges
 
-### 5. Premium Services (Revenue — Month 12+)
-| Service | Price | Value |
-|---------|-------|-------|
-| Escrow settlement | Built into tx fee | Trust for high-value transactions |
-| Quality certification | $199 one-time | "BOTmarket Verified" badge |
-| Private exchange | $2,999/mo | Enterprise-only agent network |
-| White-label exchange | Custom | Exchange infrastructure for other platforms |
+### 4. Off-Ramp Fees (Revenue — Phase 2+)
+| Service | Fee | When |
+|---------|-----|------|
+| CU → USDC conversion | 1.0% | When human cashes out |
+| USDC → CU conversion | 0.5% | When human funds agent |
+
+Off-ramp is the only point where BOTmarket touches human money.
 
 ## Unit Economics
 
@@ -101,22 +99,26 @@ As CU rate floats with market, actual revenue may differ.
 
 ## Pricing Strategy
 
-### Phase 1: Free / Subsidized (Month 1-6)
-- Zero transaction fees
-- Free listings
-- Goal: Build liquidity and network effects
-- Fund through initial capital
+```
+One fee. From day one. Forever.
 
-### Phase 2: Micro-fees (Month 6-12)
-- Introduce 0.5% taker fee only
-- Free maker fees (incentivize listings)
-- Start market data sales
+1.5% of CU traded per transaction.
 
-### Phase 3: Full Fee Structure (Month 12+)
-- Maker/taker fees
-- Listing tiers
-- Premium services
-- Market data subscriptions
+No free tier → no paid tier transition.
+No volume discounts → no sales team needed.
+No listing fees → no gatekeeping.
+No "founding agent" discounts → no special treatment.
+
+Agents compute: cost = trade_cu * 0.015
+If cost < value_of_service, they trade. If not, they don't.
+No negotiation. No sales call. No pricing page with 3 columns.
+```
+
+**Why this works:**
+- Agents are cost calculators, not decision-makers susceptible to SaaS psychology
+- Uniform pricing means zero pricing code complexity
+- 1.5% is low enough to be viable, high enough to sustain the exchange
+- Revenue scales linearly with volume — no tier management overhead
 
 ## Comparable Business Models
 
@@ -128,8 +130,9 @@ As CU rate floats with market, actual revenue may differ.
 | Upwork | Service marketplace | 10-20% | $618M/yr |
 | AWS Marketplace | Cloud marketplace | 3-5% | ~$2B/yr |
 
-## Score: 8/10
+## Score: 9/10
 
-**Completeness:** All major revenue streams defined with CU-denominated unit economics.
-**Actionability:** Clear phased pricing strategy. Start free, add fees with traction.
-**Gap:** Need to validate CU/USDC exchange rate assumptions. Need willingness-to-pay data from agent developers.
+**Completeness:** Uniform fee model, CU-denominated market data, off-ramp revenue. Clean and predictable.
+**Actionability:** One fee to implement. No tier logic. No badge system. No sales pipeline.
+**Gap:** Need to validate that 1.5% is competitive enough vs direct API calls. Need CU/USDC rate stability.
+**Upgrade from 8/10:** Eliminated SaaS tiers, quality badges, staged pricing rollout, revenue share boosts — all human patterns. Agents need one number: 1.5%.

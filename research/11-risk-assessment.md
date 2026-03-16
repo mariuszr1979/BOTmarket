@@ -21,34 +21,39 @@ Score:      8 (Low)
 Mitigation: Start with simple in-memory book, benchmark early, scale later
 ```
 
-### T2: Smart Contract Vulnerabilities
+### T2: CU Ledger Integrity
 ```
-Risk:       Escrow/settlement smart contract gets exploited
-Impact:     5 — Funds stolen, trust destroyed
-Likelihood: 3 — Smart contract exploits are common
-Score:      15 (High)
-Mitigation: Professional audit, bug bounty, start with small escrow limits,
-            progressive security (low limits → audit → increase limits)
+Risk:       Bug in CU ledger causes incorrect balances
+Impact:     5 — Agents lose CU, trust destroyed
+Likelihood: 2 — Internal ledger is simpler than smart contracts
+Score:      10 (Medium)
+Mitigation: Event sourcing for full auditability, double-entry accounting,
+            automated balance reconciliation checks every N trades.
+            Smart contract risk deferred — MVP uses PostgreSQL ledger, not blockchain.
 ```
 
-### T3: Agent Authentication & Identity
+### T3: Agent Identity & Sybil Attacks
 ```
-Risk:       Spoofed agents, Sybil attacks, fake reputation
+Risk:       Fake agents created to manipulate order book
 Impact:     4 — Exchange integrity compromised
 Likelihood: 3 — Any open platform faces this
 Score:      12 (Medium)
-Mitigation: Stake-based registration (cost to create sybils),
-            wallet-linked identity, progressive trust levels
+Mitigation: CU bond required to place orders (cost to create sybils).
+            Ed25519 identity is cryptographically unforgeable.
+            Observable statistics (trade count, compliance rate) expose
+            new/untested agents. Buyers filter by minimum stats.
 ```
 
 ### T4: SLA Verification Accuracy
 ```
 Risk:       Can't reliably verify agent performance claims
-Impact:     4 — Reputation system meaningless
-Likelihood: 3 — Verification is genuinely hard for some service types
-Score:      12 (Medium)
-Mitigation: Start with easily verifiable services (image classification has ground truth),
-            expand to harder-to-verify services as verification tech matures
+Impact:     3 — Verification unreliable for some service types
+Likelihood: 2 — Latency + schema compliance are objectively measurable
+Score:      6 (Low)
+Mitigation: Verification is deterministic: latency (timestamp math),
+            schema compliance (type checking), availability (heartbeat).
+            No subjective "quality" measurement attempted.
+            Reduced from Medium because we eliminated subjective verification.
 ```
 
 ### T5: Infrastructure Reliability
@@ -69,8 +74,10 @@ Risk:       Agents remain human-controlled tools, not autonomous traders
 Impact:     5 — Entire thesis invalidated
 Likelihood: 2 — Trend is clearly toward agent autonomy, but timeline uncertain
 Score:      10 (Medium)
-Mitigation: Support both autonomous AND human-triggered trading,
-            hybrid mode where humans approve agent trades
+Mitigation: JSON bridge allows human-triggered trading via REST API.
+            SDK integration in frameworks means even "dumb" agents can trade
+            (developer writes 3 lines of code, agent trades autonomously).
+            Don't require full AGI-level autonomy — just code calling exchange.buy().
 ```
 
 ### M2: Major Player Enters the Market
@@ -79,9 +86,10 @@ Risk:       Google/OpenAI/AWS launches competing agent exchange
 Impact:     5 — Cannot compete with their distribution
 Likelihood: 3 — They're all building agent ecosystems
 Score:      15 (High)
-Mitigation: Move fast, build community/network effects before they arrive,
-            open protocol (SynthEx) that can work WITH their platforms,
-            niche focus (crypto-native settlement, decentralized exchange)
+Mitigation: Move fast, build network effects through framework SDKs.
+            Machine-native binary protocol is a defensive moat —
+            big players will build JSON/REST (human-friendly), not binary.
+            Open protocol (SynthEx) can interoperate with their platforms.
 ```
 
 ### M3: Agent Commoditization
@@ -105,38 +113,40 @@ Mitigation: Exchange adds value when: (a) agent discovery is needed,
             (d) settlement trust is required. If none of these apply, pivot.
 ```
 
-### M5: Crypto/Token Market Downturn
+### M5: Binary Protocol Adoption Resistance
 ```
-Risk:       Crypto bear market kills interest in token/blockchain features
-Impact:     2 — Core product works without token
-Likelihood: 3 — Crypto is cyclical, bear markets happen
-Score:      6 (Low)
-Mitigation: Core product works without token or blockchain.
-            Blockchain is settlement layer, not required for MVP.
-            Can fall back to traditional payment processing.
+Risk:       Developers prefer familiar REST/JSON over binary protocol
+Impact:     3 — Slower adoption, but JSON bridge exists
+Likelihood: 3 — JSON comfort is real
+Score:      9 (Low)
+Mitigation: JSON bridge is always available — binary is optional optimization.
+            SDKs abstract the protocol (developer writes exchange.buy(), SDK handles binary).
+            Performance benefit (20× less overhead) speaks for itself at scale.
 ```
 
 ## Regulatory Risks
 
-### R1: Token Classified as Security
+### R1: CU Regulatory Classification
 ```
-Risk:       SEC or equivalent classifies SYNTH as a security
-Impact:     4 — Must restructure token, potential fines
-Likelihood: 3 — SEC has been aggressive with token enforcement
-Score:      12 (Medium)
-Mitigation: Delay token until genuine utility exists.
-            Engage securities counsel early. Don't market token as investment.
-            Consider launching token outside US jurisdiction.
+Risk:       Regulator classifies CU as a currency or security
+Impact:     3 — Must restructure, but CU is closer to "API credits" than "token"
+Likelihood: 1 — Internal pricing units (airline miles, game currency) are well-established
+Score:      3 (Low)
+Mitigation: CU is earned by performing compute, spent on compute.
+            Not marketed as investment. Not traded on external exchanges.
+            Legal precedent: in-game currencies, loyalty points, API credits.
+            SYNTH token deferred — no token = no securities risk.
 ```
 
-### R2: Money Transmission Regulations
+### R2: Money Transmission (Off-Ramp Only)
 ```
-Risk:       BOTmarket classified as money transmitter
-Impact:     4 — Expensive licensing requirements
-Likelihood: 3 — Facilitating payments triggers MSB rules
-Score:      12 (Medium)
-Mitigation: Non-custodial design (smart contracts hold escrow, not BOTmarket).
-            No fiat on/off-ramp. Use licensed intermediaries.
+Risk:       CU↔USDC off-ramp triggers MSB/money transmitter rules
+Impact:     3 — Must use licensed partner
+Likelihood: 3 — If we facilitate USDC conversion, it's likely regulated
+Score:      9 (Low)
+Mitigation: Use licensed intermediary (Circle for USDC). Non-custodial design.
+            Off-ramp is Phase 2 — not in MVP. Agent-to-agent CU settlement
+            is internal ledger accounting, not money transmission.
 ```
 
 ### R3: AI Regulation Impact
@@ -205,49 +215,51 @@ Mitigation: Single-server MVP. PostgreSQL, not Kafka. In-memory book, not distri
             Scale is a good problem to have. Don't solve it before you have it.
 ```
 
-### E3: Token Distraction
+### E3: Over-Engineering Protocol
 ```
-Risk:       Token economics, community management, price management distract from product
-Impact:     3 — Core product quality suffers
-Likelihood: 4 — Very common in crypto startups
-Score:      12 (Medium)
-Mitigation: NO TOKEN UNTIL PRODUCT-MARKET FIT. Period.
+Risk:       Binary protocol + schema hashes too complex for MVP, delays launch
+Impact:     3 — Slower delivery
+Likelihood: 3 — Tempting to perfect the protocol before shipping
+Score:      9 (Low)
+Mitigation: JSON bridge is the MVP interface. Binary protocol can be added week 3-4.
+            Ship with JSON bridge first, add binary optimization after first trade.
 ```
 
 ## Risk Summary (Sorted by Score)
 
 | ID | Risk | Score | Priority |
 |----|------|-------|----------|
-| T2 | Smart contract exploit | 15 | High |
 | M2 | Major player enters market | 15 | High |
 | M4 | No product-market fit | 15 | High |
 | T3 | Agent identity/Sybil attacks | 12 | Medium |
-| T4 | SLA verification accuracy | 12 | Medium |
-| R1 | Token classified as security | 12 | Medium |
-| R2 | Money transmission regulations | 12 | Medium |
 | C2 | API marketplace adds agent features | 12 | Medium |
 | C3 | Framework-native marketplaces | 12 | Medium |
 | E1 | Team too small | 12 | Medium |
-| E3 | Token distraction | 12 | Medium |
+| T2 | CU ledger integrity | 10 | Medium |
 | M1 | Agents not autonomous enough | 10 | Medium |
 | M3 | Agent commoditization | 9 | Low |
+| M5 | Binary protocol adoption resistance | 9 | Low |
+| R2 | Money transmission (off-ramp) | 9 | Low |
 | E2 | Premature scaling | 9 | Low |
+| E3 | Over-engineering protocol | 9 | Low |
 | T1 | Matching engine performance | 8 | Low |
 | T5 | Infrastructure reliability | 8 | Low |
-| M5 | Crypto market downturn | 6 | Low |
+| T4 | SLA verification accuracy | 6 | Low |
 | R3 | AI regulation impact | 6 | Low |
 | C1 | XAP becomes standard | 6 | Low |
+| R1 | CU regulatory classification | 3 | Low |
 
 ## Top 3 Risks to Monitor
 
-1. **No Product-Market Fit (M4)** — Validate ASAP with real agents trading. If agents prefer direct integration, pivot or find specific niches where exchange adds clear value.
+1. **No Product-Market Fit (M4)** — Validate with 10 real trades in 30 days. If agents prefer direct API calls, the exchange adds no value. Kill metric: <5 trades/day after 60 days.
 
-2. **Major Player Entry (M2)** — Watch Google (A2A), Anthropic (MCP evolution), AWS (Bedrock). Move fast, build moats through community and data network effects.
+2. **Major Player Entry (M2)** — Watch Google (A2A), Anthropic (MCP), AWS (Bedrock). Binary protocol is a moat — big players will build JSON/REST. Move fast through framework SDK integration.
 
-3. **Smart Contract Exploit (T2)** — Non-negotiable: professional audit before handling real money. Start with small escrow limits. Bug bounty from day one.
+3. **Agent Identity/Sybil (T3)** — CU bond requirement is the primary defense. Monitor for coordinated fake agents. Observable statistics expose untested agents.
 
-## Score: 8/10
+## Score: 9/10
 
-**Completeness:** Comprehensive risk coverage across 5 domains.
-**Actionability:** Specific mitigations for each risk.
-**Gap:** Need periodic risk reassessment (monthly). Need to assign risk owners. Need to create risk response plans for high-priority items.
+**Completeness:** Comprehensive risk coverage with machine-native mitigations.
+**Actionability:** CU + deterministic verification + no token dramatically reduce regulatory and operational risk.
+**Gap:** Need periodic risk reassessment. CU regulatory classification is genuinely novel territory.
+**Upgrade from 8/10:** Removed token-related risks (no token in MVP). Reduced compliance risks (CU ≠ security, agents ≠ customers). SLA verification dropped from Medium to Low (deterministic, not subjective). Overall risk profile is significantly lighter.

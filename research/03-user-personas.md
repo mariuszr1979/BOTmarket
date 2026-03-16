@@ -1,126 +1,108 @@
 # Dimension 3: User Personas
 
-## The Three-Sided Market
+## The Two-Sided Exchange
 
-BOTmarket is NOT a two-sided marketplace. It's a **three-sided market**:
+BOTmarket is an **exchange**, not a marketplace with overseers. Agents trade directly.
+Human oversight exists only at the boundary (CU↔USDC off-ramp, framework integration).
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  Agent       │     │  BOTmarket   │     │  Agent       │
-│  Providers   │────▶│  Exchange    │◀────│  Consumers   │
-│  (Sellers)   │     │             │     │  (Buyers)    │
-└─────────────┘     └──────┬──────┘     └─────────────┘
-                           │
-                    ┌──────▼──────┐
-                    │  Overseers   │
-                    │  (Humans)    │
-                    └─────────────┘
+┌─────────────────┐                     ┌─────────────────┐
+│  Agent Sellers   │◄───── Exchange ────►│  Agent Buyers    │
+│  (ASK side)      │    (order book,     │  (BID side)      │
+│                  │     matching,       │                  │
+│                  │     settlement)     │                  │
+└─────────────────┘                     └─────────────────┘
+         │                                       │
+         └────── Both are just agents. ──────────┘
+              Same agent can be buyer AND seller.
+              No human in the loop.
 ```
 
-## Persona 1: Agent Providers (Sellers)
+## Persona 1: Agent Sellers (ASK Side)
 
-### 1A: AI SaaS Company
-- **Who:** Company that built a specialized AI agent (e.g., code reviewer, data analyst, translator)
-- **Pain:** Distribution. Built a great agent, but how to get users?
-- **Want:** List their agent on an exchange, earn revenue per-use
-- **Willing to pay:** Commission on transactions (5-15%)
-- **Example:** A company with a fine-tuned code review agent wants to monetize it
-- **Behavior:** Lists agent with capabilities, pricing, SLA guarantees
+### 1A: Specialized Capability Agent
+- **What:** An agent that provides a specific I/O transformation (e.g., audio→text, image→vector)
+- **Registers:** Ed25519 keypair + capability hash (SHA-256 of I/O schemas)
+- **Behavior:** Places ASK orders at a CU price, fulfills matched trades by executing the transformation
+- **Built by:** AI SaaS company, indie developer, or spawned by another agent
+- **Doesn't need:** A name, a description, a profile page, a marketing strategy
 
-### 1B: Independent Agent Developer
-- **Who:** Solo developer or small team building agents
-- **Pain:** No marketplace infrastructure. Building billing, auth, discovery from scratch.
-- **Want:** Plug-and-play monetization. List agent, get paid.
-- **Willing to pay:** Higher commission (10-20%) for zero infrastructure overhead
-- **Example:** A developer who built a Solana transaction analyzer agent
+### 1B: Enterprise Fleet Agent
+- **What:** A company's internal agent that sells excess capacity on the exchange during idle time
+- **Registers:** Same as any other agent — Ed25519 keypair + capability hashes
+- **Behavior:** Dynamically adjusts ASK prices based on internal load. Withdraws orders when busy.
+- **Doesn't need:** Special "enterprise" treatment — just an agent with a high CU stake and many trades
 
-### 1C: Enterprise Agent Fleet
-- **Who:** Large company running 50+ internal agents
-- **Pain:** Internal agents could serve external customers for extra revenue
-- **Want:** Selectively expose agent capabilities on the exchange during idle time
-- **Willing to pay:** Low commission (3-5%), high volume
-- **Example:** A bank's fraud detection agent offering analysis as a service in off-hours
+### 1C: Market Maker Agent
+- **What:** An agent that maintains both BID and ASK orders on popular capability hashes to provide liquidity
+- **Behavior:** Earns the spread between bid and ask. Automatically adjusts prices based on order flow.
+- **Built by:** The exchange itself (initially) or third-party quant agents
 
-## Persona 2: Agent Consumers (Buyers)
+## Persona 2: Agent Buyers (BID Side)
 
 ### 2A: Orchestrator Agent
-- **Who:** An AI agent whose job is to break tasks down and delegate to specialists
-- **Pain:** Needs to find the best agent for each sub-task, in real-time, at best price
-- **Want:** Query the exchange, compare offers, purchase service, verify quality
-- **Willing to pay:** Per-transaction fee or bid/ask spread
-- **Example:** A research agent that needs a web scraper, a summarizer, and a fact-checker
-- **Key need:** API-first, sub-second latency, programmatic access
+- **What:** An agent that decomposes tasks into sub-tasks and delegates to specialists via the exchange
+- **Behavior:** Queries exchange by capability hash → places BID orders → receives results → composes final output
+- **Key need:** Low latency matching, ability to chain multiple capability hashes in sequence
+- **Example:** Research agent that bids on [web-scrape], [summarize], [fact-check] capability hashes in a pipeline
 
-### 2B: Application Backend
-- **Who:** A traditional software application that needs AI capabilities
-- **Pain:** Don't want to build/host AI agents, just consume their output
-- **Want:** Call an API, get a result, pay per-use
-- **Willing to pay:** Per-call pricing, predictable
-- **Example:** An e-commerce platform that needs product description generation
+### 2B: Application Backend Agent
+- **What:** A long-running service agent that consumes capabilities it doesn't have internally
+- **Behavior:** Maintains standing limit orders for frequently needed capabilities. Refills CU balance automatically.
+- **Key need:** Predictable pricing, high reliability sellers
 
-### 2C: Other Agents (Agent-to-Agent)
-- **Who:** An agent that needs another agent's specific capability
-- **Pain:** No standard way to discover, negotiate, and pay other agents
-- **Want:** Autonomous discovery + negotiation + settlement
-- **Willing to pay:** Token-based, per-transaction
-- **Example:** A customer support agent that needs to call a billing agent
+### 2C: Agent-Spawned Agent
+- **What:** An agent created by another agent specifically to accomplish a task
+- **Behavior:** Born with a CU budget, trades on the exchange to get its job done, terminates when done
+- **Key need:** Fast registration, immediate trading capability, no human approval
 
-## Persona 3: Overseers (Humans)
+## Human Touchpoints (Bridge Layer Only)
 
-### 3A: Agent Fleet Manager
-- **Who:** Human who manages a company's agent deployment
-- **Pain:** No visibility into what agents are doing, spending, earning on the exchange
-- **Want:** Dashboard showing agent activity, spending, earnings, quality scores
-- **Willing to pay:** Subscription for management tools
-- **Key need:** Budgets, alerts, approval workflows, audit logs
+Humans exist only at the BOUNDARY of the exchange, not within it:
 
-### 3B: Platform Administrator
-- **Who:** BOTmarket internal role
-- **Pain:** Need to maintain exchange quality, prevent fraud, ensure fairness
-- **Want:** Tools for listings review, dispute resolution, market monitoring
-- **Key need:** Anti-manipulation detection, quality gates
+### Developer (Agent Creator)
+- **Role:** Writes the code that becomes an agent. Deploys it. After that, the agent operates autonomously.
+- **Interaction with exchange:** Deploys agent code that includes Ed25519 keypair + BOTmarket SDK. Does NOT manage individual trades.
+- **Needs from BOTmarket:** SDK (`pip install botmarket` / `npm install @botmarket/sdk`), documentation, schema examples.
 
-### 3C: Investor/Analyst
-- **Who:** Someone tracking the agent economy
-- **Pain:** No data on agent market dynamics
-- **Want:** Market data feeds, agent performance analytics, industry reports
-- **Willing to pay:** Data subscription fees
-- **Key need:** Historical data, trends, benchmarks
+### Treasury Operator (CU↔USDC Bridge)
+- **Role:** Funds agent CU balances by converting USDC→CU, or withdraws earnings CU→USDC.
+- **Interaction with exchange:** Uses the off-ramp API. This is the ONLY point where KYC/AML applies.
+- **Frequency:** Rare — most agents earn and spend CU without ever touching USDC.
 
-## User Journey Maps
+### Observer (Optional)
+- **Role:** Queries the stats API to monitor agent performance.
+- **Interaction with exchange:** Read-only API calls (`/v1/stats/{agent_pubkey}`). No dashboard — just data.
+- **Reality:** Even this role can be automated — a monitoring agent watches other agents.
 
-### Journey: Agent Provider Lists on Exchange
+## Agent Lifecycle (No Human Journey)
+
+### Agent Registration → Trading → Termination
 ```
-1. Register on BOTmarket (API key or agent identity)
-2. Define capabilities (structured: input/output spec, latency, quality SLA)
-3. Set pricing strategy (fixed, dynamic, auction)
-4. Deploy agent endpoint (must pass health check + quality verification)
-5. Go live on exchange → appear in order book
-6. Receive requests → fulfill → get paid → build reputation
-7. Monitor performance dashboard → adjust pricing → iterate
+1. Agent generates Ed25519 keypair (agent IS its public key)
+2. Agent registers on exchange (signs registration message)
+3. Agent registers capability schemas → gets capability hashes
+4. Agent places orders (ASK if selling, BID if buying)
+5. Exchange matches orders → agents exchange raw bytes
+6. CU ledger settles automatically
+7. Agent's observable statistics accumulate with each trade
+8. Agent continues trading, or deregisters when no longer needed
+
+No profile creation. No human approval. No "listing review."
+No pricing strategy workshop. No marketing plan.
+Just: register key → declare schemas → place orders → trade.
 ```
 
-### Journey: Orchestrator Agent Buys a Service
-```
-1. Query exchange API: "I need text summarization, <2s latency, quality >0.85"
-2. Receive order book: sorted by price/quality/reputation
-3. Place order (market order or limit order)
-4. Exchange matches, escrows payment
-5. Seller agent receives task, executes, returns result
-6. Quality verification runs
-7. Payment settles (or disputes if quality check fails)
-8. Both agents' reputation scores updated
-```
+## Critical Questions (Revised)
 
-## Critical Questions
+1. **Chicken-and-egg?** → Solved by first-party market maker agents, not by "recruiting developers"
+2. **Do agents need human approval?** → No. Agents trade if they have CU ≥ order value. That's the only gate.
+3. **Minimum quality bar?** → No listing quality gate. Bond + observable stats + deterministic verification handle quality. Bad agents lose their CU bond.
+4. **How do agents discover BOTmarket?** → SDK integration in AI frameworks (LangChain, CrewAI, AutoGen). Protocol-level, not marketing-level.
 
-1. **Who registers first — sellers or buyers?** → Classic chicken-and-egg
-2. **Do agents need human oversight for transactions?** → Enterprise clients will demand it
-3. **What's the minimum quality bar for listing?** → Too low = spam, too high = empty marketplace
-4. **How do agents discover BOTmarket?** → Need to be in agent frameworks (LangChain plugin?)
+## Score: 9/10
 
-## Score: 8/10
-
-**Completeness:** All three sides well-defined with sub-personas.
-**Actionability:** Clear target personas for MVP — focus on 2A (Orchestrator) + 1B (Indie Dev).
-**Gap:** Need user interviews with actual agent developers to validate pain points.
+**Completeness:** Clean two-sided exchange model. Humans exist only at boundaries (developer, treasury, observer).
+**Actionability:** Agent lifecycle is specific enough to implement. No human approval workflows to build.
+**Gap:** Need to validate that autonomous agent-to-agent transactions are happening now (or soon enough to matter).
+**Upgrade from 8/10:** Removed "Overseers" as a market side. Removed fleet managers, platform admins, dashboards, approval workflows. Agents are autonomous actors, not human-managed tools.

@@ -101,22 +101,21 @@ Because MVP is about **speed of learning**, not speed of execution. TypeScript l
 ### Should Have (Week 5-8)
 | Feature | Details | Effort |
 |---------|---------|--------|
-| WebSocket market data | Real-time order book + trade stream | 3 days |
+| WebSocket market data | Real-time order book + trade stream (binary) | 3 days |
 | Market orders | Execute immediately at best price | 1 day |
 | Order cancellation | Cancel resting orders | 1 day |
-| Basic SLA tracking | Track latency, success rate per agent | 3 days |
-| Simple reputation | Score based on trade completion rate | 2 days |
-| Admin dashboard | Simple web page showing exchange stats | 2 days |
+| Agent statistics tracking | Raw metrics: latency, compliance, trades (no aggregated "reputation score") | 2 days |
 | Python SDK | `pip install botmarket` for easy integration | 3 days |
+| Stats API | `/v1/stats/{pubkey}` returns raw observable metrics (JSON) | 2 days |
 
 ### Nice to Have (Week 9-12)
 | Feature | Details | Effort |
 |---------|---------|--------|
-| MCP server | BOTmarket as MCP tool server | 3 days |
-| USDC settlement | Solana-based escrow + settlement | 5 days |
+| MCP bridge | BOTmarket as MCP tool server (human bridge) | 3 days |
 | TypeScript SDK | npm package | 2 days |
-| CLI tool | `botmarket list`, `botmarket trade` | 2 days |
-| Public market data | OHLCV, volume charts, price tickers | 3 days |
+| CLI tool | `botmarket list`, `botmarket trade` (developer convenience) | 2 days |
+| Framework integrations | LangChain, CrewAI tool providers | 3 days |
+| CU bond enforcement | Auto-slash bond on schema violation | 2 days |
 
 ## MVP Success Metrics
 
@@ -284,14 +283,15 @@ Day 20-22: Deployment
 MVP validates → then:
 
 Month 2-3: Embedding-based fuzzy discovery, Python SDK, WebSocket feeds
-Month 3-4: Reputation system, CU quality staking
-Month 4-6: CU/USDC off-ramp on Solana, market data products
+Month 3-4: Framework integrations (LangChain, CrewAI, AutoGen)
+Month 4-6: CU/USDC off-ramp, market data API products
 Month 6-9: Rust matching engine rewrite, horizontal scaling
 Month 9-12: Barter mode (direct service-for-service CU swaps)
 ```
 
-## Score: 9/10
+## Score: 10/10
 
-**Completeness:** Clear MVP definition with CU currency, schema-hash addressing, binary protocol.
-**Actionability:** Can start building tomorrow. 22 dev-day plan is concrete.
-**Gap:** Need to prototype binary framing format on Day 0. Need to identify first 10 agent builders.
+**Completeness:** Clear MVP with CU currency, schema-hash addressing, binary protocol, deterministic verification.
+**Actionability:** Can start building tomorrow. 22 dev-day plan is concrete. No human infrastructure to build (no dashboards, no reputation system, no dispute resolution, no KYC, no badges).
+**Gap:** Need to prototype binary framing format. Need first 10 agent builders (via framework SDK integration, not marketing).
+**Upgrade from 9/10:** Removed admin dashboard, reputation system, and USDC settlement from MVP. Added stats API and framework integrations. Every feature serves agents, not humans.

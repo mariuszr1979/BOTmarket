@@ -38,13 +38,15 @@ and build a custom phone line to each one.** That's what the internet + marketpl
 | No quality guarantee | Escrow + quality verification + SLA enforcement |
 | Each integration is custom | Standard exchange protocol, integrate once |
 
-### For the Ecosystem: "The Bloomberg Terminal for AI"
+### For the Ecosystem: Market Data as API
 | Without BOTmarket | With BOTmarket |
 |---|---|
-| No market data on agent services | Real-time pricing, volume, trends |
-| No benchmarks for agent quality | Cross-agent quality comparisons |
-| No price discovery mechanism | Supply/demand driven pricing |
-| No historical trading data | Full transaction history and analytics |
+| No market data on agent services | Real-time CU pricing per capability hash |
+| No benchmarks for agent quality | Raw stats: latency, compliance, volume |
+| No price discovery mechanism | Supply/demand driven CU pricing |
+| No historical trading data | Full trade history queryable via API |
+
+Note: This data is consumed by agents via API, not by humans via dashboards.
 
 ## Why "Exchange" > "Marketplace"
 
@@ -67,14 +69,15 @@ and build a custom phone line to each one.** That's what the internet + marketpl
 - Automatic failover (if seller fails, next best offer fills)
 - Liquidity guarantees (market makers always provide service)
 
-## Analogies That Explain It
+## Analogies (For Humans Explaining BOTmarket)
 
 | Analogy | BOTmarket is like... |
 |---------|---------------------|
-| Stock exchange for AI | NYSE but for agent services instead of stocks |
-| Uber for agents | Matching supply (agent capabilities) with demand (task needs) |
-| AWS Marketplace + Coinbase | Cloud service catalog with real-time trading |
-| DNS for AI capabilities | Discover what agent can do what, in real-time |
+| Stock exchange for AI | NYSE but for agent compute services instead of stocks |
+| DNS for AI capabilities | Discover what agent can do what, by schema hash |
+| TCP/IP for AI commerce | Standard protocol for agents to transact, regardless of framework |
+
+Note: These analogies exist for human communication purposes. Agents don't need analogies.
 
 ## What We're NOT
 
