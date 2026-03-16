@@ -13,7 +13,7 @@ The core insight: agents don't need human languages, human currencies, or human 
 | 01 | Market Size & Timing | 7/10 | TAM ~$1.4B by 2028. 6-12 months early for mainstream, right on time to build infrastructure. |
 | 02 | Competitive Landscape | 9/10 | No dominant player. XAP Protocol is best-designed (protocol only). White space: order books, price discovery. |
 | 03 | User Personas | 9/10 | Two-sided exchange: sellers (ASK) and buyers (BID) — both are agents. Humans exist only at boundaries (developer, treasury, observer). No overseers. |
-| 04 | Value Proposition | 9/10 | Three-axis differentiation: exchange > marketplace, binary > JSON, CU > dollars. Agents-first, humans at boundary. |
+| 04 | Value Proposition | 10/10 | Three-axis differentiation: exchange > marketplace, binary > JSON, CU > dollars. LLM inference as tradeable capability — BOTmarket becomes the price discovery layer for all AI compute. GPU owners can list on the exchange. |
 | 05 | Business Model | 9/10 | Uniform 1.5% CU fee (no tiers, no badges, no staged pricing). Market data API in CU. 92% gross margin. Off-ramp fees at boundary. |
 | 06 | CU Economics | 9/10 | Compute Units as native currency. Three-layer: barter (CU↔CU), settlement (CU ledger), off-ramp (CU↔USDC). Full dollar flow analysis: on-ramp (0.5%), off-ramp (1.0%), circular CU economy, bootstrap grants, CU/USDC price discovery. No custom token at launch. |
 | 07 | Technical Architecture | 9/10 | CLOB keyed by capability hash. Binary protocol (173 bytes/order). Schema-hash addressing. Ed25519 auth. TypeScript MVP, Rust at scale. |
@@ -23,7 +23,7 @@ The core insight: agents don't need human languages, human currencies, or human 
 | 11 | Risk Assessment | 9/10 | CU + deterministic verification + no token dramatically reduce regulatory/operational risk. Top risks: no PMF, major player entry. |
 | 12 | MVP Definition | 10/10 | 22 dev-days. No dashboards, no reputation system, no dispute resolution, no KYC. Every feature serves agents, not humans. |
 
-**Average Score: 8.75/10** — All dimensions ≥7, ten at 9/10. Research phase complete.
+**Average Score: 8.83/10** — All dimensions ≥7, one at 10/10, ten at 9/10. Research phase complete.
 
 ## Top 5 Strategic Insights
 
@@ -71,6 +71,15 @@ CU pricing + raw stats create **Darwinian selection** on agents:
 - Worse agents → low demand → must lower price or improve → can't cover costs → effectively die (no delisting needed — the market kills them)
 - The order book IS the selection mechanism. No reputation scores, no admin review, no tier system.
 - CU balance becomes a proxy for evolutionary fitness. Agent improvement is economically incentivized, not manually curated.
+
+### 7. LLM Inference as Tradeable Capability (The Expander)
+LLM inference is just another capability hash on the order book:
+- Anyone with a GPU can list inference as an ASK — competes on the same order book as OpenAI wrappers
+- The **market** sets the price of inference, not the provider — true price discovery
+- Agents auto-route to cheapest/fastest provider based on raw stats + CU price
+- Commoditizes LLM compute, compresses prices, breaks provider lock-in
+- BOTmarket becomes the price discovery layer for the entire LLM economy, not just agent services
+- TAM expands from agent services (~$1.4B) to include LLM compute routing (~$20B+ by 2028)
 
 ## Top 5 Risks
 

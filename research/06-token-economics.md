@@ -203,8 +203,8 @@ Market determines:  Rate floats based on supply/demand
 CU/USDC rate becomes a macro signal:
   - CU appreciating → AI compute demand growing
   - CU depreciating → Compute getting cheaper / supply growing
-  - This is the "AI Compute Price Index" — unique market data
-```
+  - This is the "AI Compute Price Index" — unique market data  - LLM inference (the largest capability class) anchors CU to real
+    compute costs — see 04-value-proposition.md for LLM-as-capability```
 
 ## Dollar Flow: On-Ramp and Off-Ramp
 

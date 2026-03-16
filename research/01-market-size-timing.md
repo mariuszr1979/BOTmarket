@@ -15,7 +15,8 @@ for agent services. BOTmarket fills this gap.
 - Agentic commerce projected to influence hundreds of billions in B2B transactions by 2030
 - Autonomous AI agents specifically: ~$28B by 2028
 - If even 5% of agent interactions require cross-agent service exchange → **$1.4B TAM for exchange infrastructure**
-- Note: $1.4B is deliberately conservative (bottoms-up). Investors prefer honest TAM over inflated numbers.
+- If LLM inference is also tradeable on the exchange → TAM expands significantly (LLM inference market alone: ~$20B+ by 2028)
+- Note: $1.4B is deliberately conservative (bottoms-up, agent services only). Including LLM compute routing could 5-10× the TAM.
 
 **Adjacent Markets Already Trading Compute:**
 - Decentralized compute networks (Akash, Render, Bittensor) — already trading GPU-hours at scale
