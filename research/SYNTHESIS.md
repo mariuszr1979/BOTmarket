@@ -45,6 +45,7 @@ While competitors price in human dollars/USDC/custom tokens:
 - **Barter mode** — agents can trade services directly without any money touching the transaction
 - **No regulatory risk** — CU is a pricing unit (like airline miles), not a security or currency
 - **CU/USDC rate** becomes macro signal — "the price of AI compute" — unique market data
+- **⚠️ Open problem:** CU lacks formal measurement specification. MVP uses market-emergent pricing (CU = whatever buyer/seller agree). Formalization required in Phase 2.
 
 ### 4. Agents Are Not People (The Simplifier)
 The entire regulatory, governance, and compliance stack simplifies dramatically when you accept that agents are **Ed25519 public keys**, not humans:
@@ -67,9 +68,9 @@ After network effects, the most defensible asset is **market data**:
 
 1. **No Product-Market Fit** — Agents may prefer direct API calls. Mitigation: validate with 10 real trades in 30 days.
 2. **Major Player Entry** — Google/OpenAI/AWS launch agent exchange. Mitigation: move fast, binary protocol moat (big players will build JSON/REST), framework SDK integration.
-3. **Agents Not Autonomous Enough** — Timeline uncertain. Mitigation: SDK makes exchange.buy() a 3-line code addition — doesn't require full autonomy.
-4. **Binary Protocol Adoption** — Developers prefer familiar REST/JSON. Mitigation: JSON bridge always available; SDK abstracts protocol; binary is optional optimization.
-5. **CU Ledger Integrity** — Bug in CU balance tracking. Mitigation: event sourcing, double-entry accounting, automated reconciliation.
+3. **Verification Gap** — Deterministic verification only covers latency/schema/availability, not output quality. "Garbage delivery" (valid structure, worthless content) is undetectable by exchange. Mitigation: raw stats expose it over time; buyers verify outputs themselves.
+4. **Schema-Hash Fragmentation** — Exact SHA-256 match splits similar services into separate order books. Mitigation: first-party canonical schemas, track false-negative rate, Phase 2 embedding-based fuzzy matching.
+5. **Standards War** — 6+ protocols competing (XAP, MCP, A2A, AP2, x402, NEAR). Mitigation: fragmentation helps the exchange thesis; JSON bridge enables protocol-agnostic operation; SDK infection must outpace alternatives.
 
 ## Decision Framework: Build or Kill?
 
@@ -93,33 +94,41 @@ KILL if you believe:
 
 ```
 Name:        BOTmarket (brand) / SynthEx (protocol)
-Stack:       TypeScript + Hono + Bun + PostgreSQL + Drizzle
-Deploy:      Fly.io ($5-20/month)
-Timeline:    22 dev-days (5 weeks solo)
-Protocol:    Binary TCP (native) + REST/JSON bridge (humans)
-Auth:        Ed25519 keypair (cryptographic agent identity)
-Currency:    Compute Units (CU) — internal ledger
-Discovery:   Schema-hash addressing (SHA-256 of I/O schemas)
+Stack:       Python + FastAPI + SQLite (rescoped for non-developer founder)
+             Phase 2 upgrade: TypeScript + Hono + Bun + PostgreSQL
+Deploy:      Local / single VPS ($5-20/month)
+Timeline:    8-16 sessions / 2-4 weekends (with AI coding assistance)
+Protocol:    REST/JSON only (binary TCP deferred to Phase 2)
+Auth:        API key (Ed25519 deferred to Phase 2)
+Currency:    Compute Units (CU) — internal ledger, market-emergent pricing
+Discovery:   Schema-hash addressing (SHA-256 of I/O schemas, exact match)
 Fee:         1.5% of CU traded (uniform, no tiers)
 
 Core features (agents only):
-  1. Agent registration (Ed25519 keypair)
+  1. Agent registration (API key)
   2. Schema registry (capability hash = SHA-256(input||output))
   3. Order placement (bid/ask by capability hash, priced in CU)
-  4. In-memory order book (CLOB, price-time priority, keyed by hash)
+  4. SQLite-backed order book (price-time priority, keyed by hash)
   5. Matching engine
-  6. Trade execution (proxy raw bytes between buyer/seller)
+  6. Trade execution (proxy JSON data between buyer/seller)
   7. CU ledger settlement (debit/credit)
-  8. Deterministic verification (latency + schema compliance)
-  9. JSON bridge for human/framework access
+  8. Schema compliance verification
 
 NOT in MVP:
+  ❌ Binary TCP protocol (Phase 2 — optimization, not validation)
+  ❌ Ed25519 crypto auth (Phase 2 — moat, not MVP)
   ❌ Reputation scores (raw stats only)
   ❌ Dispute resolution (deterministic verification only)
   ❌ Admin dashboards (stats API only)
   ❌ KYC/AML (no off-ramp in MVP)
   ❌ Listing tiers or badges
   ❌ USDC settlement (CU only)
+  ❌ Embedding-based fuzzy discovery (Phase 2)
+
+Known limitations:
+  ⚠️ CU definition is market-emergent (no formal spec yet)
+  ⚠️ Schema-hash is exact-match only (may fragment liquidity)
+  ⚠️ Verification doesn't cover output quality (only structure)
 
 Success metric: 10 organic trades/day within 30 days
 Kill metric:    <5 trades/day after 60 days
@@ -127,10 +136,25 @@ Kill metric:    <5 trades/day after 60 days
 
 ## Next Step
 
-**Start building.** The research phase is complete (all dimensions ≥7/10). Further analysis has diminishing returns. The fastest way to validate the thesis is to build the MVP and get 10 agents trading.
+**Start building the rescoped MVP.** The research phase is complete with known gaps honestly documented (CU measurement, schema fragmentation, verification limits). Further analysis has diminishing returns. The fastest way to validate the thesis is to build the Python/FastAPI MVP and get 10 agents trading.
 
 ```
-git add research/ && git commit -m "Complete 12-dimension research analysis"
+git add research/ && git commit -m "External review: honest gaps acknowledged"
 ```
 
-Then: follow the Week 1-4 implementation plan in [12-mvp-definition.md](research/12-mvp-definition.md).
+Then: follow the rescoped Weekend 1-4 implementation plan in [12-mvp-definition.md](research/12-mvp-definition.md).
+
+## External Review Acknowledgment
+
+An external LLM critical analysis (March 2026) identified gaps that improved this research:
+
+| Gap Identified | Action Taken | File Updated |
+|---|---|---|
+| CU lacks formal measurement spec | Added 3 options + MVP decision (market-emergent) | 06-token-economics.md |
+| Schema-hash rigidity fragments liquidity | Added fragmentation analysis + mitigation plan | 07-technical-architecture.md |
+| Deterministic verification doesn't cover output quality | Added verification gap section with mitigation hierarchy | 08-protocol-design.md |
+| NEAR AI Agent Market missing from competitive analysis | Added as Medium-High threat | 02-competitive-landscape.md |
+| Standards fragmentation underplayed | Added standards war assessment + 2 new competitive risks | 02, 11 |
+| MVP timeline unrealistic for founder profile | Rescoped to Python/FastAPI/SQLite, 2-4 weekends | 12-mvp-definition.md |
+| Infrastructure window closing faster than claimed | Updated timing verdict | 01-market-size-timing.md |
+| Overall score inflated (9.0 → 8.4) | Honest downgrade reflecting known gaps | All affected files |

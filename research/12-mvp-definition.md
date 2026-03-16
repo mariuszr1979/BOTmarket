@@ -41,62 +41,102 @@ That's it. Everything else is noise at this stage.
 
 ```
 ┌───────────────────────────────────┐
-│  Binary Protocol Layer (TCP)      │
-│  + REST/JSON Bridge for humans    │
+│  REST/JSON API (FastAPI)          │
 │                                   │
-│  Binary:  place_order, cancel,    │
-│           execute, query_book     │
-│  Bridge:  POST /v1/orders (JSON)  │
-│           GET /v1/book/:hash      │
+│  POST /v1/agents/register         │
+│  POST /v1/schemas/register        │
+│  POST /v1/orders                  │
+│  GET  /v1/book/:hash              │
+│  POST /v1/trades/:id/execute      │
+│  GET  /v1/stats/:pubkey           │
 │                                   │
 ├───────────────────────────────────┤
-│  In-Memory Order Book              │
-│  (Keyed by capability hash,       │
-│   price-time priority, CU prices) │
+│  Matching Engine (Python)          │
+│  (Price-time priority per hash)   │
 ├───────────────────────────────────┤
 │  Schema Registry                   │
 │  (capability_hash → I/O schema)   │
 ├───────────────────────────────────┤
-│  PostgreSQL                        │
+│  SQLite                            │
 │  (Agents, orders, trades, CU      │
 │   balances, schema registry)      │
 ├───────────────────────────────────┤
 │  Settlement: CU Ledger             │
 │  (Debit buyer CU, credit seller)  │
-│  (USDC off-ramp later)            │
+│  (USDC off-ramp deferred)         │
 └───────────────────────────────────┘
+
+Phase 2 upgrade path (when thesis validated):
+  SQLite → PostgreSQL
+  API key → Ed25519
+  REST/JSON only → Binary TCP + JSON bridge
+  Python/FastAPI → TypeScript/Hono/Bun (or keep Python)
+  Single VPS → Fly.io multi-region
 ```
 
 ### Tech Stack (MVP)
 ```
-Language:    TypeScript (fast to build, good enough for MVP throughput)
-Framework:   Hono on Bun (fast, minimal, modern)
-Database:    PostgreSQL (single instance)
-Order Book:  In-memory (Map<CapabilityHash, OrderBook>)
-Protocol:    Binary over TCP (core) + REST/JSON bridge (humans)
-Auth:        Ed25519 keypair (agent identity = public key)
-Deploy:      Single VPS (Fly.io or Railway), $5-20/month
-Currency:    Compute Units (CU) — internal ledger
+Language:    Python (accessible to non-developers, AI-assistable, vast ecosystem)
+Framework:   FastAPI (simple, well-documented, async support)
+Database:    SQLite (zero config, single file, good enough for validation)
+Order Book:  In-memory (dict[str, list] keyed by capability hash)
+Protocol:    REST/JSON only (binary protocol is Phase 2 optimization)
+Auth:        API key (Ed25519 cryptographic identity is Phase 2)
+Deploy:      Local / single VPS ($5/month), $5-20/month
+Currency:    Compute Units (CU) — internal ledger (simple balance table)
 ```
 
-### Why NOT Rust for MVP?
-Because MVP is about **speed of learning**, not speed of execution. TypeScript lets us iterate 5x faster. If we prove the concept works, we rewrite the matching engine in Rust for Phase 2.
+### Why Rescoped from Original Spec?
+```
+Original:  TypeScript + Hono + Bun + PostgreSQL + Drizzle + Binary TCP + Ed25519
+Rescoped:  Python + FastAPI + SQLite + REST/JSON + API key
+
+Reason:    Founder is a hobby AI user, not a developer/programmer.
+           Original 22-day estimate assumed experienced TypeScript developer.
+           Binary TCP, Ed25519, and PostgreSQL are deep engineering territory.
+           AI coding assistants can write the code, but debugging, deploying,
+           and maintaining production infra requires engineering experience.
+
+What stays (the thesis validation):
+  ✓ Schema-hash capability discovery (SHA-256 — 3 lines of Python)
+  ✓ Order book concept (ASK/BID table in SQLite)
+  ✓ Matching engine (find matching orders, execute)
+  ✓ CU ledger (simple balance tracking)
+  ✓ 1.5% fee deduction
+
+What's deferred (engineering moat, not thesis validation):
+  ✗ Binary TCP protocol → REST/JSON only (binary is optimization, not validation)
+  ✗ Ed25519 crypto auth → API key (crypto identity is moat, not MVP)
+  ✗ PostgreSQL → SQLite (no config, good enough for <1000 agents)
+  ✗ In-memory CLOB → SQLite queries (slower but correct)
+  ✗ Bun runtime → standard Python (more accessible)
+
+What this still proves to investors:
+  The same thing — agents can discover each other by capability hash
+  and trade services through an exchange mechanism. The binary protocol
+  and crypto identity are things you DESCRIBE to investors, not demo.
+```
 
 ## MVP Features (Ranked by Priority)
 
-### Must Have (Week 1-4)
+### Must Have (Weekends 1-8, ~2-4 weekends with AI assistance)
 | Feature | Details | Effort |
 |---------|---------|--------|
-| Agent registration | Ed25519 keypair generation, register public key | 2 days |
-| Schema registry | Register capability hashes (I/O schemas) | 2 days |
-| Order placement | Place bid/ask orders by capability hash, priced in CU | 3 days |
-| Order book | In-memory CLOB keyed by capability hash, CU price-time priority | 3 days |
-| Matching engine | Match incoming orders against book | 3 days |
-| Trade execution | Connect matched buyer/seller, proxy binary data | 3 days |
-| CU Ledger | In-app CU balance system (deposit CU, settle trades) | 3 days |
-| Binary protocol + JSON bridge | Binary TCP for agents, REST/JSON bridge for humans | 3 days |
+| Agent registration | API key generation, register agent | 1 session |
+| Schema registry | Register capability hashes (SHA-256 of I/O schemas) | 1 session |
+| Order placement | Place bid/ask orders by capability hash, priced in CU | 1-2 sessions |
+| Order book | SQLite-backed book keyed by capability hash, CU price-time priority | 1-2 sessions |
+| Matching engine | Match incoming orders against book | 1-2 sessions |
+| Trade execution | Connect matched buyer/seller, proxy JSON data | 1-2 sessions |
+| CU Ledger | SQLite balance table (deposit CU, settle trades) | 1 session |
+| REST API | FastAPI endpoints for all operations | included above |
 
-**Total: ~22 dev-days (5 weeks for solo dev, 2.5 weeks with two devs)**
+**Total: ~8-16 sessions (2-4 weekends with AI coding assistance)**
+
+Note: "session" = 3-4 hours of focused work with AI assistant. Previous estimate of
+"22 dev-days (5 weeks solo)" assumed an experienced TypeScript developer building
+binary TCP + PostgreSQL + Ed25519. This rescoped version is achievable for a
+non-developer with AI assistance.
 
 ### Should Have (Week 5-8)
 | Feature | Details | Effort |
@@ -203,78 +243,82 @@ $ curl -X POST https://api.botmarket.exchange/v1/trades/trade_001/execute \
 
 ## Implementation Plan
 
-### Week 1: Foundation
+### Rescoped for Non-Developer with AI Assistance
+
 ```
-Day 1-2: Project setup
-  - TypeScript + Hono + PostgreSQL + Drizzle ORM
-  - Docker Compose for local dev
-  - Binary message types + serialization helpers
+Original plan: 22 dev-days, TypeScript + PostgreSQL + Binary TCP + Ed25519
+Rescoped plan: 8-16 sessions (2-4 weekends), Python + SQLite + REST/JSON + API key
 
-Day 3-4: Agent Registry + Schema Registry
-  - Ed25519 keypair-based registration
-  - Schema registration (I/O schema → capability hash)
-  - Agent CRUD endpoints (JSON bridge)
-
-Day 5: Schema Discovery
-  - Query by capability hash (exact match)
-  - List all registered schemas
-  - (Embedding-based fuzzy search deferred to Phase 2)
+The original implementation plan below is preserved as a REFERENCE for the
+full-spec build if an experienced developer joins. The rescoped stack in
+the Tech Stack section above is what gets built first.
 ```
 
-### Week 2: Exchange Core
+### Weekend 1: Foundation
 ```
-Day 6-7: Order Book
-  - In-memory CLOB keyed by capability hash
+Session 1: Project setup
+  - Python + FastAPI + SQLite
+  - Virtual environment + requirements.txt
+  - Basic health check endpoint
+
+Session 2: Agent Registry + Schema Registry
+  - API key-based registration
+  - Schema registration (I/O schema → SHA-256 capability hash)
+  - Agent CRUD endpoints (REST/JSON)
+  - Schema discovery (query by capability hash, exact match)
+```
+
+### Weekend 2: Exchange Core
+```
+Session 3: Order Book
+  - SQLite-backed order storage keyed by capability hash
   - CU price-time priority sorting
-  - Bid/ask data structures
+  - Bid/ask endpoints
 
-Day 8-9: Matching Engine
+Session 4: Matching Engine + Order Management
   - Limit order matching
   - Trade generation
-  - Order book state management
-
-Day 10: Order Management
   - Place, cancel, query orders
   - Order status transitions
-  - Both binary and JSON bridge endpoints
 ```
 
-### Week 3: Trade Execution & Settlement
+### Weekend 3: Trade Execution & Settlement
 ```
-Day 11-12: Trade Execution
-  - Connect matched buyer/seller
-  - Proxy raw bytes (input → seller → output → buyer)
+Session 5: Trade Execution
+  - Connect matched buyer/seller via JSON payloads
   - Schema verification (output matches declared schema)
   - Latency measurement
 
-Day 13-14: CU Ledger System
-  - CU balance per agent
+Session 6: CU Ledger System
+  - CU balance per agent (SQLite table)
   - Debit buyer CU, credit seller CU on completion
   - Fee deduction (1.5% in CU)
   - Transaction history
-
-Day 15: Binary Protocol Core
-  - TCP server with binary framing
-  - Message types: order, cancel, trade, execute
-  - Ed25519 signature verification
 ```
 
-### Week 4-5: Polish & Deploy
+### Weekend 4: Test & Deploy
 ```
-Day 16-17: JSON Bridge
-  - REST API that translates JSON ↔ binary protocol
-  - Human-readable dashboard endpoint (exchange stats)
-
-Day 18-19: Testing
+Session 7: Testing
   - Integration tests for full trade lifecycle
-  - Load testing (100 concurrent orders)
+  - 2-3 test agents exercising the exchange
   - Edge cases (partial fills, cancellations, schema mismatches)
 
-Day 20-22: Deployment
-  - Fly.io or Railway deployment
-  - PostgreSQL managed instance
-  - Basic monitoring (health check, error tracking)
+Session 8: Deployment
+  - Deploy to single VPS or Fly.io
+  - Basic monitoring (health check, error logging)
   - API documentation + quick start guide
+```
+
+### Full-Spec Reference Plan (For Experienced Developer, When Available)
+```
+The original TypeScript + PostgreSQL + Binary TCP + Ed25519 plan
+is described below for reference. This is the Phase 2 engineering
+upgrade path when the thesis is validated with the Python MVP.
+
+Week 1: TypeScript + Hono + PostgreSQL + Drizzle + binary message types
+Week 2: In-memory CLOB + matching engine + Ed25519 auth
+Week 3: Binary TCP server + trade execution proxy + CU ledger
+Week 4-5: JSON bridge + testing + Fly.io deployment
 ```
 
 ## Post-MVP Roadmap
@@ -289,9 +333,9 @@ Month 6-9: Rust matching engine rewrite, horizontal scaling
 Month 9-12: Barter mode (direct service-for-service CU swaps)
 ```
 
-## Score: 10/10
+## Score: 9/10
 
-**Completeness:** Clear MVP with CU currency, schema-hash addressing, binary protocol, deterministic verification.
-**Actionability:** Can start building tomorrow. 22 dev-day plan is concrete. No human infrastructure to build (no dashboards, no reputation system, no dispute resolution, no KYC, no badges).
-**Gap:** Need to prototype binary framing format. Need first 10 agent builders (via framework SDK integration, not marketing).
-**Upgrade from 9/10:** Removed admin dashboard, reputation system, and USDC settlement from MVP. Added stats API and framework integrations. Every feature serves agents, not humans.
+**Completeness:** Clear MVP with CU currency, schema-hash addressing, REST/JSON API, deterministic verification.
+**Actionability:** Rescoped stack (Python/FastAPI/SQLite) is buildable by a non-developer with AI assistance. 2-4 weekends timeline is honest. No human infrastructure to build (no dashboards, no reputation system, no dispute resolution, no KYC, no badges).
+**Gap:** Need to prototype schema-hash matching with real agents. Original full-spec plan preserved for Phase 2 when engineering talent joins.
+**Note:** Score maintained at 9/10 — the MVP DESIGN (what's in vs out) remains tight. The rescoping actually improves feasibility by matching scope to founder profile. Binary protocol and Ed25519 are described to investors as the moat, built in Phase 2.

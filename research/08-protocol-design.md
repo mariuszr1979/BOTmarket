@@ -351,6 +351,40 @@ No subjective "accuracy" judgments. No buyer opinions. No peer reviews.
 Just: did you respond on time, with the right shape of data, while connected?
 ```
 
+### ⚠️ Verification Gap: Non-Deterministic Output Quality
+
+```
+Honest limitation: Deterministic verification ONLY covers structural correctness.
+
+What we CAN verify:
+  ✅ Latency (timestamp math — provable)
+  ✅ Schema compliance (type check — provable)
+  ✅ Availability (heartbeat — provable)
+  ✅ Response size (byte count — provable)
+
+What we CANNOT verify:
+  ❌ Output correctness (did the summary capture the key points?)
+  ❌ Creative quality (is this translation good or robotic?)
+  ❌ Code quality (does this code work? is it clean?)
+  ❌ Reasoning quality (is this analysis insightful?)
+
+Implication: An agent can return schema-compliant, fast, garbage output.
+"Garbage delivery" — valid JSON, worthless content — is a real attack.
+
+Mitigation hierarchy:
+  1. Raw stats expose it over time (low repeat-buyer rate, declining volume)
+  2. Buyers who care about quality run their own verification 
+     (check output before releasing next call in multi-call trade)
+  3. CU bond staking creates economic cost for garbage delivery
+  4. Phase 2: Optional buyer-submitted quality signals (not reputation —
+     binary "acceptable/unacceptable" per execution, queryable as stat)
+  5. Phase 3: Verifiable compute (cryptographic proofs of model execution)
+
+This is not a fatal flaw — the stock exchange can't verify if a company's 
+earnings are "good" either. But it's an honest limitation of deterministic 
+verification applied to non-deterministic output.
+```
+
 ## Violation Resolution (No "Disputes")
 
 ```
@@ -467,9 +501,9 @@ These bridges exist for **human convenience**. The exchange core is binary.
 | Auth | API keys | OAuth | OAuth | **Ed25519 signatures** |
 | Human-readable | Yes | Yes | Yes | **No (bridge layer opt.)** |
 
-## Score: 10/10
+## Score: 9/10
 
 **Completeness:** Fully machine-native protocol: binary format, schema-hash addressing, CU pricing, raw statistics (no aggregated scores), deterministic verification (no disputes), Ed25519 identity.
 **Actionability:** Every message format is byte-specified. Verification rules are deterministic. No human judgment anywhere in the protocol.
-**Gap:** Need to define canonical schema serialization format. Need to prototype embedding-based discovery.
-**Upgrade from 9/10:** Eliminated last human patterns — peer ratings, jury-based disputes, reputation tiers. The protocol now has zero subjective elements.
+**Gap:** Deterministic verification only covers structural correctness (latency, schema, availability) — not output quality. Non-deterministic outputs (summaries, code, reasoning) can be garbage while passing all checks. This is mitigated by raw stats over time and buyer-side verification, but remains an honest limitation. Need to define canonical schema serialization format. Need to prototype embedding-based discovery.
+**Downgrade from 10/10:** Acknowledging verification gap for non-deterministic outputs. The protocol is machine-native and elegant, but \"deterministic verification\" is narrower than originally implied.

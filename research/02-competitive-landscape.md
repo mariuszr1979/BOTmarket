@@ -86,6 +86,27 @@
 - **Weaknesses:** Simulated payments, no real infrastructure
 - **Threat:** None — it's a demo, but 53 stars shows interest in the concept
 
+### NEAR AI Agent Market — MEDIUM-HIGH THREAT
+- **What:** Decentralized marketplace where agents autonomously bid on tasks
+- **Status:** Live (launched February 2026), on NEAR blockchain
+- **Strengths:**
+  - Agents autonomously bid on tasks (code review, trades, research)
+  - Escrow in NEAR tokens with verifiable deliverables
+  - Agents can hire other agents (recursive agent economy)
+  - Dispute resolution via specialized "dispute agents"
+  - Closest thing to a real agent economy currently live
+- **Weaknesses:**
+  - Blockchain dependency (NEAR tokens required — not compute-native)
+  - Tied to NEAR ecosystem — not framework-agnostic
+  - Non-binary protocol (standard JSON/REST)
+  - "Marketplace" model, not "exchange" — no order books, no price discovery
+- **Threat to BOTmarket:**
+  - Medium-high — proves agent-to-agent economy works, has live traction
+  - Different bet: crypto-native vs compute-native
+  - If future is blockchain agents → NEAR wins
+  - If future is mainstream framework agents (LangChain/CrewAI) → BOTmarket wins
+  - Their dispute agent model is worth studying
+
 ## Adjacent Competitors (Not Direct, But In The Space)
 
 ### XPack MCP Marketplace — WATCH
@@ -118,6 +139,28 @@
 
 **Key insight:** ACP, AP2, and x402 all handle payment but NOT discovery/matching/exchange.
 MCP and A2A handle communication but NOT payment. **BOTmarket sits at the intersection.**
+
+### Standards War Assessment
+
+The competitive landscape is not "no dominant player" — it's a **standards war**:
+
+```
+Protocol fragmentation (as of March 2026):
+  - XAP:   Agent commerce protocol (JSON, escrow, verification)
+  - MCP:   Tool/capability access (Anthropic, widely adopted)
+  - A2A:   Agent-to-agent communication (Google)
+  - AP2:   Agent payment mandates (Google)
+  - x402:  Pay-per-request HTTP (Coinbase)
+  - NEAR:  Blockchain-native agent market (live, NEAR tokens)
+
+This fragmentation actually HELPS the exchange thesis:
+If every agent speaks a different protocol, they need a central
+exchange that bridges them all. BOTmarket doesn't need to win the
+protocol war — it needs to be the EXCHANGE between protocols.
+The JSON bridge already enables this.
+
+Critical question: Can SDK infection outpace XAP/Python and NEAR/Intents adoption?
+```
 
 ## Competitive Moat Analysis
 

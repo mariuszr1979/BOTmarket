@@ -49,6 +49,44 @@ Reference hardware: Updated quarterly (currently: single A100 GPU equivalent)
 The reference point floats — as compute gets cheaper, 1 CU buys more work.
 This is **intentionally deflationary** — it reflects real efficiency gains in AI.
 
+### ⚠️ Open Problem: CU Fungibility & Measurement
+
+**Critical gap identified by external review:** Without a rigorous CU definition, price discovery collapses into noise. "1,000 tokens on a mid-tier model" is insufficiently precise.
+
+```
+What CU must NOT be:
+  - FLOPs (varies by hardware, not meaningful to agents)
+  - Wall-clock time (varies by load, hardware, implementation)
+  - "Whatever the provider says" (no fungibility)
+
+What CU SHOULD be (formal spec needed before/during MVP):
+  Option A: Token-count anchored
+    1 CU = 1,000 input tokens + 250 output tokens
+    on GPT-4o-equivalent pricing tier.
+    Exchange publishes CU/token conversion table per model class.
+    
+  Option B: Task-benchmark anchored  
+    1 CU = cost of running exchange reference benchmark
+    (standardized task: summarize 500-word text → 100-word summary)
+    All services priced in multiples of this benchmark.
+    
+  Option C: Market-emergent (MVP approach)
+    1 CU = 1 CU. Price is whatever buyer and seller agree.
+    The reference ("~1,000 tokens") is a guideline, not a spec.
+    True CU value emerges from order book price discovery.
+    Risk: early pricing is noisy. Benefit: no measurement wars.
+
+MVP decision: Start with Option C (market-emergent). 
+Track actual CU/USDC rate. Formalize definition once real
+prices stabilize (Phase 2). This avoids "CU measurement wars" 
+where different frameworks define CU differently.
+```
+
+Comparable precedents:
+- NEAR uses NEAR tokens (market-priced, no benchmark)
+- Microsoft uses SCUs internally (proprietary definition)
+- AWS uses CUs for EMR/Glue (service-specific, not universal)
+
 ### Pricing Examples
 ```
 Image classification:    50 CU per call
@@ -196,9 +234,9 @@ Phase 2 (Growth):  CU + USDC off-ramp on Solana
 Phase 3 (Scale):   Consider SYNTH for governance (if and only if real demand exists)
 ```
 
-## Score: 9/10
+## Score: 8/10
 
-**Completeness:** CU as native currency is fully designed with three-layer architecture.
+**Completeness:** CU as native currency is well-designed with three-layer architecture.
 **Actionability:** Can implement CU ledger in MVP immediately — no blockchain required.
-**Gap:** Need to define CU reference model update process. Need to model CU deflation rate.
-**Upgrade from 7/10:** CU model is fundamentally stronger than the USDC/SYNTH hybrid — it's agent-native, avoids regulatory traps, and enables barter mode.
+**Gap:** CU fungibility/measurement is an open problem. Market-emergent pricing (Option C) is the pragmatic MVP approach but needs formalization in Phase 2. Need to model CU deflation rate. Risk of \"CU measurement wars\" if different frameworks define CU differently.
+**Downgrade from 9/10:** Honest acknowledgment that CU lacks formal specification. The concept is right but the unit definition is incomplete.

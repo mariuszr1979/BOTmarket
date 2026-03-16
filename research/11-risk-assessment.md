@@ -46,14 +46,18 @@ Mitigation: CU bond required to place orders (cost to create sybils).
 
 ### T4: SLA Verification Accuracy
 ```
-Risk:       Can't reliably verify agent performance claims
-Impact:     3 — Verification unreliable for some service types
-Likelihood: 2 — Latency + schema compliance are objectively measurable
-Score:      6 (Low)
-Mitigation: Verification is deterministic: latency (timestamp math),
-            schema compliance (type checking), availability (heartbeat).
-            No subjective "quality" measurement attempted.
-            Reduced from Medium because we eliminated subjective verification.
+Risk:       Can't reliably verify agent performance for non-deterministic outputs
+Impact:     4 — Garbage delivery undermines exchange trust
+Likelihood: 3 — Non-deterministic outputs are majority of AI services
+Score:      12 (Medium)
+Mitigation: Deterministic verification covers latency, schema, availability.
+            Non-deterministic quality (summary accuracy, code quality) is NOT
+            verifiable by the exchange. Buyers must verify outputs themselves.
+            Raw stats (repeat-buyer rate, volume trends) expose bad agents over time.
+            CU bond staking creates economic cost for garbage delivery.
+            Phase 2: optional binary acceptable/unacceptable signal per execution.
+            Upgraded from Low: honest acknowledgment that "deterministic verification"
+            is narrower than originally claimed.
 ```
 
 ### T5: Infrastructure Reliability
@@ -192,6 +196,30 @@ Mitigation: Be framework-agnostic. Support ALL frameworks. Position as the
             neutral exchange that any framework can plug into.
 ```
 
+### C4: Standards Fragmentation
+```
+Risk:       XAP, MCP, A2A, AP2, x402, NEAR Intents all gain traction simultaneously — no standard wins
+Impact:     3 — SynthEx binary protocol becomes "yet another standard" instead of THE standard
+Likelihood: 4 — Already happening (6+ active protocols as of March 2026)
+Score:      12 (Medium)
+Mitigation: Fragmentation actually HELPS the exchange thesis — if every
+            agent speaks a different protocol, they need a bridge/exchange.
+            BOTmarket doesn't need to win the protocol war, just be the
+            exchange between protocols. JSON bridge already enables this.
+            Risk is that SDK infection can't outpace XAP/NEAR adoption.
+```
+
+### C5: NEAR AI Agent Market Traction
+```
+Risk:       NEAR's live decentralized agent marketplace gains critical mass first
+Impact:     3 — Lose crypto-native agents to NEAR ecosystem
+Likelihood: 2 — NEAR is blockchain-dependent, mainstream frameworks won't adopt
+Score:      6 (Low)
+Mitigation: Different bet: NEAR wins crypto-native agents, BOTmarket wins
+            mainstream framework agents (LangChain, CrewAI). The total market
+            is large enough for both. Monitor NEAR agent counts monthly.
+```
+
 ## Execution Risks
 
 ### E1: Team Too Small
@@ -225,6 +253,41 @@ Mitigation: JSON bridge is the MVP interface. Binary protocol can be added week 
             Ship with JSON bridge first, add binary optimization after first trade.
 ```
 
+### E4: Schema-Hash Liquidity Fragmentation
+```
+Risk:       Exact SHA-256 match fragments order books — similar services get different hashes
+Impact:     4 — No liquidity, no matches, exchange feels broken
+Likelihood: 3 — Real-world schemas have contextual variations (different max_lengths, dtypes)
+Score:      12 (Medium)
+Mitigation: First-party agents use canonical schemas (controlled fragmentation).
+            Track false-negative rate in MVP. If >30%, prioritize embedding-based
+            fuzzy discovery. Design schema registry so embedding index can be added
+            without restructuring. Agents can list on multiple compatible hashes.
+```
+
+### E5: Quality Gaming
+```
+Risk:       Agents optimize for measurable metrics (latency, schema compliance) while delivering low-value output
+Impact:     3 — Exchange trades increase but delivered value is low — buyers stop returning
+Likelihood: 3 — Inevitable when verification only covers structural compliance
+Score:      9 (Low)
+Mitigation: Raw stats include repeat-buyer rate — gaming is exposed by low repeat usage.
+            CU bond staking raises cost of gaming. Buyers run own quality checks.
+            Phase 2: buyer-submitted binary quality signal (acceptable/unacceptable).
+```
+
+### E6: CU Measurement Wars
+```
+Risk:       Different frameworks/agents define CU differently — price comparison becomes meaningless
+Impact:     3 — Price discovery fails if CU isn't fungible
+Likelihood: 3 — Without formal spec, every agent may interpret CU differently
+Score:      9 (Low)
+Mitigation: MVP uses market-emergent pricing (Option C: CU = whatever buyer/seller agree).
+            Track CU/USDC rate and price variance per capability hash.
+            Formalize CU definition in Phase 2 once real pricing patterns emerge.
+            This is a known debt, not an ignored risk.
+```
+
 ## Risk Summary (Sorted by Score)
 
 | ID | Risk | Score | Priority |
@@ -232,9 +295,12 @@ Mitigation: JSON bridge is the MVP interface. Binary protocol can be added week 
 | M2 | Major player enters market | 15 | High |
 | M4 | No product-market fit | 15 | High |
 | T3 | Agent identity/Sybil attacks | 12 | Medium |
+| T4 | SLA verification (non-deterministic outputs) | 12 | Medium |
 | C2 | API marketplace adds agent features | 12 | Medium |
 | C3 | Framework-native marketplaces | 12 | Medium |
+| C4 | Standards fragmentation (6+ protocols) | 12 | Medium |
 | E1 | Team too small | 12 | Medium |
+| E4 | Schema-hash liquidity fragmentation | 12 | Medium |
 | T2 | CU ledger integrity | 10 | Medium |
 | M1 | Agents not autonomous enough | 10 | Medium |
 | M3 | Agent commoditization | 9 | Low |
@@ -242,9 +308,11 @@ Mitigation: JSON bridge is the MVP interface. Binary protocol can be added week 
 | R2 | Money transmission (off-ramp) | 9 | Low |
 | E2 | Premature scaling | 9 | Low |
 | E3 | Over-engineering protocol | 9 | Low |
+| E5 | Quality gaming | 9 | Low |
+| E6 | CU measurement wars | 9 | Low |
 | T1 | Matching engine performance | 8 | Low |
 | T5 | Infrastructure reliability | 8 | Low |
-| T4 | SLA verification accuracy | 6 | Low |
+| C5 | NEAR AI Agent Market traction | 6 | Low |
 | R3 | AI regulation impact | 6 | Low |
 | C1 | XAP becomes standard | 6 | Low |
 | R1 | CU regulatory classification | 3 | Low |
@@ -255,11 +323,11 @@ Mitigation: JSON bridge is the MVP interface. Binary protocol can be added week 
 
 2. **Major Player Entry (M2)** — Watch Google (A2A), Anthropic (MCP), AWS (Bedrock). Binary protocol is a moat — big players will build JSON/REST. Move fast through framework SDK integration.
 
-3. **Agent Identity/Sybil (T3)** — CU bond requirement is the primary defense. Monitor for coordinated fake agents. Observable statistics expose untested agents.
+3. **Verification Gap / Quality Gaming (T4 + E5)** — Deterministic verification only covers structural compliance. Garbage delivery is undetectable by the exchange. Monitor repeat-buyer rates as proxy for quality signal. If <20% repeat usage, quality gaming may be killing trust.
 
-## Score: 9/10
+## Score: 8/10
 
-**Completeness:** Comprehensive risk coverage with machine-native mitigations.
-**Actionability:** CU + deterministic verification + no token dramatically reduce regulatory and operational risk.
-**Gap:** Need periodic risk reassessment. CU regulatory classification is genuinely novel territory.
-**Upgrade from 8/10:** Removed token-related risks (no token in MVP). Reduced compliance risks (CU ≠ security, agents ≠ customers). SLA verification dropped from Medium to Low (deterministic, not subjective). Overall risk profile is significantly lighter.
+**Completeness:** Comprehensive risk coverage with 24 identified risks across 5 categories. Added standards fragmentation, NEAR competition, schema-hash fragmentation, quality gaming, CU measurement wars.
+**Actionability:** CU + deterministic verification + no token reduce regulatory/operational risk. But more Medium risks than previously acknowledged (7 vs 4).
+**Gap:** T4 (verification gap) and E4 (schema fragmentation) are genuine structural weaknesses, not just execution risks. Need periodic reassessment. CU regulatory classification is genuinely novel territory.
+**Downgrade from 9/10:** Honest accounting of newly identified risks raises total Medium-priority risks from 4 to 7. Risk profile is manageable but heavier than originally presented.

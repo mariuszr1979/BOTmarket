@@ -9,12 +9,16 @@ for agent services. BOTmarket fills this gap.
 
 ### Total Addressable Market (TAM)
 
-**AI Agent Market:**
+**AI Agent Market (Broader Context):**
 - Global AI agent market projected at ~$65B by 2028 (various analyst estimates)
+- Broader forecasts range $7.8B (2025) to $52B+ (2030, CAGR ~46%)
+- Agentic commerce projected to influence hundreds of billions in B2B transactions by 2030
 - Autonomous AI agents specifically: ~$28B by 2028
-- If even 5% of agent interactions require cross-agent service exchange → $1.4B TAM for infrastructure
+- If even 5% of agent interactions require cross-agent service exchange → **$1.4B TAM for exchange infrastructure**
+- Note: $1.4B is deliberately conservative (bottoms-up). Investors prefer honest TAM over inflated numbers.
 
-**Comparable Markets:**
+**Adjacent Markets Already Trading Compute:**
+- Decentralized compute networks (Akash, Render, Bittensor) — already trading GPU-hours at scale
 - API marketplace market (RapidAPI model): ~$5B by 2027
 - Cloud marketplace (AWS/Azure/GCP): ~$15B by 2027
 - Freelance marketplace (Upwork/Fiverr): ~$12B by 2027
@@ -67,8 +71,8 @@ Realistic Year 1-2 capture:
 | Enterprise adoption | 🔄 Pilots, not production | 12-18 months from mainstream |
 | Regulatory clarity | ❌ Very unclear | Risk factor |
 
-**Timing verdict: 6-12 months early for mainstream, but RIGHT ON TIME to build infrastructure.**
-The best time to build the exchange is before everyone needs it.
+**Timing verdict: The infrastructure window is open but closing.**
+Protocol fragmentation is already underway (MCP, A2A, AP2, x402, XAP). XAP launched March 2026, NEAR AI Agent Market February 2026. This is not "6-12 months early" — this is the window. Build now or compete against established protocols later.
 
 ## Key Data Points to Track
 

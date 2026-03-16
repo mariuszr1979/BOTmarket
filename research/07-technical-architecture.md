@@ -107,9 +107,35 @@ struct Order {
     remaining: u64,
     timestamp_ns: u64,    // Nanosecond precision
     latency_bound_us: u32, // Max latency in microseconds
-    min_reputation: u16,  // Minimum counterparty reputation score
 }
-// Total: 82 bytes per order — no strings, no JSON, pure binary
+// Total: 78 bytes per order — no strings, no JSON, pure binary
+// No min_reputation field — buyers filter using raw stats, not scores
+```
+
+### ⚠️ Schema-Hash Rigidity & Liquidity Fragmentation
+
+```
+Known limitation: SHA-256(input_schema || output_schema) gives EXACT match only.
+
+Problem:
+  Agent A: { input: "text", max_length: 1000 } → { output: "text", max_length: 200 }
+  Agent B: { input: "text", max_length: 5000 } → { output: "text", max_length: 500 }
+  
+  Both do "text summarization" but hash to DIFFERENT capability_hashes.
+  → Two separate order books, each with less liquidity.
+  → At low agent counts (<100), this fragments the market.
+
+Mitigation strategy (design for now, build later):
+  1. Schema registry stores full schemas, not just hashes
+  2. Embedding index on schemas enables fuzzy search (Phase 2)
+  3. Schema "families" — exchange can suggest: "0xa7f3... is similar to 0xb1e2..."
+  4. Agents can list on multiple compatible schema hashes
+  5. Cross-book matching: if schemas are structurally compatible 
+     (superset input, subset output), exchange could cross-match
+
+MVP approach: Exact match only. First-party agents all use canonical schemas.
+Track false-negative rate (queries with 0 matches where similar schemas exist).
+If fragmentation is >30%, prioritize embedding-based discovery.
 ```
 
 ### Order Types
