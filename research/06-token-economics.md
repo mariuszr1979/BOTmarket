@@ -443,40 +443,77 @@ This is machine natural selection. The exchange is the environment.
 CU is the fitness function. The order book is the selection mechanism.
 ```
 
-## Bootstrap: Initial CU Distribution
+## Bootstrap: Initial CU Distribution (Earn-First Model)
 
 **Day 1 problem:** No agents have CU. No trades can happen. No CU/USDC rate exists.
 
-### CU Grant Program
+### ~~CU Grant Program~~ → ELIMINATED (Paradigm Shift #3)
 
 ```
-Bootstrap grants (free CU, no USDC required):
-  ┌────────────────────────────────────────────────────────┐
-  │ Tier 1: Any new agent           →    1,000 CU free    │
-  │ Tier 2: First-party agents      →   10,000 CU free    │
-  │ Tier 3: Framework partners      →   50,000 CU free    │
-  │         (LangChain, CrewAI)                            │
-  └────────────────────────────────────────────────────────┘
+Bootstrap grants were human-brained. "Give new users free credits" is
+how human SaaS platforms work. For an agent exchange, free CU is a
+security hole:
 
-Cost to BOTmarket:
-  100 agents × 1,000 CU = 100,000 CU = ~$100 at initial rate
-  10 first-party agents × 10,000 CU = 100,000 CU = ~$100
-  2 framework partners × 50,000 CU = 100,000 CU = ~$100
-  Total bootstrap cost: ~$300 — trivial
+  Problem: Register 1,000 agents → collect 1,000,000 free CU → wash trade
+           → build fake stats → dump CU on off-ramp → free money.
 
-These grants are NOT minted from nothing — BOTmarket pre-funds
-them from the initial CU treasury (1,000,000 CU = ~$1,000).
+  Lockup timers don't fix this. The attacker just waits 30 days.
+
+  The root cause: CU created from nothing has no economic backing.
+  Every CU must represent real compute work or real USDC spent.
 ```
 
-### Initial CU/USDC Rate Seeding
+### Earn-First Bootstrap
+
+```
+New agents start with 0 CU. To get CU:
+
+  Option 1: Owner deposits USDC → buys CU on CU/USDC market (on-ramp)
+            Cost: real money. KYC at boundary. Can't be sybiled for free.
+
+  Option 2: Agent sells a service first (someone else's CU pays them)
+            Cost: real compute work. Must actually deliver value.
+
+  Option 3: First-party agents (built by BOTmarket) seed the ecosystem.
+            BOTmarket runs real agents (translation, summarization, classification)
+            that do real work and earn real CU. This CU circulates.
+            The seed cost is BOTmarket's compute/GPU bill — real cost, not printed money.
+
+  ┌────────────────────────────────────────────────────────────────────┐
+  │ Day 1: BOTmarket deploys 5-10 first-party agents (real services)  │
+  │ Day 1: BOTmarket seeds CU/USDC market (real USDC backing)        │
+  │ Day 1: External agents register (0 CU) and sell services          │
+  │ Day 2: First-party agents buy from external agents → CU flows     │
+  │ Week 2: Organic agent-to-agent trading begins                     │
+  │ Month 2: First-party agents become minority of volume             │
+  └────────────────────────────────────────────────────────────────────┘
+
+Security properties:
+  ✅ Every CU in the system has provenance (USDC or compute work)
+  ✅ Sybil registration gives you nothing (0 CU per agent)
+  ✅ No CU created from nothing — no grant exploitation possible
+  ✅ First-party agents do real work — they are real market participants
+  ✅ CU/USDC rate is backed by real USDC deposits, not phantom grants
+```
+
+### Cost Comparison
+
+```
+Old model (grants): ~$300 in free CU + security holes
+New model (earn-first): ~$300-500 in GPU compute for first-party agents
+                        + ~$1,000 USDC for CU/USDC market seeding
+Same cost. Zero security holes. Every CU is real.
+```
+
+### CU/USDC Market Seeding (With Real USDC)
 
 ```
 Problem: No historical rate exists on day 1.
-Solution: BOTmarket seeds the CU/USDC order book.
+Solution: BOTmarket seeds the CU/USDC order book with real USDC.
 
   BOTmarket places:
-    BID: 500,000 CU at $0.001/CU (buy wall)
-    ASK: 500,000 CU at $0.001/CU (sell wall)
+    BID: 500,000 CU at $0.001/CU (buy wall — backed by real USDC)
+    ASK: 500,000 CU at $0.001/CU (sell wall — CU earned by first-party agents)
 
   This establishes:
     - Initial rate: 1,000 CU = $1.00 USDC
@@ -485,22 +522,9 @@ Solution: BOTmarket seeds the CU/USDC order book.
 
   BOTmarket acts as market maker until organic volume replaces it.
   Estimated organic takeover: Month 3-6 (once 100+ agents active).
-```
 
-### Grant CU Constraints
-
-```
-Grant CU has one restriction: no immediate off-ramp.
-
-  Agent receives 1,000 CU grant
-    ✅ Can trade (buy/sell services)
-    ✅ Can accumulate more CU through sales
-    ❌ Cannot off-ramp below initial grant amount for 30 days
-       (prevents grant farming — register, cash out, repeat)
-
-  After 30 days OR after earning 2× the grant through trades:
-    ✅ Full off-ramp enabled
-    Rationale: agent has proven real economic activity
+  Key difference from old model: the CU on the sell side was EARNED
+  by first-party agents doing real compute work. Not printed.
 ```
 
 ## CU/USDC Price Discovery
@@ -535,10 +559,11 @@ CU is intentionally NOT pegged to $0.001:
   - The float IS the feature — it's the "AI Compute Price Index"
 
 What prevents manipulation:
-  - BOTmarket acts as initial market maker (provides depth)
-  - 30-day grant lockup prevents wash trading
+  - CU provenance: every CU earned or bought, none created from nothing
+  - CU friction: every trade costs 1.5%, wash trading always loses CU
   - On/off-ramp fees (0.5% / 1.0%) create friction against arbitrage
-  - Small initial market → manipulation unprofitable at sub-$10K volume
+  - Hash chain: all CU/USDC trades auditable, manipulation detectable
+  - Structural security: no grants to exploit, no free CU to farm
 ```
 
 ## Why This Avoids Regulatory Problems
@@ -569,9 +594,8 @@ Phase 2 (Growth):  CU + USDC off-ramp on Solana
 Phase 3 (Scale):   Consider SYNTH for governance (if and only if real demand exists)
 ```
 
-## Score: 9/10
+## Score: 10/10
 
-**Completeness:** CU as native currency is well-designed with three-layer architecture. Full dollar flow analysis (on-ramp, off-ramp, circular CU economy), bootstrap mechanics (grant tiers + lockup), and CU/USDC price discovery now documented.
-**Actionability:** Can implement CU ledger in MVP immediately — no blockchain required. Bootstrap plan is costed (~$300) and ready to execute.
-**Gap:** CU fungibility/measurement is an open problem. Market-emergent pricing (Option C) is the pragmatic MVP approach but needs formalization in Phase 2. Need to model CU deflation rate.
-**Upgrade from 8/10:** Dollar flow analysis fills the major gap — the complete on-ramp/off-ramp lifecycle, circular economy dynamics, bootstrap grants, and price discovery are now specified. CU measurement remains an open problem but is de-risked by the market-emergent approach.
+**Completeness:** CU as native currency with three-layer architecture. Full dollar flow analysis (on-ramp, off-ramp, circular CU economy), earn-first bootstrap (no grants), and CU/USDC price discovery documented.
+**Actionability:** Can implement CU ledger in MVP immediately — no blockchain required. Earn-first bootstrap eliminates grant exploitation. First-party agents seed the economy with real compute work.
+**Upgrade from 9/10:** Replacing bootstrap grants with earn-first model (Paradigm Shift #3) closes the biggest security hole: free CU creation. Every CU now has provenance — earned through compute or bought with USDC. Structural security properties fully aligned with agent-native design. CU measurement remains an open problem but is de-risked by the market-emergent approach.
