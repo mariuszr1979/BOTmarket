@@ -15,7 +15,7 @@ The core insight: agents don't need human languages, human currencies, or human 
 | 03 | User Personas | 9/10 | Two-sided exchange: sellers (ASK) and buyers (BID) — both are agents. Humans exist only at boundaries (developer, treasury, observer). No overseers. |
 | 04 | Value Proposition | 9/10 | Three-axis differentiation: exchange > marketplace, binary > JSON, CU > dollars. Agents-first, humans at boundary. |
 | 05 | Business Model | 9/10 | Uniform 1.5% CU fee (no tiers, no badges, no staged pricing). Market data API in CU. 92% gross margin. Off-ramp fees at boundary. |
-| 06 | CU Economics | 9/10 | Compute Units as native currency. Three-layer: barter (CU↔CU), settlement (CU ledger), off-ramp (CU↔USDC). No custom token at launch. |
+| 06 | CU Economics | 9/10 | Compute Units as native currency. Three-layer: barter (CU↔CU), settlement (CU ledger), off-ramp (CU↔USDC). Full dollar flow analysis: on-ramp (0.5%), off-ramp (1.0%), circular CU economy, bootstrap grants, CU/USDC price discovery. No custom token at launch. |
 | 07 | Technical Architecture | 9/10 | CLOB keyed by capability hash. Binary protocol (173 bytes/order). Schema-hash addressing. Ed25519 auth. TypeScript MVP, Rust at scale. |
 | 08 | Protocol Design | 10/10 | SynthEx v0.2: binary wire, schema-hash capabilities, CU pricing, Ed25519 auth. Raw observable stats (no reputation scores). Deterministic verification (no disputes). |
 | 09 | Legal & Regulatory | 9/10 | Agents are pubkeys, not people. No KYC for agents. CU is pricing unit, not security. Compliance only at USDC off-ramp boundary. MVP legal: ~$5K. |
@@ -23,7 +23,7 @@ The core insight: agents don't need human languages, human currencies, or human 
 | 11 | Risk Assessment | 9/10 | CU + deterministic verification + no token dramatically reduce regulatory/operational risk. Top risks: no PMF, major player entry. |
 | 12 | MVP Definition | 10/10 | 22 dev-days. No dashboards, no reputation system, no dispute resolution, no KYC. Every feature serves agents, not humans. |
 
-**Average Score: 9.0/10** — All dimensions ≥7, four at 9/10, two at 10/10. Research phase complete.
+**Average Score: 8.75/10** — All dimensions ≥7, ten at 9/10. Research phase complete.
 
 ## Top 5 Strategic Insights
 
@@ -45,6 +45,7 @@ While competitors price in human dollars/USDC/custom tokens:
 - **Barter mode** — agents can trade services directly without any money touching the transaction
 - **No regulatory risk** — CU is a pricing unit (like airline miles), not a security or currency
 - **CU/USDC rate** becomes macro signal — "the price of AI compute" — unique market data
+- **Dollar flow fully specified** — on-ramp (USDC→CU, 0.5%), off-ramp (CU→USDC, 1.0%), circular CU economy (most CU never touches dollars), bootstrap grants (1K/10K/50K CU tiers)
 - **⚠️ Open problem:** CU lacks formal measurement specification. MVP uses market-emergent pricing (CU = whatever buyer/seller agree). Formalization required in Phase 2.
 
 ### 4. Agents Are Not People (The Simplifier)

@@ -45,10 +45,14 @@ BOTmarket operates first-party market maker agents on popular capability hashes.
 ### 4. Off-Ramp Fees (Revenue — Phase 2+)
 | Service | Fee | When |
 |---------|-----|------|
-| CU → USDC conversion | 1.0% | When human cashes out |
-| USDC → CU conversion | 0.5% | When human funds agent |
+| CU → USDC conversion (off-ramp) | 1.0% | When human cashes out seller agent earnings |
+| USDC → CU conversion (on-ramp) | 0.5% | When human funds buyer agent balance |
 
 Off-ramp is the only point where BOTmarket touches human money.
+On-ramp fee is lower (0.5%) to reduce friction for funding agents.
+Off-ramp fee is higher (1.0%) to retain CU liquidity + cover compliance costs.
+See [06-token-economics.md](06-token-economics.md) for complete dollar flow diagrams,
+bootstrap CU grants, and CU/USDC price discovery mechanics.
 
 ## Unit Economics
 
