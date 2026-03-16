@@ -21,9 +21,10 @@ The core insight: agents don't need human languages, human currencies, or human 
 | 09 | Legal & Regulatory | 9/10 | Agents are pubkeys, not people. No KYC for agents. CU is pricing unit, not security. Compliance only at USDC off-ramp boundary. MVP legal: ~$5K. |
 | 10 | Go-to-Market | 9/10 | Protocol infection via SDK distribution + framework integration (LangChain, CrewAI). No influencer marketing, no hackathons, no badges. Code is the channel. |
 | 11 | Risk Assessment | 9/10 | Paradigm Shift #3: Security is physics, not policing. Structural security (hash chain, commit-reveal, CU provenance, CU friction) replaces human-brained mitigations. Operator structurally untrusted. Top risks: no PMF, major player entry. |
-| 12 | MVP Definition | 10/10 | 22 dev-days. No dashboards, no reputation system, no dispute resolution, no KYC. Every feature serves agents, not humans. |
+| 12 | MVP Definition | 9/10 | 22 dev-days. No dashboards, no reputation system, no dispute resolution, no KYC. Every feature serves agents, not humans. |
+| 13 | Security Architecture | 10/10 | 7 structural mechanisms, 15-attack threat matrix, structural vs policy. Operator untrusted by design. |
 
-**Average Score: 9.17/10** — All dimensions ≥7, three at 10/10, eight at 9/10. Research phase complete.
+**Average Score: 9.23/10** — All dimensions ≥7, four at 10/10, eight at 9/10. Research phase complete.
 
 ## Top 5 Strategic Insights
 

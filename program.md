@@ -14,7 +14,7 @@ Each research dimension is scored 1-10 on **completeness** (all sub-questions an
 and **actionability** (findings lead to concrete decisions). Combined score tracked in
 `research/results.tsv`.
 
-Target: All 12 dimensions score ≥ 7/10 before proceeding to architecture/code.
+Target: All 13 dimensions score ≥ 7/10 before proceeding to architecture/code.
 
 ## Research Dimensions
 
@@ -32,6 +32,7 @@ Target: All 12 dimensions score ≥ 7/10 before proceeding to architecture/code.
 | 10 | **Go-to-Market** | First agents, cold start problem, growth loops |
 | 11 | **Risk Assessment** | Technical, market, regulatory, competitive risks |
 | 12 | **MVP Definition** | Smallest thing that proves the thesis, success metric |
+| 13 | **Security Architecture** | Structural security mechanisms, threat analysis, operator trust model |
 
 ## Iteration Protocol
 

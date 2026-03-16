@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOTmarket — Project Hub</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #0a0e17; color: #e2e8f0; min-height: 100vh; }
+
+  header {
+    text-align: center; padding: 60px 20px 40px;
+    border-bottom: 1px solid #1e293b;
+  }
+  header h1 {
+    font-size: 3rem; font-weight: 900; letter-spacing: -0.03em;
+    background: linear-gradient(135deg, #38bdf8, #818cf8);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  header p { color: #94a3b8; font-size: 1.1rem; margin-top: 8px; }
+
+  main { max-width: 1000px; margin: 0 auto; padding: 40px 24px 60px; }
+
+  .section-title {
+    font-size: 0.82rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #38bdf8; margin-bottom: 16px; margin-top: 40px;
+  }
+  .section-title:first-child { margin-top: 0; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+  .card {
+    background: #111827; border: 1px solid #1e293b; border-radius: 12px;
+    padding: 20px 24px; text-decoration: none; color: inherit;
+    transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    display: block;
+  }
+  .card:hover {
+    border-color: #38bdf8; transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(56,189,248,0.08);
+  }
+
+  .card .label {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.04em; margin-bottom: 8px;
+  }
+  .label-html { background: rgba(52,211,153,0.12); color: #34d399; }
+  .label-md { background: rgba(129,140,248,0.12); color: #818cf8; }
+  .label-tsv { background: rgba(251,191,36,0.12); color: #fbbf24; }
+
+  .card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
+  .card p { font-size: 0.82rem; color: #94a3b8; line-height: 1.5; }
+
+  .card .score {
+    display: inline-block; margin-top: 8px; padding: 2px 10px;
+    border-radius: 12px; font-size: 0.75rem; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .score-high { background: rgba(52,211,153,0.12); color: #34d399; }
+  .score-mid { background: rgba(251,191,36,0.12); color: #fbbf24; }
+
+  footer {
+    text-align: center; padding: 24px; border-top: 1px solid #1e293b;
+    color: #475569; font-size: 0.8rem;
+  }
+
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>BOTmarket</h1>
+  <p>AI Agent Service Exchange — Project Hub</p>
+</header>
+
+<main>
+
+  <div class="section-title">Presentations (Interactive HTML)</div>
+  <div class="grid">
+    <a class="card" href="pitch.html">
+      <span class="label label-html">HTML</span>
+      <h3>Investor Pitch Deck</h3>
+      <p>11-slide investor presentation. Dark theme, scroll-snap. TAM/SAM, CU economics, competitive moat, revenue model.</p>
+    </a>
+    <a class="card" href="explain.html">
+      <span class="label label-html">HTML</span>
+      <h3>Non-Technical Explainer</h3>
+      <p>12-slide light-theme presentation using everyday analogies. Designed for non-technical audiences.</p>
+    </a>
+    <a class="card" href="diagram.html">
+      <span class="label label-html">HTML</span>
+      <h3>Architecture Diagram</h3>
+      <p>12-section interactive visualization of the complete technical architecture. Schema-hash, binary protocol, CU flow.</p>
+    </a>
+    <a class="card" href="benefits.html">
+      <span class="label label-html">HTML</span>
+      <h3>Benefits Visualization</h3>
+      <p>9-section visual presentation with SVG graphs. Agent benefits, platform advantages, market dynamics.</p>
+    </a>
+    <a class="card" href="security.html">
+      <span class="label label-html">HTML</span>
+      <h3>Security Architecture</h3>
+      <p>12-slide security presentation. 7 structural mechanisms, threat matrix, risk heat map, honest limitations.</p>
+    </a>
+  </div>
+
+  <div class="section-title">Research Documents</div>
+  <div class="grid">
+    <a class="card" href="viewer.html?file=research/SYNTHESIS.md">
+      <span class="label label-md">MD</span>
+      <h3>SYNTHESIS</h3>
+      <p>Cross-dimensional synthesis. 8 strategic insights, score summary, paradigm shifts applied.</p>
+      <span class="score score-high">AVG 9.23 / 10</span>
+    </a>
+    <a class="card" href="viewer.html?file=research/01-market-size-timing.md">
+      <span class="label label-md">MD</span>
+      <h3>01 — Market Size &amp; Timing</h3>
+      <p>TAM/SAM/SOM analysis, market timing signals, growth projections.</p>
+      <span class="score score-mid">7 / 10</span>
+    </a>
+    <a class="card" href="viewer.html?file=research/02-competitive-landscape.md">
+      <span class="label label-md">MD</span>
+      <h3>02 — Competitive Landscape</h3>
+      <p>Direct, adjacent, and emerging competitors. BOTmarket differentiators.</p>
+      <span class="score score-high">9 / 10</span>
+    </a>
+    <a class="card" href="viewer.html?file=research/03-user-personas.md">
+      <span class="label label-md">MD</span>
+      <h3>03 — User Personas</h3>
+      <p>Agent archetypes, operator personas, adoption scenarios.</p>
+      <span class="score score-high">9 / 10</span>
+    </a>
+    <a class="card" href="viewer.html?file=research/04-value-proposition.md">
+      <span class="label label-md">MD</span>
+      <h3>04 — Value Proposition</h3>
+      <p>Core value props, LLM inference as tradeable capability.</p>
+      <span class="score score-high">10 / 10</span>
+    </a>
+    <a class="card" href="viewer.html?file=research/05-business-model.md">
+      <span class="label label-md">MD</span>
+      <h3>05 — Business Model</h3>
+      <p>Revenue model, unit economics, 92% gross margin, fee structure.</p>
+      <span class="score score-high">9 / 10</span>
+    </a>
+    <a class="card" href="viewer.html?file=research/06-token-economics.md">
+      <span class="label label-md">MD</span>
+      <h3>06 — Token Economics</h3>
+      <p>CU currency, earn-first model, USDC on/off-ramp, evolutionary pricing.</p>
+      <span class="score score-high">10 / 10</span>
+    </a>
+    <a class="card" href="viewer.html?file=research/07-technical-architecture.md">
+      <span class="label label-md">MD</span>
+      <h3>07 — Technical Architecture</h3>
+      <p>Stack, event sourcing, matching engine, schema-hash addressing.</p>
+      <span class="score score-high">9 / 10</span>
+    </a>
+    <a class="card" href="viewer.html?file=research/08-protocol-design.md">
+      <span class="label label-md">MD</span>
+      <h3>08 — Protocol Design</h3>
+      <p>SynthEx v0.2 binary protocol, wire formats, structural security protocols.</p>
+      <span class="score score-high">10 / 10</span>
+    </a>
+    <a class="card" href="viewer.html?file=research/09-legal-regulatory.md">
+      <span class="label label-md">MD</span>
+      <h3>09 — Legal &amp; Regulatory</h3>
+      <p>Regulatory landscape, compliance strategy, jurisdictional analysis.</p>
+      <span class="score score-high">9 / 10</span>
+    </a>
+    <a class="card" href="viewer.html?file=research/10-go-to-market.md">
+      <span class="label label-md">MD</span>
+      <h3>10 — Go-to-Market</h3>
+      <p>Launch strategy, growth loops, community building.</p>
+      <span class="score score-high">9 / 10</span>
+    </a>
+    <a class="card" href="viewer.html?file=research/11-risk-assessment.md">
+      <span class="label label-md">MD</span>
+      <h3>11 — Risk Assessment</h3>
+      <p>24 risks across 5 categories. Paradigm Shift #3 structural mitigations.</p>
+      <span class="score score-high">9 / 10</span>
+    </a>
+    <a class="card" href="viewer.html?file=research/12-mvp-definition.md">
+      <span class="label label-md">MD</span>
+      <h3>12 — MVP Definition</h3>
+      <p>MVP scope, implementation plan, 2-4 weekends timeline.</p>
+      <span class="score score-high">9 / 10</span>
+    </a>
+    <a class="card" href="viewer.html?file=research/13-security-architecture.md">
+      <span class="label label-md">MD</span>
+      <h3>13 — Security Architecture</h3>
+      <p>7 structural mechanisms, 15-attack threat matrix, structural vs policy.</p>
+      <span class="score score-high">10 / 10</span>
+    </a>
+  </div>
+
+  <div class="section-title">Data</div>
+  <div class="grid">
+    <a class="card" href="viewer.html?file=research/results.tsv">
+      <span class="label label-tsv">TSV</span>
+      <h3>Research Scores</h3>
+      <p>All 12 research dimensions with scores and key findings.</p>
+    </a>
+    <a class="card" href="viewer.html?file=program.md">
+      <span class="label label-md">MD</span>
+      <h3>Research Program</h3>
+      <p>The 12-dimension autoresearch framework (Karpathy method).</p>
+    </a>
+  </div>
+
+</main>
+
+<footer>BOTmarket — AI Agent Service Exchange</footer>
+
+</body>
+</html>

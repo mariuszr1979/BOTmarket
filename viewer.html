@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOTmarket — Document Viewer</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #0a0e17; color: #e2e8f0; }
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(10,14,23,0.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid #1e293b; padding: 12px 32px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  nav a { color: #38bdf8; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+  nav a:hover { color: #7dd3fc; }
+  nav .title { color: #94a3b8; font-size: 0.85rem; margin-left: auto; font-family: 'JetBrains Mono', monospace; }
+  .content {
+    max-width: 860px; margin: 0 auto; padding: 80px 32px 60px;
+    line-height: 1.8;
+  }
+  .content h1 { font-size: 2rem; font-weight: 700; margin: 32px 0 16px; color: #38bdf8; }
+  .content h2 { font-size: 1.5rem; font-weight: 600; margin: 28px 0 12px; color: #e2e8f0; border-bottom: 1px solid #1e293b; padding-bottom: 8px; }
+  .content h3 { font-size: 1.15rem; font-weight: 600; margin: 24px 0 8px; color: #818cf8; }
+  .content h4 { font-size: 1rem; font-weight: 600; margin: 16px 0 8px; color: #94a3b8; }
+  .content p { margin: 8px 0; color: #cbd5e1; }
+  .content a { color: #38bdf8; }
+  .content strong { color: #e2e8f0; }
+  .content em { color: #94a3b8; }
+  .content ul, .content ol { margin: 8px 0 8px 24px; color: #cbd5e1; }
+  .content li { margin: 4px 0; }
+  .content blockquote {
+    border-left: 3px solid #38bdf8; padding: 8px 16px; margin: 12px 0;
+    background: rgba(56,189,248,0.05); color: #94a3b8;
+  }
+  .content code {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.88em;
+    background: #1a2332; padding: 2px 6px; border-radius: 4px; color: #34d399;
+  }
+  .content pre {
+    background: #111827; border: 1px solid #1e293b; border-radius: 8px;
+    padding: 16px 20px; margin: 12px 0; overflow-x: auto;
+  }
+  .content pre code { background: none; padding: 0; font-size: 0.82rem; color: #94a3b8; }
+  .content table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.88rem; }
+  .content th {
+    background: #1a2332; color: #38bdf8; padding: 10px 14px; text-align: left;
+    font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em;
+    border-bottom: 2px solid #1e293b;
+  }
+  .content td { padding: 8px 14px; border-bottom: 1px solid #1e293b; color: #94a3b8; }
+  .content tr:hover td { background: rgba(56,189,248,0.03); }
+  .content hr { border: none; border-top: 1px solid #1e293b; margin: 24px 0; }
+  .content img { max-width: 100%; border-radius: 8px; }
+  .loading { text-align: center; padding: 120px 0; color: #94a3b8; font-size: 1.1rem; }
+  .error { text-align: center; padding: 120px 0; color: #f87171; font-size: 1.1rem; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html">← BOTmarket Hub</a>
+  <span class="title" id="filename"></span>
+</nav>
+<div class="content" id="content">
+  <div class="loading">Loading document...</div>
+</div>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const file = params.get('file');
+  const el = document.getElementById('content');
+  const fn = document.getElementById('filename');
+
+  if (!file) {
+    el.innerHTML = '<div class="error">No file specified. Use ?file=path/to/file.md</div>';
+  } else {
+    // Sanitize: only allow relative paths to .md/.tsv files, no path traversal
+    const safe = /^[a-zA-Z0-9_\-\/]+\.(md|tsv)$/.test(file) && !file.includes('..');
+    if (!safe) {
+      el.innerHTML = '<div class="error">Invalid file path.</div>';
+    } else {
+      fn.textContent = file;
+      document.title = 'BOTmarket — ' + file.split('/').pop();
+      fetch(file)
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+        .then(text => {
+          if (file.endsWith('.tsv')) {
+            const rows = text.trim().split('\n').map(r => r.split('\t'));
+            let html = '<table><thead><tr>' + rows[0].map(c => '<th>' + c + '</th>').join('') + '</tr></thead><tbody>';
+            for (let i = 1; i < rows.length; i++) {
+              html += '<tr>' + rows[i].map(c => '<td>' + c + '</td>').join('') + '</tr>';
+            }
+            html += '</tbody></table>';
+            el.innerHTML = html;
+          } else {
+            el.innerHTML = marked.parse(text);
+          }
+        })
+        .catch(e => { el.innerHTML = '<div class="error">Failed to load: ' + file + '</div>'; });
+    }
+  }
+</script>
+</body>
+</html>
