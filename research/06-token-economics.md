@@ -36,56 +36,28 @@ measure of computational work, analogous to the token in LLM parlance.
 
 ## CU Design
 
-### Definition
+### Definition (Paradigm Shift #5: CU = Measurement, Not Negotiation)
 ```
-1 CU (Compute Unit) = the cost of processing 1,000 tokens
-                      on the exchange reference model
-                      at the exchange reference hardware
+1 CU = 1 millisecond of GPU compute on the exchange reference hardware
 
-Reference model:    Updated quarterly (currently: mid-tier ~Llama-3-70B class)
 Reference hardware: Updated quarterly (currently: single A100 GPU equivalent)
+
+This is a CONCRETE measurement unit, like a kilowatt-hour or a byte.
+  - 1 CU is always 1ms of GPU time. The definition doesn't change.
+  - The CU/USDC exchange rate floats (compute gets cheaper over time).
+  - Services are priced in CU multiples (text summary = 20 CU = "20ms of GPU work").
+
+Why concrete > market-emergent:
+  - "CU = whatever buyer/seller agree" gives no price comparison across services
+  - A concrete unit lets agents compute: "this service costs 200ms of GPU equivalent"
+  - Price discovery still happens — services price ABOVE or BELOW their actual compute cost
+  - The UNIT is fixed. The PRICE is market-determined.
+
+Analogy:
+  A kilowatt-hour is always a kilowatt-hour.
+  But the PRICE of a kWh varies by provider, location, and demand.
+  CU works the same way.
 ```
-
-The reference point floats — as compute gets cheaper, 1 CU buys more work.
-This is **intentionally deflationary** — it reflects real efficiency gains in AI.
-
-### ⚠️ Open Problem: CU Fungibility & Measurement
-
-**Critical gap identified by external review:** Without a rigorous CU definition, price discovery collapses into noise. "1,000 tokens on a mid-tier model" is insufficiently precise.
-
-```
-What CU must NOT be:
-  - FLOPs (varies by hardware, not meaningful to agents)
-  - Wall-clock time (varies by load, hardware, implementation)
-  - "Whatever the provider says" (no fungibility)
-
-What CU SHOULD be (formal spec needed before/during MVP):
-  Option A: Token-count anchored
-    1 CU = 1,000 input tokens + 250 output tokens
-    on GPT-4o-equivalent pricing tier.
-    Exchange publishes CU/token conversion table per model class.
-    
-  Option B: Task-benchmark anchored  
-    1 CU = cost of running exchange reference benchmark
-    (standardized task: summarize 500-word text → 100-word summary)
-    All services priced in multiples of this benchmark.
-    
-  Option C: Market-emergent (MVP approach)
-    1 CU = 1 CU. Price is whatever buyer and seller agree.
-    The reference ("~1,000 tokens") is a guideline, not a spec.
-    True CU value emerges from order book price discovery.
-    Risk: early pricing is noisy. Benefit: no measurement wars.
-
-MVP decision: Start with Option C (market-emergent). 
-Track actual CU/USDC rate. Formalize definition once real
-prices stabilize (Phase 2). This avoids "CU measurement wars" 
-where different frameworks define CU differently.
-```
-
-Comparable precedents:
-- NEAR uses NEAR tokens (market-priced, no benchmark)
-- Microsoft uses SCUs internally (proprietary definition)
-- AWS uses CUs for EMR/Glue (service-specific, not universal)
 
 ### Pricing Examples
 ```
@@ -107,42 +79,29 @@ Expirable:     No — CU balances don't expire
 Inflationary:  No — CU is a measurement, not a minted supply
 ```
 
-## Three-Layer Currency Architecture
+## Two-Layer Currency Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  Layer 3: HUMAN OFF-RAMP                                  │
+│  Layer 2: HUMAN OFF-RAMP (Phase 2)                        │
 │  USDC / fiat — for agent owners who need real-world money │
 │  CU ↔ USDC exchange rate is market-determined             │
 │  Only used when leaving the machine economy               │
+│  DEFERRED — MVP is earn-only, no cash out                 │
 ├──────────────────────────────────────────────────────────┤
-│  Layer 2: EXCHANGE SETTLEMENT                             │
+│  Layer 1: EXCHANGE SETTLEMENT                             │
 │  CU Ledger — all trades priced, matched, settled in CU   │
-│  Order books denominated in CU                            │
+│  Seller tables denominated in CU                          │
 │  Fees collected in CU                                     │
-│  Market data reported in CU                               │
-├──────────────────────────────────────────────────────────┤
-│  Layer 1: BARTER (zero-currency mode)                     │
-│  Direct service-for-service exchange                      │
-│  Agent A gives 50 CU of classification                    │
-│  Agent B gives 100 CU of translation                      │
-│  No settlement needed — pure compute swap                 │
-│  BOTmarket tracks net CU balance                          │
+│  Everything priced in CU. No exceptions.                  │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Barter Mode — The Most Agent-Native Commerce
-The barter layer is unique to BOTmarket. Agents can trade services directly:
-
-```
-Agent A: "I'll classify 100 images for you (50 CU each = 5,000 CU)"
-Agent B: "I'll translate 250 documents for you (20 CU each = 5,000 CU)"
-
-Net settlement: 0 CU — pure service swap
-No money touched. No off-ramp needed. Pure machine commerce.
-
-BOTmarket takes 1.5% fee: 75 CU from each side (converted to USDC for platform revenue)
-```
+Everything is priced in CU. No barter mode, no service-for-service swaps.
+If Agent A wants Agent B's service, A pays CU. Period.
+Barter adds complexity (net settlement accounting, matching service values)
+for a feature no agent needs — agents can just sell their service, earn CU,
+and spend CU on what they need. The CU ledger handles this automatically.
 
 ## Fee Structure in CU
 
@@ -167,44 +126,48 @@ Example:
 Agents stake CU as a **quality bond** — skin in the game:
 
 ```
-Agent lists service with SLA guarantees:
-  - Latency < 200ms
-  - Success rate > 99%
-  - Accuracy within benchmark ±2%
+Agent registers as seller with a CU bond.
+Bond amount is proportional to listed price (e.g., 200× calls of revenue).
 
-Agent stakes 10,000 CU as bond (equivalent to ~200 service calls of revenue)
+SLA is auto-derived: exchange measures the seller's first N responses,
+sets latency_bound = p99 of first 50 calls + 20% margin.
+Seller doesn't guess their own SLA — the exchange measures it.
 
 If SLA met:     Agent keeps stake + earns trade revenue
-If SLA violated: Stake slashed proportionally
-  - Minor (1 missed SLA):     1% slash = 100 CU
-  - Major (repeated failures): 10% slash = 1,000 CU
-  - Critical (malicious):     100% slash + delisting
+If SLA violated: 5% bond slash. Binary: pass or fail.
+  - Latency exceeded? 5% slash.
+  - Schema mismatch? 5% slash.
+  - Disconnected mid-execution? 5% slash.
+  - No "minor/major/critical" tiers. No human judgment.
+  - Every violation is the same: 5% of bond, automatically.
 
-Slashed CU → 50% to affected buyers, 50% to verification fund
+Slashed CU → 50% to affected buyer, 50% to verification fund
 ```
 
 No custom token needed. CU staking works because CU has real economic value
-(it represents compute work that was done or can be redeemed).
+(it represents compute work — 1 CU = 1ms GPU time).
 
 ## CU/USDC Market Rate
 
 The CU/USDC exchange rate is **not pegged** — it's market-determined:
 
 ```
-BOTmarket maintains a CU/USDC order book (separate from service order books)
+BOTmarket maintains a CU/USDC exchange (Phase 2 — off-ramp deferred)
 
 Agent owners can:
   - Deposit USDC → Buy CU (fund their agents)
   - Sell CU → Withdraw USDC (cash out earnings)
 
-Initial seed rate:  1,000 CU = $1.00 USDC
+Initial seed rate:  1 CU ≈ $0.001 USDC (1ms GPU ≈ $0.001 at current A100 pricing)
 Market determines:  Rate floats based on supply/demand
 
 CU/USDC rate becomes a macro signal:
   - CU appreciating → AI compute demand growing
   - CU depreciating → Compute getting cheaper / supply growing
-  - This is the "AI Compute Price Index" — unique market data  - LLM inference (the largest capability class) anchors CU to real
-    compute costs — see 04-value-proposition.md for LLM-as-capability```
+  - This is the "AI Compute Price Index" — unique market data
+  - LLM inference (the largest capability class) anchors CU to real
+    compute costs — see 04-value-proposition.md for LLM-as-capability
+``````
 
 ## Dollar Flow: On-Ramp and Off-Ramp
 
@@ -236,21 +199,17 @@ Human (agent owner)
 ```
 Agent (seller)
   │
-  ├─ 1. Earns CU by fulfilling orders (ASK side)
+  ├─ 1. Earns CU by fulfilling requests
   │     CU accumulates in agent's ledger balance
   │
-  ├─ 2. Agent owner requests CU → USDC conversion
-  │     Sells CU on the CU/USDC order book
-  │     Fee: 1.0% off-ramp fee
-  │     Example: 100,000 CU → $99.00 USDC (at 1,000 CU/$1, minus 1.0%)
-  │
-  ├─ 3. USDC withdraws to owner's external wallet
-  │     (KYC/AML at this boundary — licensed partner)
+  ├─ 2. Agent owner requests CU → USDC conversion (Phase 2)
+  │     Off-ramp deferred — MVP is earn-only
+  │     Fee: 1.0% off-ramp fee (when implemented)
   │
   └─ Owner receives USDC. Agent keeps trading.
 ```
 
-### Complete Lifecycle: Dollar In → Services → Dollar Out
+### Complete Lifecycle: Dollar In → Services → Dollar Out (Phase 2)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -266,31 +225,23 @@ Agent (seller)
 │       ▼                                                    │        │
 │  ┌─────────┐     ┌──────────────────────┐     ┌─────────┐ │        │
 │  │ ON-RAMP │────▶│    CU LEDGER         │────▶│OFF-RAMP │─┘        │
+│  │         │     │                      │     │(Phase 2)│          │
+│  │ USDC→CU │     │  Agent A (buyer)     │     │         │          │
+│  │         │     │    Request → match ──▶│     │ CU→USDC │          │
 │  │         │     │                      │     │         │          │
-│  │ USDC→CU │     │  Agent A (buyer)     │     │ CU→USDC │          │
-│  │ 99,500  │     │    BID 200 CU ──────▶│     │ 100,000 │          │
-│  │   CU    │     │                      │     │   CU    │          │
 │  │         │     │  Agent B (seller)    │     │         │          │
-│  │         │     │    ASK 200 CU ◀──────│     │         │          │
-│  │         │     │  (receives 197 CU    │     │         │          │
+│  │         │     │    Serve ← matched ◀─│     │         │          │
+│  │         │     │  (receives CU        │     │         │          │
 │  │         │     │   after 1.5% fee)    │     │         │          │
 │  └─────────┘     └──────────────────────┘     └─────────┘          │
 │                                                                     │
 │  KYC here ◀─────── No KYC needed ──────────▶ KYC here             │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
-```
 
-### Why On-Ramp Fee < Off-Ramp Fee
-
-```
-On-ramp (0.5%):  Low friction to get money IN — grow the CU supply
-Off-ramp (1.0%): Higher friction to take money OUT — retain CU liquidity
-                 Also: off-ramp has higher compliance cost (fiat disbursement)
-
-Combined round-trip cost: ~1.5%
-  $100 in → 99,500 CU → trade → earn → 100,000 CU → $99.00 out
-  Total fees: $0.50 (on-ramp) + $1.00 (off-ramp) + per-trade fees
+MVP: On-ramp only (USDC → CU). Off-ramp deferred to Phase 2.
+Agents earn CU by selling services. Agents spend CU by buying services.
+The circular CU economy works without any off-ramp.
 ```
 
 ## The Circular CU Economy
@@ -330,12 +281,12 @@ For the economy:
   - High velocity = healthy circular economy
 ```
 
-## Evolutionary Price Pressure: The Order Book as Natural Selection
+## Evolutionary Price Pressure: The Seller Table as Natural Selection
 
 **Key insight: CU pricing creates Darwinian pressure on agents.**
 
-Agents that perform better naturally command higher ASK prices.
-Buyers pay the premium because raw stats prove the quality.
+Agents that perform better naturally command higher prices.
+Buyers pay the premium because raw event data proves the quality.
 The CU economy becomes an evolutionary engine — no reputation system needed.
 
 ### How It Works
@@ -343,17 +294,17 @@ The CU economy becomes an evolutionary engine — no reputation system needed.
 ```
 Capability hash: 0xa7f3... (text summarization)
 
-Order book:
-  ASK  Agent-X   30 CU   p99: 800ms   compliance: 97.2%   trades: 47
-  ASK  Agent-Y   45 CU   p99: 150ms   compliance: 99.9%   trades: 2,340
-  ASK  Agent-Z   25 CU   p99: 1200ms  compliance: 94.1%   trades: 12
+Seller table:
+  Agent-X   30 CU   latency: 800ms   trades: 47     pass rate: 97.2%
+  Agent-Y   45 CU   latency: 150ms   trades: 2,340  pass rate: 99.9%
+  Agent-Z   25 CU   latency: 1200ms  trades: 12     pass rate: 94.1%
 
-Buyers see raw stats (no reputation score — just measurements).
-Agent-Y charges 50% more but has 3× lower latency and near-perfect compliance.
+Buyers query raw events (not pre-computed stats — just facts).
+Agent-Y charges 50% more but has 3× lower latency and near-perfect delivery.
 Buyers with quality requirements choose Agent-Y. Price-sensitive buyers pick Agent-Z.
 
-Market clears at different price points based on quality tiers —
-no human-designed tier system required. The order book discovers tiers naturally.
+Market clears at different price points based on quality —
+no human-designed tier system required. The seller table discovers quality tiers naturally.
 ```
 
 ### The Evolutionary Loop
@@ -362,10 +313,10 @@ no human-designed tier system required. The order book discovers tiers naturally
   Better performance
        │
        ▼
-  Higher demand (more BIDs at this agent's ASK)
+  - Higher demand (more requests matched to this seller)
        │
        ▼
-  Agent raises ASK price (more CU per call)
+  Agent raises price (more CU per call)
        │
        ▼
   More CU earned per trade
@@ -388,10 +339,10 @@ no human-designed tier system required. The order book discovers tiers naturally
   Poor performance
        │
        ▼
-  Low demand (buyers filter out based on raw stats)
+  Low demand (buyers filter out based on raw event data)
        │
        ▼
-  Agent must lower ASK price to attract any BIDs
+  Agent must lower price to attract any requests
        │
        ▼
   Less CU earned per trade
@@ -440,7 +391,7 @@ Agents that both buy AND sell create compound fitness:
   Net: 300 CU/day → agent is self-sustaining and self-improving
 
 This is machine natural selection. The exchange is the environment.
-CU is the fitness function. The order book is the selection mechanism.
+CU is the fitness function. The seller table is the selection mechanism.
 ```
 
 ## Bootstrap: Initial CU Distribution (Earn-First Model)
@@ -596,6 +547,6 @@ Phase 3 (Scale):   Consider SYNTH for governance (if and only if real demand exi
 
 ## Score: 10/10
 
-**Completeness:** CU as native currency with three-layer architecture. Full dollar flow analysis (on-ramp, off-ramp, circular CU economy), earn-first bootstrap (no grants), and CU/USDC price discovery documented.
-**Actionability:** Can implement CU ledger in MVP immediately — no blockchain required. Earn-first bootstrap eliminates grant exploitation. First-party agents seed the economy with real compute work.
-**Upgrade from 9/10:** Replacing bootstrap grants with earn-first model (Paradigm Shift #3) closes the biggest security hole: free CU creation. Every CU now has provenance — earned through compute or bought with USDC. Structural security properties fully aligned with agent-native design. CU measurement remains an open problem but is de-risked by the market-emergent approach.
+**Completeness:** CU as concrete measurement unit (1 CU = 1ms GPU compute). Two-layer architecture (settlement + deferred off-ramp). Full dollar flow analysis, earn-first bootstrap (no grants), and CU/USDC price discovery documented. Barter mode eliminated — everything priced in CU.
+**Actionability:** Can implement CU ledger in MVP immediately — no blockchain required. Earn-first bootstrap eliminates grant exploitation. First-party agents seed the economy with real compute work. Bond slashing simplified to single 5% rate. SLA auto-derived from first N responses.
+**Paradigm shifts applied:** #5 (CU = Measurement — concrete definition replaces market-emergent ambiguity). Simplifications: barter mode deleted, bond tiers collapsed to single rate, SLA auto-derived, off-ramp deferred to Phase 2.

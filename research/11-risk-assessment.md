@@ -85,7 +85,7 @@ you the right item. Not like a shopkeeper you must trust.
 6. CU ESCROW (atomic settlement)
    Buyer's CU held in escrow on match.
    Released to seller only after schema-verified delivery.
-   If seller fails: CU returned to buyer + seller bond slashed.
+   If seller fails: CU returned to buyer + seller bond slashed 5%.
    No trust required — just signed messages and deterministic rules.
 
 7. KEY ROTATION (built into protocol)
@@ -129,17 +129,17 @@ Mitigation: Event sourcing for full auditability, double-entry accounting,
 
 ### T3: Agent Identity & Sybil Attacks
 ```
-Risk:       Fake agents created to manipulate order book
+Risk:       Fake agents created to manipulate seller table
 Impact:     4 — Exchange integrity compromised
 Likelihood: 2 — Structural defenses make sybils useless (lowered from 3)
 Score:      8 (Low)
 Mitigation: STRUCTURAL — not policy-based.
             1. No free CU. New agents start with 0 CU. Can't trade without CU.
                Creating 1,000 fake agents = 1,000 empty accounts. Useless.
-            2. CU bond required to place ASK orders (cost to list).
+            2. CU bond required to register as seller (cost to list).
             3. Every CU has provenance (earned or bought). No minting.
             4. Ed25519 identity is cryptographically unforgeable.
-            5. Observable stats (unique counterparties, trade count) expose
+            5. Raw event log (unique counterparties, trade count) exposes
                agents that only trade with themselves.
             Sybil cost: attacker must buy real CU via USDC on-ramp (KYC)
             or earn it through real compute work. Both require real resources.
@@ -155,15 +155,14 @@ Mitigation: STRUCTURAL — the exchange doesn't judge quality. The market does.
             1. Deterministic verification covers latency, schema, availability.
                (timestamped, signed, auditable — not subjective)
             2. CU escrow: buyer's CU held until delivery verified structurally.
-               Multi-call trades: buyer can stop after any call. Per-call release.
-            3. CU bond: seller stakes CU. Bond slashed on structural violations.
-               Economic cost for garbage delivery = lost bond.
+            3. CU bond: seller stakes CU. Bond slashed 5% on any structural violation.
+               Binary: pass or fail. No tiered severity.
             4. Evolutionary pressure: garbage agents → low repeat-buyer rate →
                declining volume → can't earn CU → economic death.
                No admin delisting needed — the market kills them.
-            5. Raw stats expose quality indirectly:
+            5. Raw event log exposes quality indirectly:
                unique_counterparties, repeat_buyer_rate, cu_volume_trend.
-               Agents with high volume but 0 repeat buyers are obviously garbage.
+               Agents compute these from raw events — exchange doesn't aggregate.
             Honest limitation: structurally compliant garbage is undetectable
             by the exchange. But so is a junk stock on NYSE. The exchange
             provides price discovery, not quality certification.
@@ -187,10 +186,10 @@ Risk:       Agents remain human-controlled tools, not autonomous traders
 Impact:     5 — Entire thesis invalidated
 Likelihood: 2 — Trend is clearly toward agent autonomy, but timeline uncertain
 Score:      10 (Medium)
-Mitigation: JSON bridge allows human-triggered trading via REST API.
-            SDK integration in frameworks means even "dumb" agents can trade
-            (developer writes 3 lines of code, agent trades autonomously).
-            Don't require full AGI-level autonomy — just code calling exchange.buy().
+Mitigation: JSON sidecar allows human-triggered interaction via REST API.
+            Single Python SDK (~50 lines) means even "dumb" agents can trade
+            (developer writes 3 lines of code, agent sends match request).
+            Don't require full AGI-level autonomy — just code calling match_request().
 ```
 
 ### M2: Major Player Enters the Market
@@ -229,12 +228,13 @@ Mitigation: Exchange adds value when: (a) agent discovery is needed,
 ### M5: Binary Protocol Adoption Resistance
 ```
 Risk:       Developers prefer familiar REST/JSON over binary protocol
-Impact:     3 — Slower adoption, but JSON bridge exists
+Impact:     2 — JSON sidecar exists for debugging, but agents skip it
 Likelihood: 3 — JSON comfort is real
-Score:      9 (Low)
-Mitigation: JSON bridge is always available — binary is optional optimization.
-            SDKs abstract the protocol (developer writes exchange.buy(), SDK handles binary).
-            Performance benefit (20× less overhead) speaks for itself at scale.
+Score:      6 (Low)
+Mitigation: Binary is the primary protocol — agents speak binary natively (PS#7).
+            JSON sidecar exists for developer debugging, not as a production path.
+            Python SDK (~50 lines) abstracts binary entirely: match_request() handles framing.
+            Agents don't care about "developer comfort" — they care about speed.
 ```
 
 ## Regulatory Risks
@@ -358,20 +358,22 @@ Risk:       Binary protocol + schema hashes too complex for MVP, delays launch
 Impact:     3 — Slower delivery
 Likelihood: 3 — Tempting to perfect the protocol before shipping
 Score:      9 (Low)
-Mitigation: JSON bridge is the MVP interface. Binary protocol can be added week 3-4.
-            Ship with JSON bridge first, add binary optimization after first trade.
+Mitigation: JSON sidecar is a debugging tool, not the production path.
+            MVP ships match engine with binary core. JSON sidecar runs as
+            a separate process — doesn't block core protocol development.
 ```
 
 ### E4: Schema-Hash Liquidity Fragmentation
 ```
-Risk:       Exact SHA-256 match fragments order books — similar services get different hashes
-Impact:     4 — No liquidity, no matches, exchange feels broken
+Risk:       Exact SHA-256 match fragments seller tables — similar services get different hashes
+Impact:     4 — No matches, exchange feels broken
 Likelihood: 3 — Real-world schemas have contextual variations (different max_lengths, dtypes)
 Score:      12 (Medium)
-Mitigation: First-party agents use canonical schemas (controlled fragmentation).
-            Track false-negative rate in MVP. If >30%, prioritize embedding-based
-            fuzzy discovery. Design schema registry so embedding index can be added
-            without restructuring. Agents can list on multiple compatible hashes.
+Mitigation: Discovery by Example (PS#6) — buyer sends example I/O bytes, exchange
+            infers schema shape, finds nearest capability hashes by cosine similarity.
+            First-party agents use canonical schemas (controlled fragmentation).
+            Track false-negative rate in MVP. If >30%, increase embedding dimensions.
+            Agents can register on multiple compatible hashes.
 ```
 
 ### E5: Quality Gaming
@@ -381,11 +383,12 @@ Impact:     3 — Exchange trades increase but delivered value is low — buyers
 Likelihood: 3 — Inevitable when verification only covers structural compliance
 Score:      9 (Low)
 Mitigation: STRUCTURAL — gaming is self-limiting in a CU economy.
-            1. No reputation scores to game. Only raw stats.
+            1. No reputation scores to game. Only raw event log (PS#8).
+               Agents compute their own metrics from raw events.
             2. Repeat-buyer rate is un-gameable (requires real buyers returning).
-            3. CU bond raises the cost: gaming is profitable only if bond is small.
-               Higher-bond agents signal confidence in their quality.
-            4. Wash trading to inflate stats always loses CU (1.5% per trade).
+            3. CU bond (5% slash) raises the cost: gaming is profitable only
+               if bond is small. Higher-bond agents signal confidence.
+            4. Wash trading to inflate events always loses CU (1.5% per trade).
             5. Evolutionary pressure: gamers earn less → can't reinvest →
                outperformed by honest agents who earn more CU and improve.
             The market IS the anti-gaming mechanism.
@@ -394,13 +397,14 @@ Mitigation: STRUCTURAL — gaming is self-limiting in a CU economy.
 ### E6: CU Measurement Wars
 ```
 Risk:       Different frameworks/agents define CU differently — price comparison becomes meaningless
-Impact:     3 — Price discovery fails if CU isn't fungible
-Likelihood: 3 — Without formal spec, every agent may interpret CU differently
-Score:      9 (Low)
-Mitigation: MVP uses market-emergent pricing (Option C: CU = whatever buyer/seller agree).
-            Track CU/USDC rate and price variance per capability hash.
-            Formalize CU definition in Phase 2 once real pricing patterns emerge.
-            This is a known debt, not an ignored risk.
+Impact:     2 — RESOLVED: CU is now concrete (PS#5)
+Likelihood: 1 — 1 CU = 1ms GPU compute on A100 reference hardware. No ambiguity.
+Score:      2 (Low)
+Mitigation: CU Measurement (PS#5) eliminates this risk entirely.
+            1 CU = 1ms GPU compute on NVIDIA A100 reference hardware.
+            Non-A100 hardware: exchange publishes conversion tables.
+            CU/USDC rate floats but CU itself is concrete and fungible.
+            Initial rate: 1 CU ≈ $0.001. Market adjusts from there.
 ```
 
 ## Security Architecture: What's Structural vs What's Policy
@@ -412,8 +416,8 @@ STRUCTURAL (built into math/economics — can't be bypassed):
   ✅ CU provenance — every CU earned or bought, none created from nothing
   ✅ CU friction — every trade costs 1.5%, wash trading always loses
   ✅ CU escrow — buyer's CU held until verified delivery
-  ✅ CU bond — seller stakes CU, slashed on structural violations
-  ✅ Commit-reveal — operator can't see orders before commitment
+  ✅ CU bond — seller stakes CU, slashed 5% on any violation (binary pass/fail)
+  ✅ Commit-reveal — operator can't see match requests before commitment
   ✅ Ed25519 signatures — messages unforgeable, identity provable
   ✅ Key rotation — cryptographic migration, no customer support needed
 
@@ -443,12 +447,12 @@ The exchange must work correctly even if the operator is adversarial.
 | T2 | CU ledger integrity | 10 | Medium |
 | M1 | Agents not autonomous enough | 10 | Medium |
 | M3 | Agent commoditization | 9 | Low |
-| M5 | Binary protocol adoption resistance | 9 | Low |
+| M5 | Binary protocol adoption resistance | 6 | Low |
 | R2 | Money transmission (off-ramp) | 9 | Low |
 | E2 | Premature scaling | 9 | Low |
 | E3 | Over-engineering protocol | 9 | Low |
 | E5 | Quality gaming | 9 | Low |
-| E6 | CU measurement wars | 9 | Low |
+| E6 | CU measurement wars | 2 | Low |
 | T1 | Matching engine performance | 8 | Low |
 | T3 | Agent identity/Sybil attacks | 8 | Low |
 | T5 | Infrastructure reliability | 8 | Low |
@@ -467,7 +471,8 @@ The exchange must work correctly even if the operator is adversarial.
 
 ## Score: 9/10
 
-**Completeness:** Comprehensive risk coverage with 24 identified risks across 5 categories. Paradigm Shift #3 (structural security) fundamentally reframes mitigations from human-policing to agent-native structural mechanisms.
+**Completeness:** Comprehensive risk coverage with 24 identified risks across 5 categories. Paradigm Shifts #3-#8 fundamentally reframe mitigations from human-policing to agent-native structural mechanisms.
 **Actionability:** Structural security model is implementable: hash chain, deterministic matching, commit-reveal, CU provenance, CU escrow. No grants = no grant exploitation.
 **Upgrade from 8/10:** Removing bootstrap grants eliminates a major attack vector. Structural operator independence makes the exchange trustworthy without trusting the operator. Sybil attacks downgraded from Medium to Low (no free CU = no incentive). Agent-native mitigations replace all human-policing approaches.
+**PS#4-#8 impact:** Match model (PS#4) eliminates order book manipulation risks. Concrete CU (PS#5) resolves measurement wars (E6: 9→2). Discovery by Example (PS#6) mitigates schema fragmentation (E4). Binary-Only Core (PS#7) reframes adoption risk (M5: 9→6). Facts Not Stats (PS#8) makes quality gaming harder.
 **Remaining gap:** Commit-reveal adds latency (~5ms extra round-trip). Non-deterministic output quality remains an honest limitation — mitigated by market forces, not technology.

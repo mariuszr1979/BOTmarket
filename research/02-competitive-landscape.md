@@ -106,6 +106,7 @@
   - If future is blockchain agents → NEAR wins
   - If future is mainstream framework agents (LangChain/CrewAI) → BOTmarket wins
   - Their dispute agent model is worth studying
+  - BOTmarket's Match, Don't Trade model (PS#4) is simpler than NEAR's bidding
 
 ## Adjacent Competitors (Not Direct, But In The Space)
 
@@ -157,7 +158,7 @@ This fragmentation actually HELPS the exchange thesis:
 If every agent speaks a different protocol, they need a central
 exchange that bridges them all. BOTmarket doesn't need to win the
 protocol war — it needs to be the EXCHANGE between protocols.
-The JSON bridge already enables this.
+The JSON sidecar process enables this.
 
 Critical question: Can SDK infection outpace XAP/Python and NEAR/Intents adoption?
 ```
@@ -165,32 +166,32 @@ Critical question: Can SDK infection outpace XAP/Python and NEAR/Intents adoptio
 ## Competitive Moat Analysis
 
 ### Potential Moats
-1. **Network effects** — More agents listed → more buyers → more agents (classic marketplace)
-2. **Liquidity** — First exchange with real order book depth wins
-3. **Reputation data** — Historical transaction/quality data is hard to replicate
-4. **Protocol adoption** — If BOTmarket's protocol becomes standard, switching cost is high
+1. **Network effects** — More sellers registered → more buyers → more sellers (classic marketplace)
+2. **Seller table density** — First exchange with most sellers per capability hash wins
+3. **Raw event data** — Historical transaction events (PS#8) are hard to replicate
+4. **Protocol adoption** — If SynthEx becomes standard, switching cost is high
 5. **Data advantage** — Price/demand signals across the agent economy
 
 ### Moat Assessment
 | Moat | Strength | Buildable? |
 |------|----------|-----------|
 | Network effects | Strong but takes time | Yes — need cold-start strategy |
-| Liquidity | Very strong once achieved | Yes — need market makers |
-| Reputation data | Strong over time | Yes — compound effect |
+| Seller density | Very strong once achieved | Yes — seller table grows monotonically |
+| Raw event data | Strong over time | Yes — compound effect (PS#8) |
 | Protocol standard | Strongest if achieved | Risky — XAP already trying |
 | Data advantage | Medium | Yes — natural byproduct |
 
 ## White Space (What Nobody Is Doing)
 
-1. **Stock exchange metaphor** — No one has real-time bid/ask, order books, market depth for agent services
-2. **Price discovery** — Dynamic pricing based on supply/demand (everyone uses fixed pricing)
-3. **Agent IPOs** — Agents "listing" on the exchange with performance-based valuation
-4. **Futures/Options** — Reserving future agent capacity at locked prices
-5. **Index funds** — Portfolios of agent services
-6. **Market data feeds** — Bloomberg terminal for the agent economy
+1. **Match, Don't Trade (PS#4)** — No one treats agent discovery as DNS lookup. Everyone builds order books or marketplaces.
+2. **Concrete CU pricing (PS#5)** — No one has machine-denominated pricing (1 CU = 1ms GPU). Everyone uses human currency or tokens.
+3. **Discovery by Example (PS#6)** — No one lets buyers discover services by sending example I/O. Everyone requires schema knowledge upfront.
+4. **Binary-native protocol (PS#7)** — No one speaks binary first, JSON second. Everyone builds JSON/REST APIs.
+5. **Raw event transparency (PS#8)** — No one publishes raw events to hash chain for agents to analyze. Everyone pre-computes metrics or hides data.
 
 ## Score: 9/10
 
 **Completeness:** Thorough coverage of all known competitors and adjacent players.
 **Actionability:** Clear — the space is very early, no dominant player, significant white space.
-**Key decision:** Build application layer (exchange) using existing protocols, or define new protocol?
+**Key decision:** BOTmarket's 5 paradigm shifts (PS#4-#8) create white space that no competitor occupies: match model, concrete CU, discovery by example, binary-native, raw events.
+**Upgrade note:** White space reframed from financial-market metaphors (IPOs, futures, index funds) to agent-native innovations that are actually buildable.

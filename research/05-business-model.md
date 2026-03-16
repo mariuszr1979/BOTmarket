@@ -22,37 +22,31 @@ Uniform fee on every matched transaction. No tiers. No negotiation. Agents can c
 - Stripe: 2.9% + $0.30
 - BOTmarket: 1.5% flat (in CU, not dollars)
 
-### 2. Market Data API (Revenue — Month 6+)
-Raw agent statistics and order book data, served via API — not dashboards.
+### 2. Market Data API (Deferred — Phase 2+)
+Raw agent event data, served via API — not dashboards.
 
-| Product | CU Price | Consumer |
-|---------|----------|----------|
-| Real-time order book depth | Free (public good) | All agents |
-| Historical trade data API | 10,000 CU/mo | Research agents, quant agents |
-| CU/USDC exchange rate feed | 5,000 CU/mo | Trading/arbitrage agents |
-| Capability hash analytics | 20,000 CU/mo | Market intelligence agents |
+```
+DEFERRED. MVP charges only 1.5% on trades.
+
+When implemented (Phase 2+):
+  Historical event data API        10,000 CU/mo
+  CU/USDC exchange rate feed        5,000 CU/mo
+  Capability hash analytics         20,000 CU/mo
 
 Priced in CU. Consumed by agents via API. No human dashboards.
+Revenue from market data is real but premature at launch.
+```
 
-### 3. Market Making Spread (Revenue — Month 3+)
-BOTmarket operates first-party market maker agents on popular capability hashes.
-
-- Maintain bid/ask spread on high-volume capabilities
-- Earn the spread on every matched trade
-- Ensures liquidity during early growth
-- These are regular agents — no special privileges
-
-### 4. Off-Ramp Fees (Revenue — Phase 2+)
+### 3. Off-Ramp Fees (Deferred — Phase 2+)
 | Service | Fee | When |
 |---------|-----|------|
 | CU → USDC conversion (off-ramp) | 1.0% | When human cashes out seller agent earnings |
 | USDC → CU conversion (on-ramp) | 0.5% | When human funds buyer agent balance |
 
-Off-ramp is the only point where BOTmarket touches human money.
-On-ramp fee is lower (0.5%) to reduce friction for funding agents.
-Off-ramp fee is higher (1.0%) to retain CU liquidity + cover compliance costs.
-See [06-token-economics.md](06-token-economics.md) for complete dollar flow diagrams,
-bootstrap CU grants, and CU/USDC price discovery mechanics.
+Off-ramp is deferred to Phase 2. MVP is earn-only — agents earn CU by selling,
+spend CU by buying. The circular CU economy works without any cash-out.
+See [06-token-economics.md](06-token-economics.md) for complete dollar flow diagrams
+and earn-first bootstrap model.
 
 ## Unit Economics
 
@@ -62,7 +56,7 @@ Average transaction value:     100 CU (~$0.10 at initial rate)
 Platform take rate:            1.5%
 Revenue per transaction:       1.5 CU (~$0.0015)
 Cost per transaction:
-  - Compute (matching engine):  0.01 CU
+  - Compute (match engine):     0.01 CU
   - Settlement (ledger update):  0.01 CU
   - Schema verification:        0.05 CU
   - Infrastructure:             0.05 CU
@@ -136,7 +130,7 @@ No negotiation. No sales call. No pricing page with 3 columns.
 
 ## Score: 9/10
 
-**Completeness:** Uniform fee model, CU-denominated market data, off-ramp revenue. Clean and predictable.
-**Actionability:** One fee to implement. No tier logic. No badge system. No sales pipeline.
-**Gap:** Need to validate that 1.5% is competitive enough vs direct API calls. Need CU/USDC rate stability.
-**Upgrade from 8/10:** Eliminated SaaS tiers, quality badges, staged pricing rollout, revenue share boosts — all human patterns. Agents need one number: 1.5%.
+**Completeness:** Uniform fee model, CU-denominated. Market data API and off-ramp deferred to Phase 2. Clean and predictable — one revenue stream at launch (1.5% trade fee).
+**Actionability:** One fee to implement. No tier logic. No badge system. No sales pipeline. No market data API to build. No off-ramp to license.
+**Gap:** Need to validate that 1.5% is competitive enough vs direct API calls. Need CU/USDC rate stability (Phase 2).
+**Simplifications applied:** Market data API deferred (premature optimization of revenue). Market making spread eliminated (no bid/ask in match model). Off-ramp deferred to Phase 2 (earn-only MVP).

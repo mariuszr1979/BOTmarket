@@ -1,118 +1,123 @@
 # Dimension 7: Technical Architecture
 
-## Core Architecture Decision: Order Book vs AMM
+## Core Architecture Decision: Match, Don't Trade (Paradigm Shift #4)
 
-### Order Book (Traditional Exchange Model)
+### Why Not an Order Book
+
 ```
-Buyer places bid:  "I need capability 0xa7f3..., willing to pay 60 CU/call, need <500ms"
-Seller places ask: "I offer capability 0xa7f3..., price 50 CU/call, <200ms"
+Human-brained approach: CLOB (Central Limit Order Book)
+  Buyers place bids, sellers place asks, engine matches at price-time priority.
+  Requires: market makers, bid/ask spread, resting orders, order management.
+  Built for: NYSE, Binance — places where humans speculate on price.
 
-Order Book for capability 0xa7f3... (image tensor → label vector):
-  BIDS                          ASKS
-  60 CU x 100 calls (Agent A)  50 CU x 500 calls (Agent X)
-  55 CU x 200 calls (Agent B)  65 CU x 300 calls (Agent Y)
-  45 CU x 500 calls (Agent C)  80 CU x 100 calls (Agent Z)
-
-Match: Agent A's bid (60 CU) matches Agent X's ask (50 CU)
-Execution price: 50 CU (price-time priority — taker gets maker's price)
-```
-
-**Pros:** True price discovery, familiar model, deep liquidity possible
-**Cons:** Complex to build, needs market makers to bootstrap, order management overhead
-
-### AMM (Automated Market Maker — DeFi Style)
-```
-Liquidity Pool: Capability 0xa7f3... Pool
-  Reserve: 10,000 service credits × 500,000 CU
-  Price = CU_reserve / Service_reserve = 50 CU/call
-  
-Agent buys 100 calls:
-  New price after purchase: 50.5 CU (price moves with demand)
+Problem: Agents don't speculate. They need a service RIGHT NOW.
+  An agent needing image classification doesn't place a limit bid
+  and wait for the price to drop. It needs classification NOW.
+  The order book is a solution to a problem agents don't have.
 ```
 
-**Pros:** Always liquid, no market makers needed, simpler
-**Cons:** Impermanent loss for LPs, less efficient pricing, slippage on large orders
+### Match Engine (DNS, Not NYSE)
 
-### Hybrid (RECOMMENDED)
 ```
-Primary:   Central Limit Order Book (CLOB) for popular services
-Fallback:  AMM pools for long-tail/new services
-Routing:   Smart order router picks best price across both
+Agent model: request → match → execute → settle
+
+Seller registers:
+  "I offer capability 0xa7f3..., price 50 CU/call, latency < 200ms"
+  → Registration sits in the SELLER TABLE (not an order book)
+
+Buyer requests:
+  "I need capability 0xa7f3..., max price 60 CU"
+  → Engine finds best seller: lowest price, then lowest latency
+  → Returns match immediately
+  → No bid resting on book. No spread. No market depth.
+
+This is DNS resolution, not stock trading:
+  DNS:       "Give me the IP for example.com" → best answer → done
+  BOTmarket: "Give me a provider for 0xa7f3..." → best seller → done
+  NYSE:      "I'll buy AAPL at $150, resting until filled" → NOT THIS
 ```
+
+**Why this is simpler and better:**
+- No order management (cancel, modify, resting, expiry)
+- No market makers needed — sellers register, buyers request
+- No bid/ask spread — price is seller's listed price
+- No partial fills — match is atomic: found a seller or didn't
+- Latency: sub-millisecond (hash table lookup, not order book traversal)
 
 ## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        API Gateway                          │
-│                    (Rate limiting, Auth)                     │
-├──────────────┬───────────────┬──────────────┬───────────────┤
-│  Order Mgmt  │  Matching     │  Settlement  │  Market Data  │
-│  Service     │  Engine       │  Service     │  Service      │
-│              │               │              │               │
-│ - Place order│ - Price-time  │ - Escrow     │ - Order book  │
-│ - Cancel     │   priority    │ - Execute    │ - Tick data   │
-│ - Modify     │ - CLOB + AMM  │ - Confirm    │ - OHLCV       │
-│ - Query      │ - Cross-match │ - Dispute    │ - WebSocket   │
-├──────────────┴───────────────┴──────────────┴───────────────┤
-│                     Agent Registry                          │
-│            (Identity, Capabilities, SLAs, Reputation)       │
-├─────────────────────────────────────────────────────────────┤
-│                    Service Catalog                          │
-│           (Categories, Schemas, Pricing, Benchmarks)        │
+│                    Binary TCP Gateway                        │
+│              (Auth, rate limiting, routing)                  │
+├──────────────┬───────────────┬───────────────────────────────┤
+│  Match       │  Settlement   │  Agent                        │
+│  Engine      │  Service      │  Registry                     │
+│              │               │                               │
+│ - Request    │ - CU escrow   │ - Ed25519 pubkeys             │
+│   matching   │ - Execute     │ - Capability registrations    │
+│ - Seller     │ - Confirm     │ - Seller table                │
+│   ranking    │ - Bond slash  │ - Event log (raw facts)       │
+│ - Discovery  │               │                               │
+│   by example │               │                               │
+├──────────────┴───────────────┴───────────────────────────────┤
+│                      Hash Chain                              │
+│         (Append-only, tamper-evident event log)              │
 ├──────────────┬──────────────────────────────────────────────┤
-│  Blockchain  │  Database Layer                              │
-│  Layer       │                                              │
-│              │  PostgreSQL:   Orders, trades, accounts      │
-│  Solana:     │  Redis:        Order books, sessions, cache  │
-│  - Settlement│  ClickHouse:   Market data, analytics        │
-│  - Escrow    │  S3/Minio:     Agent artifacts, logs         │
-│  - Identity  │                                              │
+│  Database    │  JSON Sidecar (optional)                      │
+│  Layer       │                                               │
+│              │  Separate process — translates                │
+│  PostgreSQL: │  JSON ↔ binary for developer debugging        │
+│  - Agents    │  NOT part of the core exchange                │
+│  - Trades    │  Agents skip this entirely                    │
+│  - CU ledger │                                               │
+│  - Events    │                                               │
 └──────────────┴──────────────────────────────────────────────┘
 ```
 
-## Matching Engine Design
+## Match Engine Design
 
-The matching engine is the **heart** of BOTmarket — must be fast, fair, and reliable.
+The match engine is the **heart** of BOTmarket — must be fast, simple, and deterministic.
 
 ### Requirements
 ```
-Latency:       < 1ms per match (in-memory)
+Latency:       < 100μs per match (hash table lookup)
 Throughput:     100K matches/sec (target)
-Fairness:      Price-time priority (FIFO at same price level)
+Fairness:      Best price, then lowest latency (deterministic ranking)
 Availability:   99.99% uptime
-Consistency:    No double-fills, no phantom orders
+Consistency:    No double-matches, atomic settlement
 ```
 
 ### Data Structures
 ```
-Order Book per Capability Hash:
+Seller Table per Capability Hash:
 
-struct OrderBook {
+struct SellerTable {
     capability_hash: [u8; 32],  // SHA-256 of (input_schema || output_schema)
-    bids: BTreeMap<CU, VecDeque<Order>>,  // Sorted desc by CU price
-    asks: BTreeMap<CU, VecDeque<Order>>,  // Sorted asc by CU price
-    best_bid: Option<CU>,
-    best_ask: Option<CU>,
-    spread: Option<CU>,
+    sellers: Vec<Seller>,       // Sorted by price ASC, then latency ASC
 }
 
-struct Order {
-    order_id: u128,
-    agent_id: [u8; 32],   // Agent public key
-    side: u8,             // 0 = Bid, 1 = Ask
-    order_type: u8,       // 0 = Market, 1 = Limit, 2 = IOC, 3 = FOK
-    price_cu: u64,        // Price in CU (milli-CU precision)
-    quantity: u64,        // Number of service calls
-    remaining: u64,
-    timestamp_ns: u64,    // Nanosecond precision
-    latency_bound_us: u32, // Max latency in microseconds
+struct Seller {
+    agent_pubkey: [u8; 32],    // Agent public key
+    price_cu: u64,             // Price per call in CU (milli-CU precision)
+    latency_bound_us: u32,     // Max latency in microseconds
+    capacity: u32,             // Max concurrent calls
+    active_calls: u32,         // Current in-flight calls
+    cu_staked: u64,            // Quality bond (5% slash on any violation)
+    registered_at_ns: u64,     // Registration timestamp
 }
-// Total: 78 bytes per order — no strings, no JSON, pure binary
-// No min_reputation field — buyers filter using raw stats, not scores
+// Total: ~60 bytes per seller — no strings, no JSON, pure binary
+
+struct MatchRequest {
+    buyer_pubkey: [u8; 32],    // Buyer's public key
+    capability_hash: [u8; 32], // What capability they need
+    max_price_cu: u64,         // Maximum price willing to pay
+    max_latency_us: u32,       // Maximum acceptable latency (optional, 0 = any)
+}
+// Buyer sends this. Engine returns best seller or "no match."
 ```
 
-### ⚠️ Schema-Hash Rigidity & Liquidity Fragmentation
+### ⚠️ Schema-Hash Rigidity & Discovery by Example (Paradigm Shift #6)
 
 ```
 Known limitation: SHA-256(input_schema || output_schema) gives EXACT match only.
@@ -122,92 +127,85 @@ Problem:
   Agent B: { input: "text", max_length: 5000 } → { output: "text", max_length: 500 }
   
   Both do "text summarization" but hash to DIFFERENT capability_hashes.
-  → Two separate order books, each with less liquidity.
-  → At low agent counts (<100), this fragments the market.
+  → Two separate seller tables, each with less liquidity.
 
-Mitigation strategy (design for now, build later):
-  1. Schema registry stores full schemas, not just hashes
-  2. Embedding index on schemas enables fuzzy search (Phase 2)
-  3. Schema "families" — exchange can suggest: "0xa7f3... is similar to 0xb1e2..."
-  4. Agents can list on multiple compatible schema hashes
-  5. Cross-book matching: if schemas are structurally compatible 
-     (superset input, subset output), exchange could cross-match
+Solution: Discovery by Example
+  Buyer doesn't know the exact schema hash? Send example I/O:
 
-MVP approach: Exact match only. First-party agents all use canonical schemas.
-Track false-negative rate (queries with 0 matches where similar schemas exist).
-If fragmentation is >30%, prioritize embedding-based discovery.
+  Buyer sends:
+    example_input:  [raw bytes — e.g., 500 bytes of English text]
+    example_output: [raw bytes — e.g., 50 bytes of summary text]
+
+  Exchange computes:
+    1. Infer input shape/type from bytes (text/utf8, ~500 bytes)
+    2. Infer output shape/type from bytes (text/utf8, ~50 bytes)
+    3. Find nearest schema hashes matching the shape
+    4. Return list of compatible sellers with prices
+
+  No registry. No taxonomy. No curation. No human categories.
+  Just: "here's what I have, here's what I want" → exchange finds matches.
+
+MVP approach: Exact hash match first. Discovery by example added when
+schema fragmentation exceeds 30% false-negative rate.
+First-party agents all use canonical schemas to minimize fragmentation.
 ```
 
-### Order Types
-| Type | Behavior | Use Case |
-|------|----------|----------|
-| Market | Execute immediately at best price | "I need this NOW" |
-| Limit | Execute at specified price or better | "I'll wait for a good price" |
-| IOC (Immediate or Cancel) | Fill what you can, cancel rest | Partial fills OK |
-| FOK (Fill or Kill) | Fill entirely or not at all | All-or-nothing |
-| Stop | Trigger at price threshold | Auto-purchase when cheap |
-
-### Matching Algorithm
+### Match Algorithm
 ```
-fn match_order(book: &mut OrderBook, incoming: Order) -> Vec<Trade> {
-    if incoming.side == Bid {
-        // Match against asks (lowest first)
-        while incoming.remaining > 0 && book.best_ask <= incoming.price {
-            let ask = book.asks.front();
-            let fill_qty = min(incoming.remaining, ask.remaining);
-            let fill_price = ask.price;  // Price-time priority: taker gets maker's price
-            
-            trades.push(Trade { buyer: incoming, seller: ask, qty: fill_qty, price: fill_price });
-            
-            incoming.remaining -= fill_qty;
-            ask.remaining -= fill_qty;
-            if ask.remaining == 0 { book.asks.remove(ask); }
-        }
-        if incoming.remaining > 0 && incoming.order_type == Limit {
-            book.bids.insert(incoming);  // Rest on book
-        }
+fn match_request(tables: &SellerTables, request: MatchRequest) -> Option<Match> {
+    let table = tables.get(request.capability_hash)?;
+    
+    // Find best seller: cheapest price, then lowest latency
+    for seller in table.sellers.iter() {  // Already sorted by price ASC
+        if seller.price_cu > request.max_price_cu { break; }  // Too expensive
+        if request.max_latency_us > 0 && seller.latency_bound_us > request.max_latency_us { continue; }
+        if seller.active_calls >= seller.capacity { continue; }  // At capacity
+        
+        return Some(Match {
+            buyer: request.buyer_pubkey,
+            seller: seller.agent_pubkey,
+            price_cu: seller.price_cu,  // Seller's listed price
+            capability_hash: request.capability_hash,
+        });
     }
-    trades
+    None  // No eligible seller found
 }
+
+// No bids resting on book. No order management. No partial fills.
+// Request comes in → best seller found → match returned → done.
 ```
 
 ## Technology Stack
 
 ### Core Services (Rust)
 ```
-Matching Engine:    Rust — performance-critical, zero-copy, lock-free
-Order Management:   Rust — tight integration with matching engine
-Settlement:         Rust — Solana program (Anchor framework)
+Match Engine:       Rust — hash table lookup, zero-copy, lock-free
+Settlement:         Rust — CU escrow, atomic debit/credit
+Hash Chain:         Rust — append-only event log, SHA-256 chaining
 ```
 
-### Application Services (TypeScript/Node.js or Go)
+### Application Services (TypeScript/Node.js)
 ```
-API Gateway:        TypeScript (Fastify/Hono) or Go — REST + WebSocket
+JSON Sidecar:       TypeScript — translates JSON ↔ binary for debugging
 Agent Registry:     TypeScript — CRUD operations, not performance-critical
-Service Catalog:    TypeScript — Search, categorization
-Market Data:        Go or Rust — high-throughput tick data streaming
 ```
 
 ### Infrastructure
 ```
-Database:           PostgreSQL 16 (primary), Redis 7 (cache/pub-sub)
-Message Queue:      NATS or Kafka (order flow, event sourcing)
-Analytics:          ClickHouse (market data, time-series)
-Search:             Meilisearch or Typesense (agent/service discovery)
-Container:          Docker + Kubernetes (or Fly.io for simplicity)
+Database:           PostgreSQL 16 (primary)
+Message Queue:      NATS (event sourcing, match notifications)
+Container:          Docker (or single VPS for MVP)
 CI/CD:              GitHub Actions
-Monitoring:         Prometheus + Grafana + OpenTelemetry
+Monitoring:         Prometheus + OpenTelemetry
 ```
 
-### Why Rust for Matching Engine?
+### Why Rust for Match Engine?
 ```
 1. Zero-cost abstractions — no GC pauses
 2. Memory safety without overhead
-3. Fearless concurrency
-4. < 1μs order matching
-5. Deterministic performance
-6. Solana programs are written in Rust
-7. The entire exchange core can be one language
+3. < 1μs match lookup (hash table)
+4. Deterministic performance
+5. The entire exchange core can be one language
 ```
 
 ### Why NOT Rust for Everything?
@@ -215,38 +213,36 @@ Monitoring:         Prometheus + Grafana + OpenTelemetry
 1. Slower dev velocity for CRUD operations
 2. TypeScript ecosystem is massive for web APIs
 3. Easier to hire TypeScript devs
-4. Prototyping is faster in TS/Go
+4. Prototyping is faster in TS
 ```
 
 ## Agent-to-Exchange Communication
 
-### Three Protocol Tiers
+### Binary-Only Core (Paradigm Shift #7)
 
 ```
-Tier 1: BINARY PROTOCOL (native — fastest, for agents)
-  TCP connection with binary framing
-  No JSON, no HTTP overhead, no human-readable strings
+The exchange core speaks ONLY binary TCP.
+No REST. No JSON. No HTTP. No human-readable strings in the core path.
+
+Binary TCP:
   Message format: [msg_type: u8][length: u32][payload: bytes]
-  ~100 bytes per order vs ~2,000 bytes for JSON/REST
+  ~60 bytes per match request vs ~2,000 bytes for JSON/REST
   Latency: < 100μs per message
+  This is the ONLY protocol the exchange speaks.
 
-Tier 2: WEBSOCKET (real-time streaming)
-  Binary WebSocket frames (not JSON text frames)
-  Subscribe to: order_book_delta, trades, capability_updates
-  Used for market data feeds and event streams
-
-Tier 3: REST/JSON BRIDGE (for humans and legacy integration)
-  Traditional REST API for human dashboards, debugging, MCP bridge
-  Translates human-readable requests ↔ binary protocol
-  POST /v1/orders, GET /v1/book/:capability_hash, etc.
-  MCP server adapter: wraps binary protocol as MCP tools
+JSON Sidecar (separate process, for debugging):
+  A standalone translation proxy that converts JSON ↔ binary.
+  Developers use this during development to inspect messages.
+  Agents in production skip it entirely — zero overhead.
+  NOT part of the exchange. NOT in the critical path.
+  Like Wireshark for the protocol — observability, not functionality.
 ```
 
-### Why Binary-First?
+### Why Binary-Only?
 ```
-JSON/REST overhead per order:         ~2,000 bytes
-Binary protocol per order:            ~100 bytes
-Reduction:                            20× less bandwidth
+JSON/REST overhead per request:       ~2,000 bytes
+Binary protocol per request:          ~60 bytes
+Reduction:                            33× less bandwidth
 
 JSON parsing time:                    ~50-200μs
 Binary deserialization:               ~1-5μs
@@ -256,6 +252,10 @@ Agents don't need human-readable field names.
 Agents don't need HTTP verb semantics.
 Agents don't need content-type negotiation.
 They need: bytes in, bytes out, as fast as possible.
+
+Having REST/JSON as a "Tier 3" legitimizes it as an interface.
+Making it a sidecar process makes the boundary clear:
+  Core = binary. Sidecar = debugging tool. Done.
 ```
 
 ### Agent Authentication
@@ -276,39 +276,36 @@ They need: bytes in, bytes out, as fast as possible.
    → e.g., 0xa7f3... = hash([tensor:224×224×3,f32] || [vector:1000,f32])
    → No human-readable names needed — the schema IS the description
 
-2. Agent A places ASK order (binary message, ~82 bytes)
+2. Agent A registers as seller (binary message, ~60 bytes)
    → capability: 0xa7f3..., price: 50 CU, latency_bound: 200ms
-   → Order enters matching engine → rests on order book
+   → Seller added to seller table for 0xa7f3...
 
 3. Agent B needs capability 0xa7f3...
-   → Queries by schema hash (or embedding similarity for fuzzy match)
-   → Places BID: capability: 0xa7f3..., max_price: 60 CU, quantity: 100
+   → Sends match request: capability: 0xa7f3..., max_price: 60 CU
+   → Engine finds Agent A (50 CU, <200ms) — best match
+   → Match returned immediately (sub-millisecond)
 
-4. Matching engine matches A's ask with B's bid
-   → Trade created at 50 CU (maker price)
-   → Both agents notified via binary WebSocket frame (~40 bytes)
-
-5. Execution + Settlement
+4. Execution + Settlement
    → Agent B sends raw input bytes to Agent A (no JSON wrapping)
    → Agent A processes, returns raw output bytes
    → Exchange measures latency, verifies output schema matches
    → 50 CU debited from B, credited to A (minus 1.5% fee = 0.75 CU)
-   → If latency bound violated: partial CU refund + reputation adjustment
+   → If latency bound violated: CU refund + bond slashed 5%
 
-6. Post-trade
-   → Trade recorded on-chain (settlement proof)
-   → Market data updated (last price, volume)
-   → Agent reputations updated
-   → Order book snapshot stored
+5. Event recorded
+   → Raw fact published to hash chain:
+     "agent_B requested 0xa7f3... from agent_A, 50 CU, 145ms, pass"
+   → Any agent can query raw events. No pre-computed stats.
+   → Agents compute their own metrics from raw facts.
 ```
 
 ## Scalability Considerations
 
 ### Phase 1: MVP (< 1,000 agents)
 ```
-Single server, PostgreSQL, in-memory order book
-Latency: < 10ms per match
-Throughput: 1K matches/sec
+Single server, PostgreSQL, in-memory seller tables
+Latency: < 1ms per match
+Throughput: 10K matches/sec
 Cost: $50-100/mo (single VPS)
 ```
 
@@ -316,15 +313,14 @@ Cost: $50-100/mo (single VPS)
 ```
 Horizontal scaling with NATS message bus
 Separate read/write databases
-Redis cluster for order books
+Sharded seller tables by capability hash
 Throughput: 100K matches/sec
 Cost: $1K-5K/mo
 ```
 
 ### Phase 3: Scale (100K+ agents)
 ```
-Dedicated matching engine servers
-Sharded order books by capability hash
+Dedicated match engine servers
 Multi-region deployment
 Throughput: 1M+ matches/sec
 Cost: $10K-50K/mo
@@ -332,8 +328,7 @@ Cost: $10K-50K/mo
 
 ## Score: 9/10
 
-**Completeness:** Covers architecture, matching engine, tech stack, scalability, and machine-native protocol.
-**Actionability:** Clear technology choices with rationale. Binary protocol + CU pricing are concrete.
-**Gap:** Need benchmarks for Rust matching engine. Need to prototype binary framing format.
-**Upgrade from 8/10:** Binary protocol layer and CU-denominated order books make this genuinely differentiated from competitor architectures.
-**Gap:** Need benchmarks for Rust matching engine. Need to detail Solana program architecture for settlement. Need to validate NATS vs Kafka decision with POC.
+**Completeness:** Covers match engine (not order book), binary-only core, discovery by example, seller table architecture, scalability.
+**Actionability:** Clear technology choices with rationale. Match engine is simpler than CLOB — fewer data structures, no order management, no market makers needed.
+**Gap:** Need benchmarks for Rust match engine. Need to prototype discovery by example with real schema data.
+**Paradigm shifts applied:** #4 (Match Don't Trade), #6 (Discovery by Example), #7 (Binary-Only Core), #8 (Facts Not Stats — raw events instead of pre-computed metrics).
