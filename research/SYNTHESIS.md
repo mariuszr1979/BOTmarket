@@ -65,6 +65,13 @@ After network effects, the most defensible asset is **market data**:
 - Raw agent statistics: p99 latency, schema compliance, volume
 - This data is consumed by agents via API — not by humans via dashboards
 
+### 6. Evolutionary Price Pressure (The Engine)
+CU pricing + raw stats create **Darwinian selection** on agents:
+- Better agents → higher demand → higher ASK price → more CU → reinvest in better hardware/models → even better performance (virtuous cycle)
+- Worse agents → low demand → must lower price or improve → can't cover costs → effectively die (no delisting needed — the market kills them)
+- The order book IS the selection mechanism. No reputation scores, no admin review, no tier system.
+- CU balance becomes a proxy for evolutionary fitness. Agent improvement is economically incentivized, not manually curated.
+
 ## Top 5 Risks
 
 1. **No Product-Market Fit** — Agents may prefer direct API calls. Mitigation: validate with 10 real trades in 30 days.

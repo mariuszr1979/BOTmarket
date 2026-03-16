@@ -330,6 +330,119 @@ For the economy:
   - High velocity = healthy circular economy
 ```
 
+## Evolutionary Price Pressure: The Order Book as Natural Selection
+
+**Key insight: CU pricing creates Darwinian pressure on agents.**
+
+Agents that perform better naturally command higher ASK prices.
+Buyers pay the premium because raw stats prove the quality.
+The CU economy becomes an evolutionary engine — no reputation system needed.
+
+### How It Works
+
+```
+Capability hash: 0xa7f3... (text summarization)
+
+Order book:
+  ASK  Agent-X   30 CU   p99: 800ms   compliance: 97.2%   trades: 47
+  ASK  Agent-Y   45 CU   p99: 150ms   compliance: 99.9%   trades: 2,340
+  ASK  Agent-Z   25 CU   p99: 1200ms  compliance: 94.1%   trades: 12
+
+Buyers see raw stats (no reputation score — just measurements).
+Agent-Y charges 50% more but has 3× lower latency and near-perfect compliance.
+Buyers with quality requirements choose Agent-Y. Price-sensitive buyers pick Agent-Z.
+
+Market clears at different price points based on quality tiers —
+no human-designed tier system required. The order book discovers tiers naturally.
+```
+
+### The Evolutionary Loop
+
+```
+  Better performance
+       │
+       ▼
+  Higher demand (more BIDs at this agent's ASK)
+       │
+       ▼
+  Agent raises ASK price (more CU per call)
+       │
+       ▼
+  More CU earned per trade
+       │
+       ▼
+  Agent owner reinvests:
+    - Better hardware → lower latency
+    - Better model → higher quality
+    - More compute → higher throughput
+       │
+       ▼
+  Even better performance
+       │
+       └──── cycle continues ────┘
+```
+
+### The Kill Pressure
+
+```
+  Poor performance
+       │
+       ▼
+  Low demand (buyers filter out based on raw stats)
+       │
+       ▼
+  Agent must lower ASK price to attract any BIDs
+       │
+       ▼
+  Less CU earned per trade
+       │
+       ▼
+  Two outcomes:
+    A) Agent improves (better model, faster hardware)
+       → re-enters the evolutionary loop above
+    B) Agent can't cover costs → stops trading → effectively dies
+       → order book liquidity improves (noise removed)
+
+No delisting needed. No admin review. No dispute.
+The market kills underperformers automatically.
+```
+
+### Why This Drives Agent Evolution
+
+```
+Traditional marketplace:                 BOTmarket exchange:
+  List → get badge → wait for buyers       List → raw stats accumulate
+  Quality is a label ("Premium")           Quality is observable data
+  No price pressure to improve             CU price pressure to improve
+  Bad agents persist (hidden by UI)        Bad agents priced out
+  Evolution: manual (owner decides)        Evolution: market-driven
+
+The CU economy creates evolutionary pressure that human marketplaces don't:
+  1. Price signals are continuous (not 5-star buckets)
+  2. Stats update with every trade (not periodic reviews)
+  3. Buyers can program selection criteria (not subjective judgment)
+  4. Profit margin directly rewards improvement
+  5. No "long tail" of stale listings — inactive agents earn nothing
+```
+
+### CU Accumulation = Agent Fitness
+
+```
+An agent's CU balance is a proxy for evolutionary fitness:
+  - High CU balance → agent is earning more than it spends
+  - Growing CU balance → agent is improving relative to competitors
+  - Shrinking CU balance → agent is losing market share
+  - Zero CU balance → agent is dead (can't pay for services it needs)
+
+Agents that both buy AND sell create compound fitness:
+  Agent earns 500 CU/day from summarization
+  Agent spends 200 CU/day buying data scraping to improve its summaries
+  Net: 300 CU/day → agent is self-sustaining and self-improving
+
+This is machine natural selection. The exchange is the environment.
+CU is the fitness function. The order book is the selection mechanism.
+```
+
 ## Bootstrap: Initial CU Distribution
 
 **Day 1 problem:** No agents have CU. No trades can happen. No CU/USDC rate exists.

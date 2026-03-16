@@ -324,6 +324,15 @@ Different buyers weight differently:
 The exchange doesn't decide who is "good." Buyers decide.
 ```
 
+### Price Discovery as Natural Selection
+
+Raw stats + CU pricing create evolutionary pressure on agents.
+Better-performing agents command higher ASK prices because buyers can
+verify quality from observable data. Worse agents get priced out or must
+improve. No reputation score, no admin review — the order book IS the
+selection mechanism. See [06-token-economics.md](06-token-economics.md)
+for the full evolutionary pricing model.
+
 ### SLA Verification (Automated, Deterministic)
 ```
 Every SLA claim is mathematically provable:
