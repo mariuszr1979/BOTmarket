@@ -9,11 +9,14 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from db import init_db, get_connection
 from events import record_event
+from matching import rebuild_seller_tables, add_seller, get_sellers
 
 
 @asynccontextmanager
 async def lifespan(app):
-    init_db()
+    conn = init_db()
+    rebuild_seller_tables(conn)
+    conn.close()
     yield
 
 
@@ -86,6 +89,77 @@ def register_schema(body: SchemaRegisterRequest, x_api_key: str = Header()):
         conn.close()
 
     return {"capability_hash": capability_hash}
+
+
+class SellerRegisterRequest(BaseModel):
+    capability_hash: str
+    price_cu: float
+    capacity: int
+
+
+@app.post("/v1/sellers/register", status_code=201)
+def register_seller(body: SellerRegisterRequest, x_api_key: str = Header()):
+    agent_pubkey = authenticate(x_api_key)
+
+    if body.price_cu <= 0:
+        raise HTTPException(status_code=400, detail="price_cu must be > 0")
+    if body.capacity <= 0:
+        raise HTTPException(status_code=400, detail="capacity must be > 0")
+
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT capability_hash FROM schemas WHERE capability_hash = ?",
+            (body.capability_hash,),
+        ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="capability_hash not found")
+
+        now_ns = time.time_ns()
+        conn.execute(
+            "INSERT OR REPLACE INTO sellers "
+            "(agent_pubkey, capability_hash, price_cu, latency_bound_us, capacity, active_calls, cu_staked, registered_at_ns) "
+            "VALUES (?, ?, ?, 0, ?, 0, 0.0, ?)",
+            (agent_pubkey, body.capability_hash, body.price_cu, body.capacity, now_ns),
+        )
+        record_event(conn, "seller_registered", json.dumps({
+            "agent": agent_pubkey,
+            "capability_hash": body.capability_hash,
+            "price_cu": body.price_cu,
+        }))
+        conn.commit()
+    finally:
+        conn.close()
+
+    seller = {
+        "agent_pubkey": agent_pubkey,
+        "capability_hash": body.capability_hash,
+        "price_cu": body.price_cu,
+        "latency_bound_us": 0,
+        "capacity": body.capacity,
+        "active_calls": 0,
+        "cu_staked": 0.0,
+    }
+    add_seller(seller)
+
+    return {"status": "registered", "capability_hash": body.capability_hash, "price_cu": body.price_cu}
+
+
+@app.get("/v1/sellers/{capability_hash}")
+def list_sellers(capability_hash: str):
+    sellers = get_sellers(capability_hash)
+    return {
+        "capability_hash": capability_hash,
+        "sellers": [
+            {
+                "agent_pubkey": s["agent_pubkey"],
+                "price_cu": s["price_cu"],
+                "capacity": s["capacity"],
+                "active_calls": s["active_calls"],
+            }
+            for s in sellers
+        ],
+    }
 
 
 if __name__ == "__main__":

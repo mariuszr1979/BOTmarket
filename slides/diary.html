@@ -323,15 +323,15 @@
     <div class="divider" style="margin:0 auto 40px;"></div>
     <div class="stat-row" style="justify-content:center;">
       <div class="stat">
-        <div class="val" style="color:var(--green);">4</div>
+        <div class="val" style="color:var(--green);">5</div>
         <div class="lbl">Steps Complete</div>
       </div>
       <div class="stat">
-        <div class="val" style="color:var(--accent);">46</div>
+        <div class="val" style="color:var(--accent);">59</div>
         <div class="lbl">Tests Passing</div>
       </div>
       <div class="stat">
-        <div class="val" style="color:var(--purple);">13</div>
+        <div class="val" style="color:var(--purple);">14</div>
         <div class="lbl">Files Changed</div>
       </div>
       <div class="stat">
@@ -341,8 +341,8 @@
     </div>
     <div style="margin-top:48px;">
       <div class="progress-bar" style="max-width:600px;margin:0 auto;">
-        <div class="progress-fill" style="width:31%;background:linear-gradient(90deg,var(--green),var(--accent));">
-          4/14
+        <div class="progress-fill" style="width:36%;background:linear-gradient(90deg,var(--green),var(--accent));">
+          5/14
         </div>
       </div>
       <div style="font-size:12px;color:var(--dim);margin-top:8px;">Steps 0–13 · Weekend 1 of 6</div>
@@ -954,6 +954,177 @@ def register_agent():
 </section>
 
 <!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 4 — OVERVIEW -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 4 / 13</span>
+  <div class="content">
+    <div style="margin-bottom:8px;">
+      <span class="pill pill-green">COMPLETED</span>
+      <span style="font-size:13px;color:var(--dim);margin-left:12px;">Weekend 1 · Session 2</span>
+    </div>
+    <h2>Step 4: Seller Registration</h2>
+    <p class="subtitle" style="margin-bottom:36px;">
+      Agents can now list themselves as sellers for any registered capability.
+      Price in CU, capacity limit, in-memory match tables kept in sync.
+    </p>
+
+    <div class="g2">
+      <div class="card">
+        <h3 style="color:var(--accent);">POST /v1/sellers/register</h3>
+        <div class="mono-block" style="font-size:12px;margin-top:12px;">Auth: X-API-Key header
+
+Request: {
+  "capability_hash": "d4e5f6...",
+  "price_cu": 15.0,
+  "capacity": 10
+}
+
+Response: {
+  "status": "registered",
+  "capability_hash": "d4e5f6...",
+  "price_cu": 15.0
+}
+
+Validations:
+  ✗ capability_hash not found → 404
+  ✗ price_cu ≤ 0 → 400
+  ✗ capacity ≤ 0 → 400
+  ✗ no auth → 401</div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--accent);">GET /v1/sellers/{capability_hash}</h3>
+        <div class="mono-block" style="font-size:12px;margin-top:12px;">Response: {
+  "capability_hash": "d4e5f6...",
+  "sellers": [
+    {
+      "agent_pubkey": "uuid...",
+      "price_cu": 10.0,
+      "capacity": 5,
+      "active_calls": 0
+    },
+    ...
+  ]
+}
+
+✓ Sorted by price (ASC)
+✓ Then latency (ASC)
+✓ Empty list if no sellers</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 4 — MATCH ENGINE PREVIEW -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 4 — Match Engine</span>
+  <div class="content">
+    <h2>In-Memory Seller Tables</h2>
+    <p class="subtitle" style="margin-bottom:32px;">matching.py — no longer a stub. Seller tables rebuilt from DB on startup, updated in real-time.</p>
+
+    <div class="g2">
+      <div class="card">
+        <h3 style="color:var(--green);">matching.py</h3>
+        <div class="mono-block" style="font-size:12px;margin-top:12px;">_seller_tables = defaultdict(list)
+# {capability_hash: [seller, ...]}
+# Always sorted: (price ASC, latency ASC)
+
+rebuild_seller_tables(conn)
+  → Clear + reload from SQLite
+  → Called on startup
+
+add_seller(seller)
+  → Append + re-sort
+  → Called on POST /register
+
+get_sellers(capability_hash)
+  → O(1) lookup
+  → Returns sorted list</div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--accent);">Design Notes</h3>
+        <div style="font-size:13px;color:var(--muted);line-height:2;margin-top:12px;">
+          <span style="color:var(--green);">●</span> In-memory for speed, SQLite for durability<br>
+          <span style="color:var(--green);">●</span> Rebuild on startup = crash recovery<br>
+          <span style="color:var(--green);">●</span> INSERT OR REPLACE = upsert semantics<br>
+          <span style="color:var(--green);">●</span> Same agent, multiple caps = OK<br>
+          <span style="color:var(--green);">●</span> Multiple agents, same cap = sorted list<br>
+          <span style="color:var(--green);">●</span> PS#4: Match, Don't Trade<br>
+          <span style="color:var(--green);">●</span> PS#5: CU = fixed unit, price floats<br>
+          <span style="color:var(--green);">●</span> PS#6: Hash lookup, O(1)
+        </div>
+        <div style="margin-top:16px;">
+          <span class="pill pill-blue">PS#4</span>
+          <span class="pill pill-purple" style="margin-left:4px;">PS#5</span>
+          <span class="pill pill-cyan" style="margin-left:4px;">PS#6</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 4 — TESTS + AUDIT -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 4 — Tests</span>
+  <div class="content">
+    <h2 style="color:var(--green);">13 New Tests</h2>
+    <p class="subtitle" style="margin-bottom:32px;">Seller registration, validation, auth, multi-agent/multi-cap, GET sorted results. 0 rule violations.</p>
+
+    <div class="g2" style="margin-bottom:24px;">
+      <div class="card">
+        <h3 style="color:var(--green);">Seller Tests</h3>
+        <div style="font-size:13px;color:var(--muted);line-height:2;margin-top:8px;">
+          ✓ Register returns 201<br>
+          ✓ Response has correct fields<br>
+          ✓ Persisted in SQLite<br>
+          ✓ Event recorded<br>
+          ✓ Reject bad capability_hash → 404<br>
+          ✓ Reject zero price → 400<br>
+          ✓ Reject negative price → 400<br>
+          ✓ Reject zero capacity → 400<br>
+          ✓ Requires auth → 401<br>
+          ✓ Same agent, multiple capabilities<br>
+          ✓ Multiple agents, same capability<br>
+          ✓ GET empty → empty list<br>
+          ✓ GET sorted by price (ASC)
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">Rules Audit</h3>
+        <div class="rule-audit" style="margin-top:12px;">
+          <span class="rule-id">R0</span>  <span class="rule-name">Simple validation, no tiers</span>       <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R2</span>  <span class="rule-name">CU pricing, hash identity</span>         <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R3</span>  <span class="rule-name">PS#4,5,6 all satisfied</span>             <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R4</span>  <span class="rule-name">API key auth, structural</span>           <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R6</span>  <span class="rule-name">No order books, no partial fills</span>   <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R7</span>  <span class="rule-name">Seller reg = in-scope MVP item 3</span>   <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R8</span>  <span class="rule-name">Exact sellers table schema</span>         <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R10</span> <span class="rule-name">Functions, raw SQL, events</span>         <span class="rule-status rule-pass">✓ PASS</span>
+        </div>
+        <div class="g2" style="margin-top:24px;">
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--green);">0</div>
+            <div style="font-size:12px;color:var(--dim);">VIOLATIONS</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--accent);">59</div>
+            <div style="font-size:12px;color:var(--dim);">TESTS PASSING</div>
+            <div style="font-size:11px;color:var(--dim);">46 prior + 13 new</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
 <!-- SLIDE: ROADMAP — WHAT'S NEXT -->
 <!-- ═══════════════════════════════════════════ -->
 <section class="slide">
@@ -961,7 +1132,7 @@ def register_agent():
   <span class="slide-num">Roadmap</span>
   <div class="content">
     <h2>What's Next</h2>
-    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–3 done.</p>
+    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–4 done.</p>
 
     <div class="g2">
       <div>
@@ -984,7 +1155,7 @@ def register_agent():
           </div>
           <div class="timeline-item pending">
             <h4>Step 4 — Seller Registration</h4>
-            <p>List as seller: capability + price + capacity.</p>
+            <p>List as seller: capability + price + capacity. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
           <div class="timeline-item pending">
             <h4>Step 5 — Match Engine</h4>
@@ -1051,7 +1222,11 @@ def register_agent():
     <div class="card">
       <div class="timeline">
         <div class="timeline-item">
-          <h4><code>NEW</code> — Step 3: Schema Store — 46 tests passing</h4>
+          <h4><code>NEW</code> — Step 4: Seller Registration — 59 tests passing</h4>
+          <p>POST /v1/sellers/register, GET /v1/sellers/{hash}, matching.py implemented. 13 new tests.</p>
+        </div>
+        <div class="timeline-item">
+          <h4><code>fcd322f</code> — Step 3: Schema Store + Step 13 added — 46 tests passing</h4>
           <p>POST /v1/schemas/register, authenticate(), SHA-256 content-addressed hashing. 11 new tests.</p>
         </div>
         <div class="timeline-item">

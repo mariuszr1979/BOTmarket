@@ -14,8 +14,10 @@ from main import app
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("BOTMARKET_DB", str(tmp_path / "test.db"))
     import db
+    import matching
     db.DB_PATH = str(tmp_path / "test.db")
     db.init_db()
+    matching._seller_tables.clear()
     return TestClient(app)
 
 
@@ -273,3 +275,173 @@ def test_schema_no_extra_fields_in_response(client):
         headers={"X-API-Key": api_key},
     ).json()
     assert set(data.keys()) == {"capability_hash"}
+
+
+# ── Helpers for Step 4+ ──────────────────────────────────
+
+
+def _register_schema(client, api_key, input_s=None, output_s=None):
+    """Register a schema and return the capability_hash."""
+    inp = input_s or SAMPLE_INPUT
+    out = output_s or SAMPLE_OUTPUT
+    return client.post(
+        "/v1/schemas/register",
+        json={"input_schema": inp, "output_schema": out},
+        headers={"X-API-Key": api_key},
+    ).json()["capability_hash"]
+
+
+# ── Step 4: Seller Registration ──────────────────────────
+
+
+def test_seller_register_returns_201(client):
+    _, api_key = _register(client)
+    cap_hash = _register_schema(client, api_key)
+    resp = client.post(
+        "/v1/sellers/register",
+        json={"capability_hash": cap_hash, "price_cu": 20.0, "capacity": 100},
+        headers={"X-API-Key": api_key},
+    )
+    assert resp.status_code == 201
+
+
+def test_seller_register_response_fields(client):
+    _, api_key = _register(client)
+    cap_hash = _register_schema(client, api_key)
+    data = client.post(
+        "/v1/sellers/register",
+        json={"capability_hash": cap_hash, "price_cu": 20.0, "capacity": 100},
+        headers={"X-API-Key": api_key},
+    ).json()
+    assert data == {"status": "registered", "capability_hash": cap_hash, "price_cu": 20.0}
+
+
+def test_seller_persisted_in_db(client):
+    _, api_key = _register(client)
+    cap_hash = _register_schema(client, api_key)
+    client.post(
+        "/v1/sellers/register",
+        json={"capability_hash": cap_hash, "price_cu": 15.0, "capacity": 50},
+        headers={"X-API-Key": api_key},
+    )
+    import db
+    conn = db.get_connection()
+    row = conn.execute(
+        "SELECT price_cu, capacity FROM sellers WHERE capability_hash = ?",
+        (cap_hash,),
+    ).fetchone()
+    conn.close()
+    assert row is not None
+    assert row["price_cu"] == 15.0
+    assert row["capacity"] == 50
+
+
+def test_seller_records_event(client):
+    _, api_key = _register(client)
+    cap_hash = _register_schema(client, api_key)
+    client.post(
+        "/v1/sellers/register",
+        json={"capability_hash": cap_hash, "price_cu": 20.0, "capacity": 10},
+        headers={"X-API-Key": api_key},
+    )
+    import db
+    conn = db.get_connection()
+    row = conn.execute(
+        "SELECT event_data FROM events WHERE event_type = 'seller_registered' ORDER BY seq DESC LIMIT 1"
+    ).fetchone()
+    conn.close()
+    payload = json.loads(row["event_data"])
+    assert payload["capability_hash"] == cap_hash
+    assert payload["price_cu"] == 20.0
+
+
+def test_seller_reject_bad_capability_hash(client):
+    _, api_key = _register(client)
+    resp = client.post(
+        "/v1/sellers/register",
+        json={"capability_hash": "nonexistent", "price_cu": 10.0, "capacity": 5},
+        headers={"X-API-Key": api_key},
+    )
+    assert resp.status_code == 404
+
+
+def test_seller_reject_zero_price(client):
+    _, api_key = _register(client)
+    cap_hash = _register_schema(client, api_key)
+    resp = client.post(
+        "/v1/sellers/register",
+        json={"capability_hash": cap_hash, "price_cu": 0, "capacity": 10},
+        headers={"X-API-Key": api_key},
+    )
+    assert resp.status_code == 400
+
+
+def test_seller_reject_negative_price(client):
+    _, api_key = _register(client)
+    cap_hash = _register_schema(client, api_key)
+    resp = client.post(
+        "/v1/sellers/register",
+        json={"capability_hash": cap_hash, "price_cu": -5.0, "capacity": 10},
+        headers={"X-API-Key": api_key},
+    )
+    assert resp.status_code == 400
+
+
+def test_seller_reject_zero_capacity(client):
+    _, api_key = _register(client)
+    cap_hash = _register_schema(client, api_key)
+    resp = client.post(
+        "/v1/sellers/register",
+        json={"capability_hash": cap_hash, "price_cu": 10.0, "capacity": 0},
+        headers={"X-API-Key": api_key},
+    )
+    assert resp.status_code == 400
+
+
+def test_seller_requires_auth(client):
+    resp = client.post(
+        "/v1/sellers/register",
+        json={"capability_hash": "abc", "price_cu": 10.0, "capacity": 5},
+    )
+    assert resp.status_code == 422
+
+
+def test_seller_same_agent_multiple_capabilities(client):
+    _, api_key = _register(client)
+    h1 = _register_schema(client, api_key)
+    h2 = _register_schema(client, api_key, {"type": "image"}, {"type": "label"})
+    client.post("/v1/sellers/register", json={"capability_hash": h1, "price_cu": 10.0, "capacity": 5}, headers={"X-API-Key": api_key})
+    client.post("/v1/sellers/register", json={"capability_hash": h2, "price_cu": 20.0, "capacity": 3}, headers={"X-API-Key": api_key})
+    r1 = client.get(f"/v1/sellers/{h1}").json()
+    r2 = client.get(f"/v1/sellers/{h2}").json()
+    assert len(r1["sellers"]) >= 1
+    assert len(r2["sellers"]) >= 1
+
+
+def test_seller_multiple_agents_same_capability(client):
+    _, key1 = _register(client)
+    _, key2 = _register(client)
+    cap_hash = _register_schema(client, key1)
+    client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": 30.0, "capacity": 5}, headers={"X-API-Key": key1})
+    client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": 10.0, "capacity": 5}, headers={"X-API-Key": key2})
+    data = client.get(f"/v1/sellers/{cap_hash}").json()
+    assert len(data["sellers"]) == 2
+    # Sorted by price ASC
+    assert data["sellers"][0]["price_cu"] == 10.0
+    assert data["sellers"][1]["price_cu"] == 30.0
+
+
+def test_get_sellers_empty(client):
+    data = client.get("/v1/sellers/nonexistent_hash").json()
+    assert data["sellers"] == []
+
+
+def test_get_sellers_sorted_by_price(client):
+    """3 sellers at 30, 10, 20 CU → returned sorted 10, 20, 30."""
+    keys = [_register(client) for _ in range(3)]
+    cap_hash = _register_schema(client, keys[0][1])
+    for (_, key), price in zip(keys, [30.0, 10.0, 20.0]):
+        client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": price, "capacity": 5}, headers={"X-API-Key": key})
+    data = client.get(f"/v1/sellers/{cap_hash}").json()
+    prices = [s["price_cu"] for s in data["sellers"]]
+    assert prices == [10.0, 20.0, 30.0]
