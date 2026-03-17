@@ -1,5 +1,7 @@
 import sys
 import os
+import json
+import uuid
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -21,3 +23,90 @@ def test_health_returns_ok(client):
     resp = client.get("/v1/health")
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
+
+
+# ── Step 2: Agent Registration ────────────────────────────
+
+
+def test_register_returns_201(client):
+    resp = client.post("/v1/agents/register")
+    assert resp.status_code == 201
+
+
+def test_register_returns_agent_id_and_api_key(client):
+    data = client.post("/v1/agents/register").json()
+    assert "agent_id" in data
+    assert "api_key" in data
+    assert "cu_balance" in data
+
+
+def test_register_agent_id_is_uuid(client):
+    data = client.post("/v1/agents/register").json()
+    parsed = uuid.UUID(data["agent_id"])
+    assert str(parsed) == data["agent_id"]
+
+
+def test_register_api_key_is_64_hex(client):
+    data = client.post("/v1/agents/register").json()
+    assert len(data["api_key"]) == 64
+    int(data["api_key"], 16)  # raises ValueError if not hex
+
+
+def test_register_cu_balance_is_zero(client):
+    """Rule 6: earn-first — cu_balance = 0.0 at registration, no grants."""
+    data = client.post("/v1/agents/register").json()
+    assert data["cu_balance"] == 0.0
+
+
+def test_register_persisted_in_db(client):
+    data = client.post("/v1/agents/register").json()
+    import db
+    conn = db.get_connection()
+    row = conn.execute(
+        "SELECT pubkey, api_key, cu_balance FROM agents WHERE pubkey = ?",
+        (data["agent_id"],),
+    ).fetchone()
+    conn.close()
+    assert row is not None
+    assert row["pubkey"] == data["agent_id"]
+    assert row["api_key"] == data["api_key"]
+    assert row["cu_balance"] == 0.0
+
+
+def test_register_records_event(client):
+    data = client.post("/v1/agents/register").json()
+    import db
+    conn = db.get_connection()
+    row = conn.execute(
+        "SELECT event_type, event_data FROM events WHERE event_type = 'agent_registered' ORDER BY seq DESC LIMIT 1"
+    ).fetchone()
+    conn.close()
+    assert row is not None
+    assert row["event_type"] == "agent_registered"
+    payload = json.loads(row["event_data"])
+    assert payload["agent"] == data["agent_id"]
+
+
+def test_register_100_unique_agents(client):
+    """Registering 100 agents → all get unique pubkeys and api_keys."""
+    results = [client.post("/v1/agents/register").json() for _ in range(100)]
+    pubkeys = {r["agent_id"] for r in results}
+    api_keys = {r["api_key"] for r in results}
+    assert len(pubkeys) == 100
+    assert len(api_keys) == 100
+
+
+def test_register_no_extra_fields(client):
+    """Rule 2: no name, email, or profile fields in response."""
+    data = client.post("/v1/agents/register").json()
+    assert set(data.keys()) == {"agent_id", "api_key", "cu_balance"}
+
+
+def test_register_ignores_extra_body(client):
+    """Sending extra fields in body does not affect registration or response."""
+    resp = client.post(
+        "/v1/agents/register",
+        json={"name": "evil", "email": "bad@bad.com"},
+    )
+    assert resp.status_code == 201
+    assert set(resp.json().keys()) == {"agent_id", "api_key", "cu_balance"}

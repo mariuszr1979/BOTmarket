@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOTmarket — Build Diary</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface2: #1a2332;
+    --border: #1e293b;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --dim: #64748b;
+    --accent: #38bdf8;
+    --accent2: #818cf8;
+    --green: #34d399;
+    --red: #f87171;
+    --orange: #fb923c;
+    --blue: #38bdf8;
+    --purple: #a78bfa;
+    --cyan: #22d3ee;
+  }
+
+  html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .slide {
+    min-height: 100vh;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 40px;
+    position: relative;
+  }
+  .slide-num {
+    position: absolute;
+    top: 30px;
+    right: 40px;
+    font-size: 13px;
+    color: var(--dim);
+    font-weight: 600;
+  }
+  .slide-logo {
+    position: absolute;
+    top: 30px;
+    left: 40px;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+
+  .content { max-width: 1000px; width: 100%; }
+
+  h1 {
+    font-size: 56px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    line-height: 1.1;
+  }
+  h2 {
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.15;
+    margin-bottom: 12px;
+  }
+  h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .subtitle {
+    font-size: 20px;
+    color: var(--muted);
+    line-height: 1.6;
+    max-width: 700px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+  }
+  .card p, .card li {
+    font-size: 15px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+  .pill {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 100px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .pill-green { background: rgba(52,211,153,0.12); color: #34d399; }
+  .pill-red { background: rgba(248,113,113,0.12); color: #f87171; }
+  .pill-blue { background: rgba(56,189,248,0.12); color: #38bdf8; }
+  .pill-purple { background: rgba(167,139,250,0.12); color: #a78bfa; }
+  .pill-orange { background: rgba(251,146,60,0.12); color: #fb923c; }
+  .pill-cyan { background: rgba(34,211,238,0.12); color: #22d3ee; }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    background: rgba(56,189,248,0.08);
+    padding: 2px 8px;
+    border-radius: 6px;
+    color: var(--accent);
+  }
+
+  .mono-block {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    line-height: 1.8;
+    color: var(--muted);
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  .timeline {
+    position: relative;
+    padding-left: 32px;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 28px;
+  }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -29px;
+    top: 6px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--green);
+    border: 2px solid var(--bg);
+  }
+  .timeline-item.pending::before {
+    background: var(--dim);
+  }
+  .timeline-item h4 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .timeline-item p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .check-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 24px;
+  }
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .check-mark {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .check-pass { background: rgba(52,211,153,0.15); color: var(--green); }
+  .check-fixed { background: rgba(251,146,60,0.15); color: var(--orange); }
+
+  .stat-row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    text-align: center;
+  }
+  .stat .val {
+    font-size: 36px;
+    font-weight: 900;
+    letter-spacing: -1px;
+  }
+  .stat .lbl {
+    font-size: 12px;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  .file-tree {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 2;
+    color: var(--muted);
+  }
+  .file-tree .dir { color: var(--accent); font-weight: 600; }
+  .file-tree .new { color: var(--green); }
+  .file-tree .stub { color: var(--dim); }
+  .file-tree .comment { color: var(--dim); font-style: italic; }
+
+  .progress-bar {
+    width: 100%;
+    height: 28px;
+    background: var(--surface2);
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid var(--border);
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--bg);
+    transition: width 0.5s ease;
+  }
+
+  .rule-audit {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 6px 16px;
+    align-items: center;
+    font-size: 14px;
+  }
+  .rule-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .rule-name { color: var(--muted); }
+  .rule-status { font-weight: 700; font-size: 13px; }
+  .rule-pass { color: var(--green); }
+  .rule-fixed { color: var(--orange); }
+
+  .divider {
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 2px;
+    margin: 20px 0;
+  }
+
+  @media (max-width: 768px) {
+    h1 { font-size: 36px; }
+    h2 { font-size: 28px; }
+    .g2, .g3 { grid-template-columns: 1fr; }
+    .check-grid { grid-template-columns: 1fr; }
+    .stat-row { gap: 20px; }
+    .stat .val { font-size: 28px; }
+    .slide { padding: 40px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE 1: TITLE -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Build Diary</span>
+  <div class="content" style="text-align:center;">
+    <div style="margin-bottom:24px;">
+      <span class="pill pill-green">LIVE BUILD LOG</span>
+    </div>
+    <h1>Build Diary</h1>
+    <p class="subtitle" style="margin:16px auto 40px;">
+      Step-by-step record of what was built, what was tested, and what was learned.
+      Updated after every completed step.
+    </p>
+    <div class="divider" style="margin:0 auto 40px;"></div>
+    <div class="stat-row" style="justify-content:center;">
+      <div class="stat">
+        <div class="val" style="color:var(--green);">3</div>
+        <div class="lbl">Steps Complete</div>
+      </div>
+      <div class="stat">
+        <div class="val" style="color:var(--accent);">35</div>
+        <div class="lbl">Tests Passing</div>
+      </div>
+      <div class="stat">
+        <div class="val" style="color:var(--purple);">12</div>
+        <div class="lbl">Files Changed</div>
+      </div>
+      <div class="stat">
+        <div class="val" style="color:var(--orange);">1</div>
+        <div class="lbl">Rule Violation Fixed</div>
+      </div>
+    </div>
+    <div style="margin-top:48px;">
+      <div class="progress-bar" style="max-width:600px;margin:0 auto;">
+        <div class="progress-fill" style="width:23%;background:linear-gradient(90deg,var(--green),var(--accent));">
+          3/13
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--dim);margin-top:8px;">Steps 0–12 · Weekend 1 of 5</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE 2: STEP 0 — OVERVIEW -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 0 / 12</span>
+  <div class="content">
+    <div style="margin-bottom:8px;">
+      <span class="pill pill-green">COMPLETED</span>
+      <span style="font-size:13px;color:var(--dim);margin-left:12px;">Weekend 1 · Session 1</span>
+    </div>
+    <h2>Step 0: Project Skeleton</h2>
+    <p class="subtitle" style="margin-bottom:36px;">
+      Virtual environment, FastAPI app, SQLite database, binary wire format, TCP server skeleton.
+      Everything starts. Nothing does anything yet.
+    </p>
+
+    <div class="g3">
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">✓</div>
+        <h3 style="margin-top:8px;">main.py</h3>
+        <p>FastAPI on port 8000<br><code>/v1/health → {"status":"ok"}</code></p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">✓</div>
+        <h3 style="margin-top:8px;">tcp_server.py</h3>
+        <p>asyncio TCP on port 9000<br>Binary protocol ready (echo skeleton)</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">✓</div>
+        <h3 style="margin-top:8px;">db.py</h3>
+        <p>SQLite init, 6 tables<br>Foreign key enforcement ON</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE 3: STEP 0 — FILE TREE -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 0 — Files</span>
+  <div class="content">
+    <h2>What Was Created</h2>
+    <p class="subtitle" style="margin-bottom:32px;">10 source files. One file, one concern. No dead code.</p>
+
+    <div class="g2">
+      <div class="card">
+        <h3>📁 Source Files</h3>
+        <div class="file-tree">
+<span class="dir">botmarket/</span>
+├── <span class="new">main.py</span>         <span class="comment"># FastAPI entry (port 8000)</span>
+├── <span class="new">tcp_server.py</span>   <span class="comment"># TCP server (port 9000)</span>
+├── <span class="new">wire.py</span>         <span class="comment"># Binary pack/unpack</span>
+├── <span class="new">db.py</span>           <span class="comment"># SQLite setup + 6 tables</span>
+├── <span class="new">constants.py</span>    <span class="comment"># Protocol constants</span>
+├── <span class="stub">matching.py</span>     <span class="comment"># stub → Step 5</span>
+├── <span class="stub">settlement.py</span>   <span class="comment"># stub → Step 7</span>
+├── <span class="stub">events.py</span>       <span class="comment"># stub → Step 8</span>
+├── <span class="stub">verification.py</span> <span class="comment"># stub → Step 7</span>
+├── <span class="new">requirements.txt</span>
+└── <span class="new">RULES.md</span>        <span class="comment"># Coding bible copy</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>🧪 Test Files</h3>
+        <div class="file-tree">
+<span class="dir">botmarket/tests/</span>
+├── <span class="new">test_constants.py</span>  <span class="comment"># 5 tests</span>
+│   ├─ fee components sum
+│   ├─ 1.5% total verified
+│   ├─ 5% slash verified
+│   ├─ slash dist sums to 1
+│   └─ 200 CU trade proof
+├── <span class="new">test_db.py</span>         <span class="comment"># 11 tests</span>
+│   ├─ 6 tables created
+│   ├─ column checks (×6)
+│   ├─ CU default = 0
+│   ├─ duplicate PK fails
+│   ├─ FK enforcement
+│   └─ no banned columns
+├── <span class="new">test_wire.py</span>       <span class="comment"># 5 tests</span>
+│   ├─ pack/unpack roundtrip
+│   ├─ header = 5 bytes
+│   ├─ empty payload OK
+│   ├─ truncated → None
+│   └─ all 10 msg types OK
+└── <span class="new">test_main.py</span>       <span class="comment"># 1 test</span>
+    └─ health → 200 + ok
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE 4: STEP 0 — DATABASE -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 0 — Database</span>
+  <div class="content">
+    <h2>6 Tables. No Extras.</h2>
+    <p class="subtitle" style="margin-bottom:32px;">Every table maps to RULES.md Rule 8. No name, description, rating, or tier columns anywhere.</p>
+
+    <div class="g3">
+      <div class="card">
+        <h3 style="color:var(--accent);">agents</h3>
+        <div class="mono-block">pubkey       TEXT PK
+api_key      TEXT UNIQUE
+cu_balance   REAL = 0.0
+registered_at INTEGER</div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--accent);">schemas</h3>
+        <div class="mono-block">capability_hash TEXT PK
+input_schema    TEXT
+output_schema   TEXT
+registered_at   INTEGER</div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--accent);">sellers</h3>
+        <div class="mono-block">agent_pubkey    TEXT FK→agents
+capability_hash TEXT FK→schemas
+price_cu        REAL
+latency_bound_us INTEGER
+capacity        INTEGER
+active_calls    INTEGER = 0
+cu_staked       REAL = 0.0
+registered_at_ns INTEGER
+PK(agent, hash)</div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--accent);">trades</h3>
+        <div class="mono-block">id              TEXT PK
+buyer_pubkey    TEXT FK→agents
+seller_pubkey   TEXT FK→agents
+capability_hash TEXT
+price_cu        REAL
+start_ns        INTEGER
+end_ns          INTEGER
+status          TEXT = 'matched'
+latency_us      INTEGER</div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--accent);">events</h3>
+        <div class="mono-block">seq           INTEGER PK AUTO
+previous_hash TEXT = ''
+event_hash    TEXT = ''
+event_type    TEXT
+event_data    TEXT
+timestamp_ns  INTEGER</div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--accent);">escrow</h3>
+        <div class="mono-block">trade_id      TEXT PK FK→trades
+buyer_pubkey  TEXT
+seller_pubkey TEXT
+cu_amount     REAL
+status        TEXT = 'held'</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE 5: STEP 0 — WIRE FORMAT -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 0 — Wire Format</span>
+  <div class="content">
+    <h2>Binary Wire Protocol</h2>
+    <p class="subtitle" style="margin-bottom:32px;">5-byte header. 10 message types. stdlib <code>struct</code> only. Zero external dependencies.</p>
+
+    <div class="g2">
+      <div class="card">
+        <h3>Header Format</h3>
+        <div style="text-align:center;margin:24px 0;">
+          <svg width="420" height="80" viewBox="0 0 420 80">
+            <rect x="0" y="10" width="80" height="50" rx="8" fill="rgba(56,189,248,0.15)" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="40" y="30" text-anchor="middle" fill="#38bdf8" font-family="JetBrains Mono" font-size="11" font-weight="600">msg_type</text>
+            <text x="40" y="48" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">u8 · 1 byte</text>
+
+            <rect x="95" y="10" width="160" height="50" rx="8" fill="rgba(167,139,250,0.15)" stroke="#a78bfa" stroke-width="1.5"/>
+            <text x="175" y="30" text-anchor="middle" fill="#a78bfa" font-family="JetBrains Mono" font-size="11" font-weight="600">payload_length</text>
+            <text x="175" y="48" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">u32 · 4 bytes</text>
+
+            <rect x="270" y="10" width="140" height="50" rx="8" fill="rgba(52,211,153,0.15)" stroke="#34d399" stroke-width="1.5"/>
+            <text x="340" y="30" text-anchor="middle" fill="#34d399" font-family="JetBrains Mono" font-size="11" font-weight="600">payload</text>
+            <text x="340" y="48" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">N bytes</text>
+
+            <text x="40" y="78" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">0x04</text>
+            <text x="175" y="78" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">big-endian (network)</text>
+            <text x="340" y="78" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono" font-size="10">struct.pack</text>
+          </svg>
+        </div>
+        <div class="mono-block" style="font-size:12px;">HEADER_FORMAT = '!BL'   # big-endian
+HEADER_SIZE   = 5       # 1 + 4 bytes</div>
+      </div>
+      <div class="card">
+        <h3>Message Types</h3>
+        <div class="mono-block" style="font-size:12px;">0x01  MSG_REGISTER_AGENT
+0x02  MSG_REGISTER_SCHEMA
+0x03  MSG_REGISTER_SELLER
+0x04  MSG_MATCH_REQUEST
+0x05  MSG_MATCH_RESPONSE
+0x06  MSG_EXECUTE
+0x07  MSG_EXECUTE_RESPONSE
+0x08  MSG_QUERY_EVENTS
+0x09  MSG_EVENTS_RESPONSE
+0xFF  MSG_ERROR</div>
+      </div>
+    </div>
+    <div style="margin-top:24px;text-align:center;">
+      <div class="card" style="display:inline-block;padding:16px 32px;">
+        <span style="font-size:14px;color:var(--muted);">Test:</span>
+        <span style="font-size:14px;color:var(--green);font-weight:700;margin-left:8px;">
+          All 10 message types survive pack → unpack roundtrip ✓
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE 6: STEP 0 — RULES AUDIT -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 0 — Rules Audit</span>
+  <div class="content">
+    <h2>Rules Compliance Check</h2>
+    <p class="subtitle" style="margin-bottom:32px;">Every step is audited against RULES.md. 1 violation found and fixed.</p>
+
+    <div class="card" style="margin-bottom:24px;">
+      <div class="rule-audit">
+        <span class="rule-id">R0</span>  <span class="rule-name">Extreme Simplicity</span>            <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R1</span>  <span class="rule-name">Compute Logic First</span>           <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R2</span>  <span class="rule-name">Machine-Native</span>                <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R3</span>  <span class="rule-name">Paradigm Shifts</span>               <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R4</span>  <span class="rule-name">Structural Security</span>           <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R5</span>  <span class="rule-name">Deterministic Verification</span>    <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R6</span>  <span class="rule-name">Eliminated Patterns</span>           <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R7</span>  <span class="rule-name">MVP Discipline</span>                <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R8</span>  <span class="rule-name">Data Model Law</span>                <span class="rule-status rule-fixed">⚠ FIXED</span>
+        <span class="rule-id">R9</span>  <span class="rule-name">Fee Constants</span>                 <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R10</span> <span class="rule-name">Code Style Commandments</span>       <span class="rule-status rule-pass">✓ PASS</span>
+      </div>
+    </div>
+
+    <div class="card" style="border-left:3px solid var(--orange);">
+      <h3 style="color:var(--orange);">⚠ Rule 8 Violation — Found &amp; Fixed</h3>
+      <div class="g2" style="margin-top:16px;">
+        <div>
+          <p style="font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Before (missing columns)</p>
+          <div class="mono-block" style="font-size:12px;border-color:var(--red);">events:
+  seq, event_type,
+  event_data, timestamp_ns
+
+<span style="color:var(--red);">✗ Missing: previous_hash, event_hash</span></div>
+        </div>
+        <div>
+          <p style="font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">After (Rule 8 compliant)</p>
+          <div class="mono-block" style="font-size:12px;border-color:var(--green);">events:
+  seq, <span style="color:var(--green);">previous_hash,</span>
+  <span style="color:var(--green);">event_hash,</span> event_type,
+  event_data, timestamp_ns
+
+<span style="color:var(--green);">✓ Hash chain columns ready (Phase 2)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE 7: STEP 0 — TEST RESULTS -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 0 — Tests</span>
+  <div class="content">
+    <h2 style="color:var(--green);">22 Tests Passing</h2>
+    <p class="subtitle" style="margin-bottom:32px;">Every rule with code has a corresponding test. 0.17 seconds runtime.</p>
+
+    <div class="check-grid" style="margin-bottom:32px;">
+      <div class="check-item"><span class="check-mark check-pass">✓</span> Fee components sum to 1.5%</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> Bond slash = 5%</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> Slash distribution sums to 100%</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> 200 CU trade math proof</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> All 6 tables created</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> agents columns exact</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> sellers columns exact</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> trades columns exact</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> events columns exact</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> escrow columns exact</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> schemas columns exact</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> cu_balance defaults to 0.0</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> Duplicate pubkey → IntegrityError</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> FK: seller needs agent</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> No banned columns (name/desc/rating/tier)</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> Health endpoint → 200 + ok</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> Wire: pack/unpack roundtrip</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> Wire: header = 5 bytes</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> Wire: empty payload OK</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> Wire: truncated → None</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> Wire: all 10 msg types OK</div>
+      <div class="check-item"><span class="check-mark check-pass">✓</span> Fee total = 0.015</div>
+    </div>
+
+    <div class="card" style="text-align:center;">
+      <div class="mono-block" style="text-align:left;display:inline-block;">22 passed in 0.17s
+
+<span style="color:var(--green);">█████████████████████████████████████████</span> 100%
+
+ 5 × constants    <span style="color:var(--green);">PASS</span>
+11 × database     <span style="color:var(--green);">PASS</span>
+ 5 × wire format  <span style="color:var(--green);">PASS</span>
+ 1 × API health   <span style="color:var(--green);">PASS</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 1+2 — OVERVIEW -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 1–2 / 12</span>
+  <div class="content">
+    <div style="margin-bottom:8px;">
+      <span class="pill pill-green">COMPLETED</span>
+      <span style="font-size:13px;color:var(--dim);margin-left:12px;">Weekend 1 · Session 1</span>
+    </div>
+    <h2>Steps 1–2: DB Schema + Agent Registration</h2>
+    <p class="subtitle" style="margin-bottom:36px;">
+      Step 1 was already done during Step 0 (all tables, all tests). Step 2 adds the first real endpoint:
+      agents can register and receive an identity.
+    </p>
+
+    <div class="g2">
+      <div class="card">
+        <h3 style="color:var(--accent);">Step 1: Database Schema</h3>
+        <p style="margin-bottom:12px;">Fully completed in Step 0. All 11 DB tests already covered:</p>
+        <div style="margin-left:4px;">
+          <div class="check-item" style="margin-bottom:4px;"><span class="check-mark check-pass">✓</span> 6 tables with exact columns</div>
+          <div class="check-item" style="margin-bottom:4px;"><span class="check-mark check-pass">✓</span> FK enforcement ON</div>
+          <div class="check-item" style="margin-bottom:4px;"><span class="check-mark check-pass">✓</span> No banned columns anywhere</div>
+          <div class="check-item" style="margin-bottom:4px;"><span class="check-mark check-pass">✓</span> cu_balance defaults to 0.0</div>
+          <div class="check-item" style="margin-bottom:4px;"><span class="check-mark check-pass">✓</span> Duplicate PK fails</div>
+          <div class="check-item"><span class="check-mark check-pass">✓</span> FK: seller needs agent</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">Step 2: Agent Registration</h3>
+        <p style="margin-bottom:12px;">First real endpoint. Agents get an identity.</p>
+        <div class="mono-block" style="font-size:12px;margin-bottom:16px;">POST /v1/agents/register
+  Request:  {} (empty body)
+  Response: {
+    "agent_id":  "uuid-v4",
+    "api_key":   "64-hex-chars",
+    "cu_balance": 0.0
+  }</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.8;">
+          <span style="color:var(--green);">●</span> UUID v4 pubkey (Ed25519 placeholder)<br>
+          <span style="color:var(--green);">●</span> <code>secrets.token_hex(32)</code> API key<br>
+          <span style="color:var(--green);">●</span> <code>cu_balance = 0.0</code> — earn-first, no grants<br>
+          <span style="color:var(--green);">●</span> Event recorded: <code>agent_registered</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 2 — NEW CODE -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 2 — Code</span>
+  <div class="content">
+    <h2>What Changed</h2>
+    <p class="subtitle" style="margin-bottom:32px;">3 files modified. 0 violations. 13 new tests.</p>
+
+    <div class="g3">
+      <div class="card">
+        <h3 style="color:var(--green);">main.py</h3>
+        <p>Added <code>register_agent()</code> endpoint.</p>
+        <div class="mono-block" style="font-size:11px;margin-top:12px;">@app.post("/v1/agents/register",
+         status_code=201)
+def register_agent():
+    pubkey = uuid.uuid4()
+    api_key = secrets.token_hex(32)
+    # INSERT → event → commit
+    return {
+      "agent_id": pubkey,
+      "api_key": api_key,
+      "cu_balance": 0.0
+    }</div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">events.py</h3>
+        <p>No longer a stub. <code>record_event()</code> added.</p>
+        <div class="mono-block" style="font-size:11px;margin-top:12px;">def record_event(conn,
+  event_type, event_data):
+    conn.execute(
+      "INSERT INTO events
+       (event_type, event_data,
+        timestamp_ns)
+       VALUES (?, ?, ?)",
+      (event_type, event_data,
+       time.time_ns())
+    )</div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">test_main.py</h3>
+        <p>10 new registration tests.</p>
+        <div style="font-size:12px;color:var(--muted);line-height:1.9;margin-top:12px;">
+          ✓ Returns 201<br>
+          ✓ Has agent_id + api_key<br>
+          ✓ agent_id is UUID<br>
+          ✓ api_key is 64 hex<br>
+          ✓ cu_balance = 0.0<br>
+          ✓ Persisted in DB<br>
+          ✓ Event recorded<br>
+          ✓ 100 unique agents<br>
+          ✓ No extra fields<br>
+          ✓ Ignores extra body
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:24px;">
+      <h3 style="color:var(--green);">test_events.py</h3>
+      <p style="margin-top:4px;">3 new tests: event insert, nanosecond timestamp, sequential seq ordering.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 2 — RULES AUDIT -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 2 — Rules Audit</span>
+  <div class="content">
+    <h2>Rules Compliance Check</h2>
+    <p class="subtitle" style="margin-bottom:32px;">Step 2 audited against RULES.md. 0 violations.</p>
+
+    <div class="card" style="margin-bottom:24px;">
+      <div class="rule-audit">
+        <span class="rule-id">R0</span>  <span class="rule-name">One endpoint, one purpose</span>            <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R1</span>  <span class="rule-name">Compute logic defined before coding</span>  <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R2</span>  <span class="rule-name">No name/email/profile — machine-native</span> <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R4</span>  <span class="rule-name">API key via secrets (crypto-secure)</span>   <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R6</span>  <span class="rule-name">cu_balance = 0.0 — no grants</span>          <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R8</span>  <span class="rule-name">Only Data Model Law columns</span>           <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R10.1</span> <span class="rule-name">Function, not class</span>                 <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R10.2</span> <span class="rule-name">Raw SQL, no ORM</span>                     <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R10.6</span> <span class="rule-name">register_agent() not create()</span>        <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R10.7</span> <span class="rule-name">events.py for events, main.py for API</span> <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R10.9</span> <span class="rule-name">record_event, not print()</span>            <span class="rule-status rule-pass">✓ PASS</span>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="card" style="text-align:center;border-top:3px solid var(--green);">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">0</div>
+        <div style="font-size:14px;color:var(--muted);margin-top:4px;">Violations Found</div>
+      </div>
+      <div class="card" style="text-align:center;border-top:3px solid var(--accent);">
+        <div style="font-size:40px;font-weight:900;color:var(--accent);">35</div>
+        <div style="font-size:14px;color:var(--muted);margin-top:4px;">Total Tests Passing</div>
+        <div style="font-size:12px;color:var(--dim);margin-top:4px;">22 from Step 0 + 13 new</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: ROADMAP — WHAT'S NEXT -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Roadmap</span>
+  <div class="content">
+    <h2>What's Next</h2>
+    <p class="subtitle" style="margin-bottom:32px;">13 steps from skeleton to deployed exchange. Steps 0–2 done.</p>
+
+    <div class="g2">
+      <div>
+        <div class="timeline">
+          <div class="timeline-item">
+            <h4><span style="color:var(--green);">●</span> Step 0 — Project Skeleton</h4>
+            <p>FastAPI + TCP + SQLite + wire format. 22 tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
+          </div>
+          <div class="timeline-item">
+            <h4><span style="color:var(--green);">●</span> Step 1 — Database Schema</h4>
+            <p>Completed in Step 0 — all 6 tables, 11 DB tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
+          </div>
+          <div class="timeline-item">
+            <h4><span style="color:var(--green);">●</span> Step 2 — Agent Registration</h4>
+            <p>POST /v1/agents/register + events.py. 13 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
+          </div>
+          <div class="timeline-item pending">
+            <h4>Step 3 — Schema Store</h4>
+            <p>SHA-256 capability hash from input + output schemas.</p>
+          </div>
+          <div class="timeline-item pending">
+            <h4>Step 4 — Seller Registration</h4>
+            <p>List as seller: capability + price + capacity.</p>
+          </div>
+          <div class="timeline-item pending">
+            <h4>Step 5 — Match Engine</h4>
+            <p>Find best seller by hash. Price priority, then latency.</p>
+          </div>
+          <div class="timeline-item pending">
+            <h4>Step 6 — Trade Execution</h4>
+            <p>Buyer↔seller data proxy. Escrow → execute → settle.</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="timeline">
+          <div class="timeline-item pending">
+            <h4>Step 7 — Verification + Settlement</h4>
+            <p>Deterministic checks. CU debit/credit. 1.5% fee split.</p>
+          </div>
+          <div class="timeline-item pending">
+            <h4>Step 8 — Event Log</h4>
+            <p>Append-only raw facts. No computed stats.</p>
+          </div>
+          <div class="timeline-item pending">
+            <h4>Step 9 — Binary Wire Format</h4>
+            <p>Typed payloads for all 10 message types. wire.py complete.</p>
+          </div>
+          <div class="timeline-item pending">
+            <h4>Step 10 — Binary TCP Server</h4>
+            <p>Route binary messages to exchange core. Port 9000.</p>
+          </div>
+          <div class="timeline-item pending">
+            <h4>Step 11 — Integration Testing</h4>
+            <p>9 scenarios. Full lifecycle. CU invariant proof.</p>
+          </div>
+          <div class="timeline-item pending">
+            <h4>Step 12 — Deployment</h4>
+            <p>VPS + first-party agents. The thesis test begins.</p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:24px;text-align:center;border-top:3px solid var(--accent);">
+          <div style="font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;">Goal</div>
+          <div style="font-size:24px;font-weight:900;color:var(--accent);margin-top:8px;">10 trades/day</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px;">by Day 30 or kill the thesis</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE 9: GIT LOG -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Git Log</span>
+  <div class="content">
+    <h2>Commit History</h2>
+    <p class="subtitle" style="margin-bottom:32px;">Every step = a git commit. Every fix = a git commit. Always rollbackable.</p>
+
+    <div class="card">
+      <div class="timeline">
+        <div class="timeline-item">
+          <h4><code>NEW</code> — Steps 1–2: Agent Registration — 35 tests passing</h4>
+          <p>POST /v1/agents/register, events.py record_event(), 13 new tests. 0 rule violations.</p>
+        </div>
+        <div class="timeline-item">
+          <h4><code>91a2460</code> — Fix Rule 8 violation</h4>
+          <p>Add previous_hash, event_hash to events table. Data model now matches Rule 8 exactly.</p>
+        </div>
+        <div class="timeline-item">
+          <h4><code>822b44a</code> — Step 0: Project skeleton — 22 tests passing</h4>
+          <p>main.py, tcp_server.py, wire.py, db.py, constants.py + 4 test files. Full skeleton with binary TCP.</p>
+        </div>
+        <div class="timeline-item">
+          <h4><code>d62c33b</code> — Move HTML files to slides/ folder</h4>
+          <p>Project reorganization. 9 HTML files moved to slides/.</p>
+        </div>
+        <div class="timeline-item">
+          <h4><code>3b998b0</code> — Add RULES.md, MVP-PLAN.md, binary TCP in MVP scope</h4>
+          <p>Coding bible (10 rules), execution plan (13 steps), CU mechanism slides, consistency fixes.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:32px;text-align:center;">
+      <div class="card" style="display:inline-block;padding:20px 40px;">
+        <div style="font-size:14px;color:var(--muted);">
+          Rollback any time: <code>git revert HEAD</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
