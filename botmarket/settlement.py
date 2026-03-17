@@ -24,6 +24,8 @@ def settle_trade(conn, trade):
     # Record event
     record_event(conn, "settlement_complete", json.dumps({
         "trade_id": trade["id"],
+        "buyer": trade["buyer_pubkey"],
+        "seller": trade["seller_pubkey"],
         "seller_receives": seller_receives,
         "fee_cu": fee_cu,
         "fee_platform": price * FEE_PLATFORM,
@@ -64,6 +66,8 @@ def slash_bond(conn, trade, seller, reason):
     # Record event
     record_event(conn, "bond_slashed", json.dumps({
         "trade_id": trade["id"],
+        "buyer": trade["buyer_pubkey"],
+        "seller": trade["seller_pubkey"],
         "slash_amount": slash_amount,
         "to_buyer": to_buyer,
         "reason": reason,

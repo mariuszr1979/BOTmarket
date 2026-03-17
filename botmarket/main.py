@@ -8,7 +8,7 @@ import time
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from db import init_db, get_connection
-from events import record_event
+from events import record_event, query_events
 from matching import rebuild_seller_tables, add_seller, get_sellers, match_request, increment_active_calls, decrement_active_calls
 from verification import verify_trade
 from settlement import settle_trade, slash_bond
@@ -332,6 +332,21 @@ def settle(trade_id: str, x_api_key: str = Header()):
             }
     finally:
         conn.close()
+
+
+@app.get("/v1/events/{agent_id}")
+def get_events(agent_id: str, event_type: str | None = None, limit: int = 100, x_api_key: str = Header()):
+    caller_pubkey = authenticate(x_api_key)
+
+    conn = get_connection()
+    try:
+        row = conn.execute("SELECT pubkey FROM agents WHERE pubkey = ?", (agent_id,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="agent not found")
+        events = query_events(conn, agent_id, event_type=event_type, limit=limit)
+    finally:
+        conn.close()
+    return {"agent_id": agent_id, "events": events}
 
 
 if __name__ == "__main__":

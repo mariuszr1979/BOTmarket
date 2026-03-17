@@ -1179,3 +1179,178 @@ def test_settle_no_latency_bound_passes(client):
     buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client)
     data = client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key}).json()
     assert data["status"] == "completed"
+
+
+# ── Step 8: Event Log ────────────────────────────────
+
+
+def test_events_full_lifecycle(client):
+    """Full trade lifecycle produces agent_registered → schema_registered → seller_registered → match_made → trade_executed → settlement_complete."""
+    buyer_id, buyer_key, seller_id, trade_id, _ = _full_trade_cycle(client)
+    client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+
+    # Query buyer events
+    resp = client.get(f"/v1/events/{buyer_id}", headers={"X-API-Key": buyer_key})
+    assert resp.status_code == 200
+    data = resp.json()
+    types = [e["event_type"] for e in data["events"]]
+    assert "agent_registered" in types
+    assert "match_made" in types
+    assert "trade_executed" in types
+    assert "settlement_complete" in types
+
+
+def test_events_seller_lifecycle(client):
+    """Seller sees their registration and trade events."""
+    buyer_id, buyer_key, seller_id, trade_id, _ = _full_trade_cycle(client)
+    client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+
+    seller_resp = client.get(f"/v1/events/{seller_id}", headers={"X-API-Key": buyer_key})
+    seller_types = [e["event_type"] for e in seller_resp.json()["events"]]
+    assert "agent_registered" in seller_types
+    assert "seller_registered" in seller_types
+    assert "match_made" in seller_types
+    assert "settlement_complete" in seller_types
+
+
+def test_events_filter_by_type(client):
+    """?event_type= filters to only that type."""
+    buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client)
+    client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+
+    resp = client.get(f"/v1/events/{buyer_id}?event_type=match_made", headers={"X-API-Key": buyer_key})
+    data = resp.json()
+    assert len(data["events"]) >= 1
+    for e in data["events"]:
+        assert e["event_type"] == "match_made"
+
+
+def test_events_limit(client):
+    """?limit= caps number of events returned."""
+    buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client)
+    client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+
+    resp = client.get(f"/v1/events/{buyer_id}?limit=2", headers={"X-API-Key": buyer_key})
+    data = resp.json()
+    assert len(data["events"]) <= 2
+
+
+def test_events_ordered_by_seq(client):
+    """Events returned in seq ASC order."""
+    buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client)
+    client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+
+    resp = client.get(f"/v1/events/{buyer_id}", headers={"X-API-Key": buyer_key})
+    events = resp.json()["events"]
+    seqs = [e["seq"] for e in events]
+    assert seqs == sorted(seqs)
+
+
+def test_events_have_timestamp_ns(client):
+    """Every event has nanosecond timestamp."""
+    buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client)
+
+    resp = client.get(f"/v1/events/{buyer_id}", headers={"X-API-Key": buyer_key})
+    for e in resp.json()["events"]:
+        assert e["timestamp_ns"] > 1_000_000_000_000_000_000
+
+
+def test_events_data_is_raw_json(client):
+    """event_data is valid JSON with raw facts, not computed stats."""
+    buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client)
+    client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+
+    resp = client.get(f"/v1/events/{buyer_id}?event_type=settlement_complete", headers={"X-API-Key": buyer_key})
+    for e in resp.json()["events"]:
+        payload = json.loads(e["event_data"])
+        assert "trade_id" in payload
+        # No computed stats
+        assert "reputation_score" not in payload
+        assert "p99" not in payload
+        assert "compliance_rate" not in payload
+
+
+def test_events_agent_not_found(client):
+    """Non-existent agent → 404."""
+    _, buyer_key = _register(client)
+    resp = client.get("/v1/events/nonexistent", headers={"X-API-Key": buyer_key})
+    assert resp.status_code == 404
+
+
+def test_events_requires_auth(client):
+    """No API key → 422."""
+    resp = client.get("/v1/events/some-id")
+    assert resp.status_code == 422
+
+
+def test_events_only_agent_events(client):
+    """Query by agent returns only that agent's events, not others."""
+    # Create two separate agents with separate trades
+    seller_id1, seller_key1, cap_hash1 = _setup_seller(client, price=10.0)
+    buyer_id1, buyer_key1 = _register(client)
+    _fund_agent(client, buyer_id1, 100.0)
+
+    buyer_id2, buyer_key2 = _register(client)
+    _fund_agent(client, buyer_id2, 100.0)
+
+    # Only buyer1 does a trade
+    match1 = _match_trade(client, buyer_key1, cap_hash1)
+    _execute_trade(client, buyer_key1, match1["trade_id"])
+
+    # buyer2 events should NOT have match_made from buyer1's trade
+    resp2 = client.get(f"/v1/events/{buyer_id2}?event_type=match_made", headers={"X-API-Key": buyer_key2})
+    assert len(resp2.json()["events"]) == 0
+
+
+def test_events_10_trades_all_present(client):
+    """Run 10 trades → query events → all 10 match_made events present for buyer."""
+    _, _, cap_hash = _setup_seller(client, price=5.0, capacity=20)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 500.0)
+
+    for _ in range(10):
+        match = _match_trade(client, buyer_key, cap_hash)
+        _execute_trade(client, buyer_key, match["trade_id"])
+        client.post(f"/v1/trades/{match['trade_id']}/settle", headers={"X-API-Key": buyer_key})
+
+    resp = client.get(f"/v1/events/{buyer_id}?event_type=match_made", headers={"X-API-Key": buyer_key})
+    assert len(resp.json()["events"]) == 10
+
+    resp2 = client.get(f"/v1/events/{buyer_id}?event_type=settlement_complete", headers={"X-API-Key": buyer_key})
+    assert len(resp2.json()["events"]) == 10
+
+
+def test_events_immutable_no_delete(client):
+    """Events are immutable — records persist after trades settle."""
+    buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client)
+    client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+
+    resp_before = client.get(f"/v1/events/{buyer_id}", headers={"X-API-Key": buyer_key})
+    count_before = len(resp_before.json()["events"])
+    assert count_before > 0
+
+    # No event was lost — query again
+    resp_after = client.get(f"/v1/events/{buyer_id}", headers={"X-API-Key": buyer_key})
+    assert len(resp_after.json()["events"]) == count_before
+
+
+def test_events_violation_recorded(client):
+    """Bond slash events queryable via event log."""
+    seller_id, seller_key, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    _execute_trade(client, buyer_key, match["trade_id"])
+    import db
+    conn = db.get_connection()
+    conn.execute("UPDATE sellers SET latency_bound_us = 1 WHERE agent_pubkey = ?", (seller_id,))
+    conn.execute("UPDATE trades SET latency_us = 500 WHERE id = ?", (match["trade_id"],))
+    conn.commit()
+    conn.close()
+    client.post(f"/v1/trades/{match['trade_id']}/settle", headers={"X-API-Key": buyer_key})
+
+    resp = client.get(f"/v1/events/{seller_id}?event_type=bond_slashed", headers={"X-API-Key": buyer_key})
+    events = resp.json()["events"]
+    assert len(events) == 1
+    payload = json.loads(events[0]["event_data"])
+    assert payload["reason"] == "latency_exceeded"

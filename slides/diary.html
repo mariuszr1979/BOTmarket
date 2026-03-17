@@ -323,11 +323,11 @@
     <div class="divider" style="margin:0 auto 40px;"></div>
     <div class="stat-row" style="justify-content:center;">
       <div class="stat">
-        <div class="val" style="color:var(--green);">8</div>
+        <div class="val" style="color:var(--green);">9</div>
         <div class="lbl">Steps Complete</div>
       </div>
       <div class="stat">
-        <div class="val" style="color:var(--accent);">108</div>
+        <div class="val" style="color:var(--accent);">121</div>
         <div class="lbl">Tests Passing</div>
       </div>
       <div class="stat">
@@ -341,8 +341,8 @@
     </div>
     <div style="margin-top:48px;">
       <div class="progress-bar" style="max-width:600px;margin:0 auto;">
-        <div class="progress-fill" style="width:57%;background:linear-gradient(90deg,var(--green),var(--accent));">
-          8/14
+        <div class="progress-fill" style="width:64%;background:linear-gradient(90deg,var(--green),var(--accent));">
+          9/14
         </div>
       </div>
       <div style="font-size:12px;color:var(--dim);margin-top:8px;">Steps 0–13 · Weekend 3 of 6</div>
@@ -1494,7 +1494,7 @@ Errors:
   <span class="slide-num">Roadmap</span>
   <div class="content">
     <h2>What's Next</h2>
-    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–7 done.</p>
+    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–8 done.</p>
 
     <div class="g2">
       <div>
@@ -1535,9 +1535,9 @@ Errors:
             <h4><span style="color:var(--green);">●</span> Step 7 — Verification + Settlement</h4>
             <p>verify_trade() + settle/slash. 1.5% fee split. 19 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
-          <div class="timeline-item pending">
-            <h4>Step 8 — Event Log</h4>
-            <p>Append-only raw facts. No computed stats.</p>
+          <div class="timeline-item">
+            <h4><span style="color:var(--green);">●</span> Step 8 — Event Log</h4>
+            <p>query_events(), GET /v1/events/{id}. 13 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
           <div class="timeline-item pending">
             <h4>Step 9 — Binary Wire Format</h4>
@@ -1584,7 +1584,11 @@ Errors:
     <div class="card">
       <div class="timeline">
         <div class="timeline-item">
-          <h4><code>NEW</code> — Step 7: Verification + Settlement — 108 tests passing</h4>
+          <h4><code>NEW</code> — Step 8: Event Log — 121 tests passing</h4>
+          <p>query_events(), GET /v1/events/{id}, filter by type/limit, 10-trade stress test. 13 new tests.</p>
+        </div>
+        <div class="timeline-item">
+          <h4><code>aa7f96a</code> — Step 7: Verification + Settlement — 108 tests passing</h4>
           <p>verify_trade(), settle_trade(), slash_bond(), POST /v1/trades/{id}/settle. 19 new tests.</p>
         </div>
         <div class="timeline-item">
