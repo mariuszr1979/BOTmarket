@@ -17,6 +17,7 @@ from wire import (
 )
 from db import init_db, get_connection
 from events import record_event, query_events
+from log import log
 from matching import rebuild_seller_tables, add_seller, match_request, increment_active_calls, decrement_active_calls
 from verification import verify_trade
 from settlement import settle_trade, slash_bond
@@ -320,6 +321,7 @@ HANDLERS = {
 
 async def handle_client(reader, writer):
     addr = writer.get_extra_info('peername')
+    log("tcp_connect", addr=str(addr))
     try:
         while True:
             header = await reader.readexactly(HEADER_SIZE)
@@ -337,6 +339,7 @@ async def handle_client(reader, writer):
     except asyncio.IncompleteReadError:
         pass
     finally:
+        log("tcp_disconnect", addr=str(addr))
         writer.close()
         await writer.wait_closed()
 

@@ -323,11 +323,11 @@
     <div class="divider" style="margin:0 auto 40px;"></div>
     <div class="stat-row" style="justify-content:center;">
       <div class="stat">
-        <div class="val" style="color:var(--green);">12</div>
+        <div class="val" style="color:var(--green);">13</div>
         <div class="lbl">Steps Complete</div>
       </div>
       <div class="stat">
-        <div class="val" style="color:var(--accent);">164</div>
+        <div class="val" style="color:var(--accent);">175</div>
         <div class="lbl">Tests Passing</div>
       </div>
       <div class="stat">
@@ -341,8 +341,8 @@
     </div>
     <div style="margin-top:48px;">
       <div class="progress-bar" style="max-width:600px;margin:0 auto;">
-        <div class="progress-fill" style="width:86%;background:linear-gradient(90deg,var(--green),var(--accent));">
-          12/14
+        <div class="progress-fill" style="width:93%;background:linear-gradient(90deg,var(--green),var(--accent));">
+          13/14
         </div>
       </div>
       <div style="font-size:12px;color:var(--dim);margin-top:8px;">Steps 0–13 · Weekend 3 of 6</div>
@@ -1777,6 +1777,104 @@ Errors:
 </section>
 
 <!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 12 — OVERVIEW -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 12 / 13</span>
+  <div class="content">
+    <div style="margin-bottom:8px;">
+      <span class="pill pill-green">COMPLETED</span>
+      <span style="font-size:13px;color:var(--dim);margin-left:12px;">Weekend 3 · Session 12</span>
+    </div>
+    <h2>Step 12: Deployment + First-Party Agents</h2>
+    <p class="subtitle" style="margin-bottom:36px;">
+      5 Ollama-powered agents doing real inference. Structured JSON logging.
+      One-command launch. RTX 5070 GPU acceleration.
+    </p>
+
+    <div class="g3">
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">5</div>
+        <h3 style="margin-top:8px;">Agents</h3>
+        <p>Summarizer · Translator<br>CodeLinter · ImageClassifier<br>DataExtractor</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">3</div>
+        <h3 style="margin-top:8px;">Ollama Models</h3>
+        <p>qwen2.5:7b · llama3<br>llava:7b (vision)<br>All local, no API keys</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">✓</div>
+        <h3 style="margin-top:8px;">Launch</h3>
+        <p>bash launch.sh<br>Starts exchange +<br>registers all agents</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:24px;">
+      <h3 style="color:var(--accent);">Agent Pricing</h3>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--muted);line-height:2;margin-top:12px;">
+        Summarizer    → 20 CU  (qwen2.5:7b)<br>
+        Translator    → 30 CU  (qwen2.5:7b)<br>
+        CodeLinter    → 15 CU  (llama3)<br>
+        ImageClassify → 50 CU  (llava:7b)<br>
+        DataExtractor → 10 CU  (qwen2.5:7b)
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 12 — TESTS + AUDIT -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 12 — Tests</span>
+  <div class="content">
+    <h2 style="color:var(--green);">11 New Tests</h2>
+    <p class="subtitle" style="margin-bottom:32px;">Agent registration, trade lifecycles, structured logging, auth enforcement.</p>
+
+    <div class="g2" style="margin-bottom:24px;">
+      <div class="card">
+        <h3 style="color:var(--green);">Deployment Tests</h3>
+        <div style="font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;">
+          ✓ All 5 agents register as sellers<br>
+          ✓ Unique capability hashes<br>
+          ✓ Buyer matches each seller<br>
+          ✓ Full lifecycle per agent type<br>
+          ✓ API key required all endpoints<br>
+          ✓ Health endpoint returns 200<br>
+          ✓ Structured log format (JSON)<br>
+          ✓ No secrets in log output<br>
+          ✓ ollama_client imports cleanly<br>
+          ✓ agents module loads correctly<br>
+          ✓ Agent prices match spec
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">Rules Audit</h3>
+        <div class="rule-audit" style="margin-top:12px;">
+          <span class="rule-id">R0</span>  <span class="rule-name">Single launch script</span>            <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R6</span>  <span class="rule-name">CU = real compute (Ollama)</span>      <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R10</span> <span class="rule-name">Structured JSON logs</span>            <span class="rule-status rule-pass">✓ PASS</span>
+        </div>
+        <div class="g2" style="margin-top:24px;">
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--green);">0</div>
+            <div style="font-size:12px;color:var(--dim);">VIOLATIONS</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--accent);">175</div>
+            <div style="font-size:12px;color:var(--dim);">TESTS PASSING</div>
+            <div style="font-size:11px;color:var(--dim);">164 prior + 11 new</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
 <!-- SLIDE: ROADMAP — WHAT'S NEXT -->
 <!-- ═══════════════════════════════════════════ -->
 <section class="slide">
@@ -1784,7 +1882,7 @@ Errors:
   <span class="slide-num">Roadmap</span>
   <div class="content">
     <h2>What's Next</h2>
-    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–11 done.</p>
+    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–12 done.</p>
 
     <div class="g2">
       <div>
@@ -1841,9 +1939,9 @@ Errors:
             <h4><span style="color:var(--green);">●</span> Step 11 — Integration Testing</h4>
             <p>9 scenarios + 4 invariant checks. 13 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
-          <div class="timeline-item pending">
-            <h4>Step 12 — Deployment</h4>
-            <p>VPS + first-party agents. The thesis test begins.</p>
+          <div class="timeline-item">
+            <h4><span style="color:var(--green);">●</span> Step 12 — Deployment + Agents</h4>
+            <p>5 Ollama agents, structured logging, launch script. 11 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
           <div class="timeline-item pending">
             <h4>Step 13 — Live Visualization</h4>
@@ -1874,7 +1972,11 @@ Errors:
     <div class="card">
       <div class="timeline">
         <div class="timeline-item">
-          <h4><code>1dad04c</code> — Step 11: Integration Testing — 164 tests passing</h4>
+          <h4><code>a6bec33</code> — Step 12: Deployment + Agents — 175 tests passing</h4>
+          <p>5 Ollama-powered agents (qwen2.5, llama3, llava), structured JSON logging, launch.sh, demo_buyer.py.</p>
+        </div>
+        <div class="timeline-item">
+          <h4><code>20841f3</code> — Step 11: Integration Testing — 164 tests passing</h4>
           <p>9 scenarios + CU invariant, binary round-trip, JSON/TCP equivalence. 13 new tests.</p>
         </div>
         <div class="timeline-item">

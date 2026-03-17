@@ -8,6 +8,7 @@ import time
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from db import init_db, get_connection
+from log import log
 from events import record_event, query_events
 from matching import rebuild_seller_tables, add_seller, get_sellers, match_request, increment_active_calls, decrement_active_calls
 from verification import verify_trade
@@ -60,6 +61,7 @@ def register_agent():
     finally:
         conn.close()
 
+    log("agent_registered", agent_id=pubkey)
     return {"agent_id": pubkey, "api_key": api_key, "cu_balance": 0.0}
 
 
@@ -90,6 +92,7 @@ def register_schema(body: SchemaRegisterRequest, x_api_key: str = Header()):
     finally:
         conn.close()
 
+    log("schema_registered", capability_hash=capability_hash, agent=agent_pubkey)
     return {"capability_hash": capability_hash}
 
 
@@ -144,6 +147,7 @@ def register_seller(body: SellerRegisterRequest, x_api_key: str = Header()):
     }
     add_seller(seller)
 
+    log("seller_registered", agent=agent_pubkey, capability_hash=body.capability_hash, price_cu=body.price_cu)
     return {"status": "registered", "capability_hash": body.capability_hash, "price_cu": body.price_cu}
 
 
@@ -220,6 +224,7 @@ def match(body: MatchRequest, x_api_key: str = Header()):
 
     increment_active_calls(seller["agent_pubkey"], body.capability_hash)
 
+    log("match_made", trade_id=trade_id, buyer=buyer_pubkey, seller=seller["agent_pubkey"], price_cu=seller["price_cu"])
     return {
         "trade_id": trade_id,
         "seller_pubkey": seller["agent_pubkey"],
@@ -278,6 +283,7 @@ def execute_trade(trade_id: str, body: ExecuteRequest, x_api_key: str = Header()
 
     decrement_active_calls(trade["seller_pubkey"], trade["capability_hash"])
 
+    log("trade_executed", trade_id=trade_id, latency_us=latency_us)
     return {
         "output": output_data,
         "latency_us": latency_us,
