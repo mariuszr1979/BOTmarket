@@ -694,3 +694,217 @@ def test_match_no_resting_orders(client):
     assert d1["trade_id"] != d2["trade_id"]
     assert d1["status"] == "matched"
     assert d2["status"] == "matched"
+
+
+# ── Helpers for Step 6+ ──────────────────────────────────
+
+
+def _match_trade(client, buyer_key, cap_hash):
+    """Match a trade and return the response data."""
+    return client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key}).json()
+
+
+# ── Step 6: Trade Execution ──────────────────────────────
+
+
+def test_execute_returns_output(client):
+    """Execute valid trade → output returned with latency."""
+    _, _, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    resp = client.post(
+        f"/v1/trades/{match['trade_id']}/execute",
+        json={"input": "hello world"},
+        headers={"X-API-Key": buyer_key},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "executed"
+    assert "output" in data
+    assert "latency_us" in data
+    assert isinstance(data["latency_us"], int)
+
+
+def test_execute_response_fields(client):
+    """Response has exactly output, latency_us, status."""
+    _, _, cap_hash = _setup_seller(client)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    data = client.post(
+        f"/v1/trades/{match['trade_id']}/execute",
+        json={"input": "test"},
+        headers={"X-API-Key": buyer_key},
+    ).json()
+    assert set(data.keys()) == {"output", "latency_us", "status"}
+
+
+def test_execute_trade_not_found(client):
+    """Non-existent trade_id → 404."""
+    _, buyer_key = _register(client)
+    resp = client.post(
+        "/v1/trades/nonexistent/execute",
+        json={"input": "test"},
+        headers={"X-API-Key": buyer_key},
+    )
+    assert resp.status_code == 404
+
+
+def test_execute_wrong_buyer(client):
+    """Only the matched buyer can execute → 403 for anyone else."""
+    _, _, cap_hash = _setup_seller(client)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    # Another agent tries to execute
+    _, other_key = _register(client)
+    resp = client.post(
+        f"/v1/trades/{match['trade_id']}/execute",
+        json={"input": "test"},
+        headers={"X-API-Key": other_key},
+    )
+    assert resp.status_code == 403
+
+
+def test_execute_already_executed(client):
+    """Trade already executed → 400."""
+    _, _, cap_hash = _setup_seller(client)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    client.post(
+        f"/v1/trades/{match['trade_id']}/execute",
+        json={"input": "first"},
+        headers={"X-API-Key": buyer_key},
+    )
+    resp = client.post(
+        f"/v1/trades/{match['trade_id']}/execute",
+        json={"input": "second"},
+        headers={"X-API-Key": buyer_key},
+    )
+    assert resp.status_code == 400
+
+
+def test_execute_trade_status_updated(client):
+    """Trade status changes from matched to executed."""
+    _, _, cap_hash = _setup_seller(client)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    client.post(
+        f"/v1/trades/{match['trade_id']}/execute",
+        json={"input": "test"},
+        headers={"X-API-Key": buyer_key},
+    )
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT status, latency_us, start_ns, end_ns FROM trades WHERE id = ?", (match["trade_id"],)).fetchone()
+    conn.close()
+    assert row["status"] == "executed"
+    assert row["latency_us"] is not None
+    assert row["start_ns"] is not None
+    assert row["end_ns"] is not None
+    assert row["end_ns"] >= row["start_ns"]
+
+
+def test_execute_latency_measured(client):
+    """Latency = (end_ns - start_ns) / 1000, non-negative integer."""
+    _, _, cap_hash = _setup_seller(client)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    data = client.post(
+        f"/v1/trades/{match['trade_id']}/execute",
+        json={"input": "test"},
+        headers={"X-API-Key": buyer_key},
+    ).json()
+    assert data["latency_us"] >= 0
+
+
+def test_execute_active_calls_decremented(client):
+    """Seller active_calls decreases after execution."""
+    seller_id, _, cap_hash = _setup_seller(client, price=20.0, capacity=5)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    # After match, active_calls = 1
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT active_calls FROM sellers WHERE agent_pubkey = ?", (seller_id,)).fetchone()
+    assert row["active_calls"] == 1
+    conn.close()
+    # After execute, active_calls = 0
+    client.post(
+        f"/v1/trades/{match['trade_id']}/execute",
+        json={"input": "test"},
+        headers={"X-API-Key": buyer_key},
+    )
+    conn = db.get_connection()
+    row = conn.execute("SELECT active_calls FROM sellers WHERE agent_pubkey = ?", (seller_id,)).fetchone()
+    conn.close()
+    assert row["active_calls"] == 0
+
+
+def test_execute_event_recorded(client):
+    """Event trade_executed recorded with trade_id and latency."""
+    _, _, cap_hash = _setup_seller(client)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    client.post(
+        f"/v1/trades/{match['trade_id']}/execute",
+        json={"input": "test"},
+        headers={"X-API-Key": buyer_key},
+    )
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT event_data FROM events WHERE event_type = 'trade_executed' ORDER BY seq DESC LIMIT 1").fetchone()
+    conn.close()
+    payload = json.loads(row["event_data"])
+    assert payload["trade_id"] == match["trade_id"]
+    assert "latency_us" in payload
+
+
+def test_execute_requires_auth(client):
+    """No API key → 422."""
+    resp = client.post("/v1/trades/some-id/execute", json={"input": "test"})
+    assert resp.status_code == 422
+
+
+def test_execute_escrow_still_held(client):
+    """After execution, escrow remains held (settlement is Step 7)."""
+    _, _, cap_hash = _setup_seller(client)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    client.post(
+        f"/v1/trades/{match['trade_id']}/execute",
+        json={"input": "test"},
+        headers={"X-API-Key": buyer_key},
+    )
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT status, cu_amount FROM escrow WHERE trade_id = ?", (match["trade_id"],)).fetchone()
+    conn.close()
+    assert row["status"] == "held"
+    assert row["cu_amount"] == 20.0
+
+
+def test_execute_cu_invariant(client):
+    """CU invariant holds after execution: sum(bal) + sum(escrow) = total."""
+    _, _, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    client.post(
+        f"/v1/trades/{match['trade_id']}/execute",
+        json={"input": "test"},
+        headers={"X-API-Key": buyer_key},
+    )
+    import db
+    conn = db.get_connection()
+    total_bal = conn.execute("SELECT SUM(cu_balance) FROM agents").fetchone()[0]
+    total_esc = conn.execute("SELECT COALESCE(SUM(cu_amount), 0) FROM escrow").fetchone()[0]
+    conn.close()
+    assert total_bal + total_esc == 100.0

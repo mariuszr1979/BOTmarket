@@ -323,11 +323,11 @@
     <div class="divider" style="margin:0 auto 40px;"></div>
     <div class="stat-row" style="justify-content:center;">
       <div class="stat">
-        <div class="val" style="color:var(--green);">6</div>
+        <div class="val" style="color:var(--green);">7</div>
         <div class="lbl">Steps Complete</div>
       </div>
       <div class="stat">
-        <div class="val" style="color:var(--accent);">77</div>
+        <div class="val" style="color:var(--accent);">89</div>
         <div class="lbl">Tests Passing</div>
       </div>
       <div class="stat">
@@ -341,8 +341,8 @@
     </div>
     <div style="margin-top:48px;">
       <div class="progress-bar" style="max-width:600px;margin:0 auto;">
-        <div class="progress-fill" style="width:43%;background:linear-gradient(90deg,var(--green),var(--accent));">
-          6/14
+        <div class="progress-fill" style="width:50%;background:linear-gradient(90deg,var(--green),var(--accent));">
+          7/14
         </div>
       </div>
       <div style="font-size:12px;color:var(--dim);margin-top:8px;">Steps 0–13 · Weekend 2 of 6</div>
@@ -1256,6 +1256,119 @@ Response (can't afford):
 </section>
 
 <!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 6 — OVERVIEW -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 6 / 13</span>
+  <div class="content">
+    <div style="margin-bottom:8px;">
+      <span class="pill pill-green">COMPLETED</span>
+      <span style="font-size:13px;color:var(--dim);margin-left:12px;">Weekend 2 · Session 1</span>
+    </div>
+    <h2>Step 6: Trade Execution</h2>
+    <p class="subtitle" style="margin-bottom:36px;">
+      Buyer sends input → exchange proxies to seller → measures latency → returns output.
+      CU stays in escrow. Settlement is Step 7.
+    </p>
+
+    <div class="g2">
+      <div class="card">
+        <h3 style="color:var(--accent);">POST /v1/trades/{id}/execute</h3>
+        <div class="mono-block" style="font-size:12px;margin-top:12px;">Auth: X-API-Key (must be buyer)
+
+Request: {
+  "input": "Article text..."
+}
+
+Response: {
+  "output": "executed:Article text...",
+  "latency_us": 145,
+  "status": "executed"
+}
+
+Errors:
+  404 — trade not found
+  403 — not the buyer
+  400 — not in matched status</div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">Execution Flow</h3>
+        <div class="mono-block" style="font-size:12px;margin-top:12px;">1. Look up trade → verify matched
+2. Verify caller is buyer
+3. start_ns = time.time_ns()
+4. Forward to seller (MVP: simulated)
+5. end_ns = time.time_ns()
+6. latency_us = (end - start) / 1000
+7. Update trade: status=executed
+8. Decrement seller.active_calls
+9. Record event: trade_executed
+10. Return output + latency</div>
+        <div style="margin-top:16px;font-size:13px;color:var(--muted);">
+          <span style="color:var(--green);">●</span> Escrow stays held → Step 7<br>
+          <span style="color:var(--green);">●</span> Latency measured deterministically<br>
+          <span style="color:var(--green);">●</span> active_calls freed for next match
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 6 — TESTS + AUDIT -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 6 — Tests</span>
+  <div class="content">
+    <h2 style="color:var(--green);">12 New Tests</h2>
+    <p class="subtitle" style="margin-bottom:32px;">Execute, validate, auth, latency, active_calls, escrow still held, CU invariant. 0 violations.</p>
+
+    <div class="g2" style="margin-bottom:24px;">
+      <div class="card">
+        <h3 style="color:var(--green);">Execution Tests</h3>
+        <div style="font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;">
+          ✓ Returns output + latency<br>
+          ✓ Response has exact 3 fields<br>
+          ✓ Trade not found → 404<br>
+          ✓ Wrong buyer → 403<br>
+          ✓ Already executed → 400<br>
+          ✓ Trade status → executed<br>
+          ✓ Latency ≥ 0 (measured)<br>
+          ✓ active_calls decremented<br>
+          ✓ Event trade_executed recorded<br>
+          ✓ Requires auth → 422<br>
+          ✓ Escrow still held (Step 7)<br>
+          ✓ CU invariant holds
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">Rules Audit</h3>
+        <div class="rule-audit" style="margin-top:12px;">
+          <span class="rule-id">R0</span>  <span class="rule-name">Single endpoint, clear logic</span>     <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R4</span>  <span class="rule-name">CU in escrow during execution</span>   <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R5</span>  <span class="rule-name">Latency = deterministic timestamps</span> <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R6</span>  <span class="rule-name">No partial fills, full execution</span> <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R8</span>  <span class="rule-name">trades table columns exact</span>       <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R10</span> <span class="rule-name">Functions, raw SQL, events</span>       <span class="rule-status rule-pass">✓ PASS</span>
+        </div>
+        <div class="g2" style="margin-top:24px;">
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--green);">0</div>
+            <div style="font-size:12px;color:var(--dim);">VIOLATIONS</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--accent);">89</div>
+            <div style="font-size:12px;color:var(--dim);">TESTS PASSING</div>
+            <div style="font-size:11px;color:var(--dim);">77 prior + 12 new</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
 <!-- SLIDE: ROADMAP — WHAT'S NEXT -->
 <!-- ═══════════════════════════════════════════ -->
 <section class="slide">
@@ -1263,7 +1376,7 @@ Response (can't afford):
   <span class="slide-num">Roadmap</span>
   <div class="content">
     <h2>What's Next</h2>
-    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–5 done.</p>
+    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–6 done.</p>
 
     <div class="g2">
       <div>
@@ -1292,9 +1405,9 @@ Response (can't afford):
             <h4><span style="color:var(--green);">●</span> Step 5 — Match Engine</h4>
             <p>Best seller by hash + CU escrow. 18 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
-          <div class="timeline-item pending">
-            <h4>Step 6 — Trade Execution</h4>
-            <p>Buyer↔seller data proxy. Escrow → execute → settle.</p>
+          <div class="timeline-item">
+            <h4><span style="color:var(--green);">●</span> Step 6 — Trade Execution</h4>
+            <p>Execute trade, measure latency, decrement active_calls. 12 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
         </div>
       </div>
@@ -1353,7 +1466,11 @@ Response (can't afford):
     <div class="card">
       <div class="timeline">
         <div class="timeline-item">
-          <h4><code>NEW</code> — Step 5: Match Engine — 77 tests passing</h4>
+          <h4><code>NEW</code> — Step 6: Trade Execution — 89 tests passing</h4>
+          <p>POST /v1/trades/{id}/execute, latency measurement, active_calls decrement. 12 new tests.</p>
+        </div>
+        <div class="timeline-item">
+          <h4><code>859bdd2</code> — Step 5: Match Engine — 77 tests passing</h4>
           <p>POST /v1/match, match_request(), CU escrow, capacity skip, filters. 18 new tests.</p>
         </div>
         <div class="timeline-item">

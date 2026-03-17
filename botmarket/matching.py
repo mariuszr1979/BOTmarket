@@ -62,3 +62,12 @@ def increment_active_calls(agent_pubkey, capability_hash):
         if seller["agent_pubkey"] == agent_pubkey:
             seller["active_calls"] += 1
             break
+
+
+def decrement_active_calls(agent_pubkey, capability_hash):
+    """Decrement active_calls for a seller in-memory."""
+    sellers = _seller_tables.get(capability_hash, [])
+    for seller in sellers:
+        if seller["agent_pubkey"] == agent_pubkey:
+            seller["active_calls"] = max(0, seller["active_calls"] - 1)
+            break

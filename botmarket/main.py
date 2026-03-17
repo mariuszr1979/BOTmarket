@@ -9,7 +9,7 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from db import init_db, get_connection
 from events import record_event
-from matching import rebuild_seller_tables, add_seller, get_sellers, match_request, increment_active_calls
+from matching import rebuild_seller_tables, add_seller, get_sellers, match_request, increment_active_calls, decrement_active_calls
 
 
 @asynccontextmanager
@@ -223,6 +223,63 @@ def match(body: MatchRequest, x_api_key: str = Header()):
         "seller_pubkey": seller["agent_pubkey"],
         "price_cu": seller["price_cu"],
         "status": "matched",
+    }
+
+
+class ExecuteRequest(BaseModel):
+    input: str
+
+
+@app.post("/v1/trades/{trade_id}/execute")
+def execute_trade(trade_id: str, body: ExecuteRequest, x_api_key: str = Header()):
+    caller_pubkey = authenticate(x_api_key)
+
+    conn = get_connection()
+    try:
+        trade = conn.execute(
+            "SELECT buyer_pubkey, seller_pubkey, capability_hash, price_cu, status "
+            "FROM trades WHERE id = ?",
+            (trade_id,),
+        ).fetchone()
+        if trade is None:
+            raise HTTPException(status_code=404, detail="trade not found")
+        if trade["buyer_pubkey"] != caller_pubkey:
+            raise HTTPException(status_code=403, detail="not the buyer of this trade")
+        if trade["status"] != "matched":
+            raise HTTPException(status_code=400, detail="trade not in matched status")
+
+        start_ns = time.time_ns()
+        # MVP: simulated seller execution — real HTTP callback is Phase 2
+        output_data = f"executed:{body.input}"
+        end_ns = time.time_ns()
+        latency_us = (end_ns - start_ns) // 1000
+
+        conn.execute(
+            "UPDATE trades SET start_ns = ?, end_ns = ?, latency_us = ?, status = 'executed' "
+            "WHERE id = ?",
+            (start_ns, end_ns, latency_us, trade_id),
+        )
+        conn.execute(
+            "UPDATE sellers SET active_calls = MAX(0, active_calls - 1) "
+            "WHERE agent_pubkey = ? AND capability_hash = ?",
+            (trade["seller_pubkey"], trade["capability_hash"]),
+        )
+        record_event(conn, "trade_executed", json.dumps({
+            "trade_id": trade_id,
+            "buyer": caller_pubkey,
+            "seller": trade["seller_pubkey"],
+            "latency_us": latency_us,
+        }))
+        conn.commit()
+    finally:
+        conn.close()
+
+    decrement_active_calls(trade["seller_pubkey"], trade["capability_hash"])
+
+    return {
+        "output": output_data,
+        "latency_us": latency_us,
+        "status": "executed",
     }
 
 
