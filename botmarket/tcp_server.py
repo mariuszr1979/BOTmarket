@@ -106,15 +106,24 @@ def handle_register_seller(payload: bytes) -> bytes:
 
         # Stake = price_cu
         stake = body["price_cu"]
+
+        # Refund any existing stake before re-registration (CU invariant)
+        old = conn.execute(
+            "SELECT cu_staked FROM sellers WHERE agent_pubkey = ? AND capability_hash = ?",
+            (agent_pubkey, body["capability_hash"]),
+        ).fetchone()
+        old_stake = old["cu_staked"] if old else 0
+
         agent_row = conn.execute(
             "SELECT cu_balance FROM agents WHERE pubkey = ?", (agent_pubkey,)
         ).fetchone()
-        if agent_row is None or agent_row["cu_balance"] < stake:
+        effective_balance = (agent_row["cu_balance"] + old_stake) if agent_row else 0
+        if agent_row is None or effective_balance < stake:
             return pack_error(0x04, b"insufficient CU balance for stake")
 
         conn.execute(
-            "UPDATE agents SET cu_balance = cu_balance - ? WHERE pubkey = ?",
-            (stake, agent_pubkey),
+            "UPDATE agents SET cu_balance = cu_balance + ? - ? WHERE pubkey = ?",
+            (old_stake, stake, agent_pubkey),
         )
 
         now_ns = time.time_ns()
