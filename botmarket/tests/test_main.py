@@ -908,3 +908,274 @@ def test_execute_cu_invariant(client):
     total_esc = conn.execute("SELECT COALESCE(SUM(cu_amount), 0) FROM escrow").fetchone()[0]
     conn.close()
     assert total_bal + total_esc == 100.0
+
+
+# ── Helpers for Step 7+ ──────────────────────────────────
+
+
+def _execute_trade(client, buyer_key, trade_id, input_text="test"):
+    """Execute a trade and return response data."""
+    return client.post(
+        f"/v1/trades/{trade_id}/execute",
+        json={"input": input_text},
+        headers={"X-API-Key": buyer_key},
+    ).json()
+
+
+def _full_trade_cycle(client, price=20.0, buyer_cu=100.0):
+    """Register seller + buyer, match, execute. Returns (buyer_id, buyer_key, seller_id, trade_id, cap_hash)."""
+    seller_id, seller_key, cap_hash = _setup_seller(client, price=price)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, buyer_cu)
+    match = _match_trade(client, buyer_key, cap_hash)
+    _execute_trade(client, buyer_key, match["trade_id"])
+    return buyer_id, buyer_key, seller_id, match["trade_id"], cap_hash
+
+
+# ── Step 7: Verification + Settlement ────────────────────
+
+
+def test_settle_pass_returns_completed(client):
+    """Settle a valid executed trade → completed."""
+    buyer_id, buyer_key, seller_id, trade_id, _ = _full_trade_cycle(client, price=20.0)
+    resp = client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "completed"
+    assert "seller_receives" in data
+    assert "fee_cu" in data
+
+
+def test_settle_pass_fee_math(client):
+    """200 CU trade: seller gets 197.0, fee = 3.0."""
+    buyer_id, buyer_key, seller_id, trade_id, _ = _full_trade_cycle(client, price=200.0, buyer_cu=500.0)
+    data = client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key}).json()
+    assert data["seller_receives"] == 197.0
+    assert data["fee_cu"] == 3.0
+
+
+def test_settle_pass_seller_credited(client):
+    """Seller cu_balance increases by price × 0.985 after settlement."""
+    buyer_id, buyer_key, seller_id, trade_id, _ = _full_trade_cycle(client, price=200.0, buyer_cu=500.0)
+    client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT cu_balance FROM agents WHERE pubkey = ?", (seller_id,)).fetchone()
+    conn.close()
+    assert row["cu_balance"] == 197.0
+
+
+def test_settle_pass_escrow_deleted(client):
+    """Escrow row deleted after successful settlement."""
+    buyer_id, buyer_key, seller_id, trade_id, _ = _full_trade_cycle(client, price=20.0)
+    client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT trade_id FROM escrow WHERE trade_id = ?", (trade_id,)).fetchone()
+    conn.close()
+    assert row is None
+
+
+def test_settle_pass_trade_status_completed(client):
+    """Trade status = completed after settlement."""
+    buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client)
+    client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT status FROM trades WHERE id = ?", (trade_id,)).fetchone()
+    conn.close()
+    assert row["status"] == "completed"
+
+
+def test_settle_pass_event_recorded(client):
+    """Event settlement_complete recorded with fee breakdown."""
+    buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client, price=200.0, buyer_cu=500.0)
+    client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT event_data FROM events WHERE event_type = 'settlement_complete' ORDER BY seq DESC LIMIT 1").fetchone()
+    conn.close()
+    payload = json.loads(row["event_data"])
+    assert payload["trade_id"] == trade_id
+    assert payload["seller_receives"] == 197.0
+    assert payload["fee_cu"] == 3.0
+    assert payload["fee_platform"] == 2.0
+    assert abs(payload["fee_makers"] - 0.6) < 1e-9
+    assert payload["fee_verify"] == 0.4
+
+
+def test_settle_pass_fee_breakdown_sums(client):
+    """fee_platform + fee_makers + fee_verify = fee_cu (1.5% total)."""
+    buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client, price=200.0, buyer_cu=500.0)
+    client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT event_data FROM events WHERE event_type = 'settlement_complete' ORDER BY seq DESC LIMIT 1").fetchone()
+    conn.close()
+    p = json.loads(row["event_data"])
+    assert abs(p["fee_platform"] + p["fee_makers"] + p["fee_verify"] - p["fee_cu"]) < 1e-9
+
+
+def test_settle_cu_invariant_after_pass(client):
+    """After settlement: sum(balances) = total CU minus fees (fees leave system to platform)."""
+    buyer_id, buyer_key, seller_id, trade_id, _ = _full_trade_cycle(client, price=200.0, buyer_cu=500.0)
+    client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+    import db
+    conn = db.get_connection()
+    total_bal = conn.execute("SELECT SUM(cu_balance) FROM agents").fetchone()[0]
+    total_esc = conn.execute("SELECT COALESCE(SUM(cu_amount), 0) FROM escrow").fetchone()[0]
+    conn.close()
+    # 500 initial - 200 (buyer debit) + 197 (seller credit) = 497
+    # escrow = 0 (deleted)
+    # total_bal = buyer(300) + seller(197) = 497
+    # 3 CU fee left the agent balances (goes to platform accounting)
+    assert total_bal + total_esc == 497.0
+
+
+def test_settle_trade_not_found(client):
+    """Non-existent trade → 404."""
+    _, buyer_key = _register(client)
+    resp = client.post("/v1/trades/nonexistent/settle", headers={"X-API-Key": buyer_key})
+    assert resp.status_code == 404
+
+
+def test_settle_wrong_buyer(client):
+    """Only the buyer can settle → 403 for anyone else."""
+    buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client)
+    _, other_key = _register(client)
+    resp = client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": other_key})
+    assert resp.status_code == 403
+
+
+def test_settle_not_executed(client):
+    """Trade in matched status (not yet executed) → 400."""
+    _, _, cap_hash = _setup_seller(client)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    resp = client.post(f"/v1/trades/{match['trade_id']}/settle", headers={"X-API-Key": buyer_key})
+    assert resp.status_code == 400
+
+
+def test_settle_already_completed(client):
+    """Already settled trade → 400."""
+    buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client)
+    client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+    resp = client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
+    assert resp.status_code == 400
+
+
+def test_settle_requires_auth(client):
+    """No API key → 422."""
+    resp = client.post("/v1/trades/some-id/settle")
+    assert resp.status_code == 422
+
+
+def test_settle_fail_latency_exceeded(client):
+    """Seller latency_bound_us exceeded → violated, buyer refunded."""
+    seller_id, seller_key, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    _execute_trade(client, buyer_key, match["trade_id"])
+    # Manually set latency_bound_us = 1 (1 microsecond — impossible to meet)
+    # and trade latency to something high
+    import db
+    conn = db.get_connection()
+    conn.execute("UPDATE sellers SET latency_bound_us = 1 WHERE agent_pubkey = ?", (seller_id,))
+    conn.execute("UPDATE trades SET latency_us = 500 WHERE id = ?", (match["trade_id"],))
+    conn.commit()
+    conn.close()
+    data = client.post(f"/v1/trades/{match['trade_id']}/settle", headers={"X-API-Key": buyer_key}).json()
+    assert data["status"] == "violated"
+    assert data["reason"] == "latency_exceeded"
+
+
+def test_settle_fail_buyer_refunded(client):
+    """On violation, buyer gets escrow CU back."""
+    seller_id, seller_key, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    _execute_trade(client, buyer_key, match["trade_id"])
+    # Force latency violation
+    import db
+    conn = db.get_connection()
+    conn.execute("UPDATE sellers SET latency_bound_us = 1 WHERE agent_pubkey = ?", (seller_id,))
+    conn.execute("UPDATE trades SET latency_us = 500 WHERE id = ?", (match["trade_id"],))
+    conn.commit()
+    conn.close()
+    client.post(f"/v1/trades/{match['trade_id']}/settle", headers={"X-API-Key": buyer_key})
+    conn = db.get_connection()
+    row = conn.execute("SELECT cu_balance FROM agents WHERE pubkey = ?", (buyer_id,)).fetchone()
+    conn.close()
+    assert row["cu_balance"] == 100.0  # 80 (after match debit) + 20 (refund) = 100
+
+
+def test_settle_fail_escrow_deleted(client):
+    """Escrow deleted on violation too."""
+    seller_id, seller_key, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    _execute_trade(client, buyer_key, match["trade_id"])
+    import db
+    conn = db.get_connection()
+    conn.execute("UPDATE sellers SET latency_bound_us = 1 WHERE agent_pubkey = ?", (seller_id,))
+    conn.execute("UPDATE trades SET latency_us = 500 WHERE id = ?", (match["trade_id"],))
+    conn.commit()
+    conn.close()
+    client.post(f"/v1/trades/{match['trade_id']}/settle", headers={"X-API-Key": buyer_key})
+    conn = db.get_connection()
+    row = conn.execute("SELECT trade_id FROM escrow WHERE trade_id = ?", (match["trade_id"],)).fetchone()
+    conn.close()
+    assert row is None
+
+
+def test_settle_fail_trade_status_violated(client):
+    """Trade status = violated after failed verification."""
+    seller_id, seller_key, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    _execute_trade(client, buyer_key, match["trade_id"])
+    import db
+    conn = db.get_connection()
+    conn.execute("UPDATE sellers SET latency_bound_us = 1 WHERE agent_pubkey = ?", (seller_id,))
+    conn.execute("UPDATE trades SET latency_us = 500 WHERE id = ?", (match["trade_id"],))
+    conn.commit()
+    conn.close()
+    client.post(f"/v1/trades/{match['trade_id']}/settle", headers={"X-API-Key": buyer_key})
+    conn = db.get_connection()
+    row = conn.execute("SELECT status FROM trades WHERE id = ?", (match["trade_id"],)).fetchone()
+    conn.close()
+    assert row["status"] == "violated"
+
+
+def test_settle_fail_event_recorded(client):
+    """Event bond_slashed recorded on violation."""
+    seller_id, seller_key, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    _execute_trade(client, buyer_key, match["trade_id"])
+    import db
+    conn = db.get_connection()
+    conn.execute("UPDATE sellers SET latency_bound_us = 1 WHERE agent_pubkey = ?", (seller_id,))
+    conn.execute("UPDATE trades SET latency_us = 500 WHERE id = ?", (match["trade_id"],))
+    conn.commit()
+    conn.close()
+    client.post(f"/v1/trades/{match['trade_id']}/settle", headers={"X-API-Key": buyer_key})
+    conn = db.get_connection()
+    row = conn.execute("SELECT event_data FROM events WHERE event_type = 'bond_slashed' ORDER BY seq DESC LIMIT 1").fetchone()
+    conn.close()
+    payload = json.loads(row["event_data"])
+    assert payload["trade_id"] == match["trade_id"]
+    assert payload["reason"] == "latency_exceeded"
+
+
+def test_settle_no_latency_bound_passes(client):
+    """latency_bound_us = 0 means no SLA set → always passes latency check."""
+    buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client)
+    data = client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key}).json()
+    assert data["status"] == "completed"

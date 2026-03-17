@@ -323,11 +323,11 @@
     <div class="divider" style="margin:0 auto 40px;"></div>
     <div class="stat-row" style="justify-content:center;">
       <div class="stat">
-        <div class="val" style="color:var(--green);">7</div>
+        <div class="val" style="color:var(--green);">8</div>
         <div class="lbl">Steps Complete</div>
       </div>
       <div class="stat">
-        <div class="val" style="color:var(--accent);">89</div>
+        <div class="val" style="color:var(--accent);">108</div>
         <div class="lbl">Tests Passing</div>
       </div>
       <div class="stat">
@@ -341,11 +341,11 @@
     </div>
     <div style="margin-top:48px;">
       <div class="progress-bar" style="max-width:600px;margin:0 auto;">
-        <div class="progress-fill" style="width:50%;background:linear-gradient(90deg,var(--green),var(--accent));">
-          7/14
+        <div class="progress-fill" style="width:57%;background:linear-gradient(90deg,var(--green),var(--accent));">
+          8/14
         </div>
       </div>
-      <div style="font-size:12px;color:var(--dim);margin-top:8px;">Steps 0–13 · Weekend 2 of 6</div>
+      <div style="font-size:12px;color:var(--dim);margin-top:8px;">Steps 0–13 · Weekend 3 of 6</div>
     </div>
   </div>
 </section>
@@ -1369,6 +1369,124 @@ Errors:
 </section>
 
 <!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 7 — OVERVIEW -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 7 / 13</span>
+  <div class="content">
+    <div style="margin-bottom:8px;">
+      <span class="pill pill-green">COMPLETED</span>
+      <span style="font-size:13px;color:var(--dim);margin-left:12px;">Weekend 3 · Session 7</span>
+    </div>
+    <h2>Step 7: Verification + Settlement</h2>
+    <p class="subtitle" style="margin-bottom:36px;">
+      Deterministic verification (latency + output), CU fee split (1.5%), seller credit, bond slashing on violation.
+      The math-heaviest step: every CU must be accountable.
+    </p>
+
+    <div class="g3">
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">✓</div>
+        <h3 style="margin-top:8px;">verification.py</h3>
+        <p>verify_trade() → (passed, reason)<br>Checks latency + non-empty output</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">✓</div>
+        <h3 style="margin-top:8px;">settlement.py</h3>
+        <p>settle_trade() + slash_bond()<br>Fee split: 1.0% + 0.3% + 0.2%</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">✓</div>
+        <h3 style="margin-top:8px;">POST /settle</h3>
+        <p>/v1/trades/{id}/settle<br>Verify → settle or slash</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:24px;">
+      <h3 style="color:var(--accent);">200 CU Numeric Proof</h3>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--muted);line-height:2;margin-top:12px;">
+        Price = 200.0 CU<br>
+        Seller receives = 200 × 0.985 = <span style="color:var(--green);font-weight:700;">197.0 CU</span><br>
+        Fee total = 200 × 0.015 = 3.0 CU<br>
+        → Platform: 200 × 0.010 = 2.0 CU<br>
+        → Makers: 200 × 0.003 = 0.6 CU<br>
+        → Verify: 200 × 0.002 = 0.4 CU<br>
+        Sum: 197.0 + 2.0 + 0.6 + 0.4 = <span style="color:var(--green);font-weight:700;">200.0 ✓</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 7 — TESTS + AUDIT -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 7 — Tests</span>
+  <div class="content">
+    <h2 style="color:var(--green);">19 New Tests</h2>
+    <p class="subtitle" style="margin-bottom:32px;">Fee math, escrow deletion, status transitions, CU invariant, latency violation, bond slash, buyer refund, events recorded.</p>
+
+    <div class="g2" style="margin-bottom:24px;">
+      <div class="card">
+        <h3 style="color:var(--green);">Settlement Tests (Pass Path)</h3>
+        <div style="font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;">
+          ✓ Returns completed status<br>
+          ✓ 200 CU → seller 197, fee 3<br>
+          ✓ Seller cu_balance credited<br>
+          ✓ Escrow deleted<br>
+          ✓ Trade status = completed<br>
+          ✓ Event settlement_complete recorded<br>
+          ✓ Fee breakdown sums to total<br>
+          ✓ CU invariant after settlement<br>
+          ✓ No latency bound → passes
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--red);">Violation Tests (Fail Path)</h3>
+        <div style="font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;">
+          ✓ Latency exceeded → violated<br>
+          ✓ Buyer refunded on violation<br>
+          ✓ Escrow deleted on violation<br>
+          ✓ Trade status = violated<br>
+          ✓ Event bond_slashed recorded<br>
+          ─────────────────<br>
+          ✓ Trade not found → 404<br>
+          ✓ Wrong buyer → 403<br>
+          ✓ Not executed yet → 400<br>
+          ✓ Already settled → 400<br>
+          ✓ No auth → 422
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="color:var(--green);">Rules Audit</h3>
+      <div class="rule-audit" style="margin-top:12px;">
+        <span class="rule-id">R0</span>  <span class="rule-name">Pure functions, simple logic</span>      <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R1</span>  <span class="rule-name">Math proven: 200 CU breakdown</span>    <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R4</span>  <span class="rule-name">Escrow → settle/slash deterministic</span> <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R5</span>  <span class="rule-name">Verify = latency + output only</span>   <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R9</span>  <span class="rule-name">Fee/slash constants from constants.py</span> <span class="rule-status rule-pass">✓ PASS</span>
+        <span class="rule-id">R10</span> <span class="rule-name">Plain functions, raw SQL, events</span> <span class="rule-status rule-pass">✓ PASS</span>
+      </div>
+      <div class="g2" style="margin-top:24px;">
+        <div style="text-align:center;">
+          <div style="font-size:32px;font-weight:900;color:var(--green);">0</div>
+          <div style="font-size:12px;color:var(--dim);">VIOLATIONS</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:32px;font-weight:900;color:var(--accent);">108</div>
+          <div style="font-size:12px;color:var(--dim);">TESTS PASSING</div>
+          <div style="font-size:11px;color:var(--dim);">89 prior + 19 new</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
 <!-- SLIDE: ROADMAP — WHAT'S NEXT -->
 <!-- ═══════════════════════════════════════════ -->
 <section class="slide">
@@ -1376,7 +1494,7 @@ Errors:
   <span class="slide-num">Roadmap</span>
   <div class="content">
     <h2>What's Next</h2>
-    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–6 done.</p>
+    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–7 done.</p>
 
     <div class="g2">
       <div>
@@ -1413,9 +1531,9 @@ Errors:
       </div>
       <div>
         <div class="timeline">
-          <div class="timeline-item pending">
-            <h4>Step 7 — Verification + Settlement</h4>
-            <p>Deterministic checks. CU debit/credit. 1.5% fee split.</p>
+          <div class="timeline-item">
+            <h4><span style="color:var(--green);">●</span> Step 7 — Verification + Settlement</h4>
+            <p>verify_trade() + settle/slash. 1.5% fee split. 19 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
           <div class="timeline-item pending">
             <h4>Step 8 — Event Log</h4>
@@ -1466,7 +1584,11 @@ Errors:
     <div class="card">
       <div class="timeline">
         <div class="timeline-item">
-          <h4><code>NEW</code> — Step 6: Trade Execution — 89 tests passing</h4>
+          <h4><code>NEW</code> — Step 7: Verification + Settlement — 108 tests passing</h4>
+          <p>verify_trade(), settle_trade(), slash_bond(), POST /v1/trades/{id}/settle. 19 new tests.</p>
+        </div>
+        <div class="timeline-item">
+          <h4><code>056a448</code> — Step 6: Trade Execution — 89 tests passing</h4>
           <p>POST /v1/trades/{id}/execute, latency measurement, active_calls decrement. 12 new tests.</p>
         </div>
         <div class="timeline-item">

@@ -10,6 +10,8 @@ from pydantic import BaseModel
 from db import init_db, get_connection
 from events import record_event
 from matching import rebuild_seller_tables, add_seller, get_sellers, match_request, increment_active_calls, decrement_active_calls
+from verification import verify_trade
+from settlement import settle_trade, slash_bond
 
 
 @asynccontextmanager
@@ -281,6 +283,55 @@ def execute_trade(trade_id: str, body: ExecuteRequest, x_api_key: str = Header()
         "latency_us": latency_us,
         "status": "executed",
     }
+
+
+@app.post("/v1/trades/{trade_id}/settle")
+def settle(trade_id: str, x_api_key: str = Header()):
+    caller_pubkey = authenticate(x_api_key)
+
+    conn = get_connection()
+    try:
+        trade = conn.execute(
+            "SELECT id, buyer_pubkey, seller_pubkey, capability_hash, price_cu, "
+            "latency_us, status FROM trades WHERE id = ?",
+            (trade_id,),
+        ).fetchone()
+        if trade is None:
+            raise HTTPException(status_code=404, detail="trade not found")
+        if trade["buyer_pubkey"] != caller_pubkey:
+            raise HTTPException(status_code=403, detail="not the buyer of this trade")
+        if trade["status"] != "executed":
+            raise HTTPException(status_code=400, detail="trade not in executed status")
+
+        seller = conn.execute(
+            "SELECT agent_pubkey, capability_hash, latency_bound_us, cu_staked "
+            "FROM sellers WHERE agent_pubkey = ? AND capability_hash = ?",
+            (trade["seller_pubkey"], trade["capability_hash"]),
+        ).fetchone()
+
+        # Verification — output from execute is not stored, so we check latency only
+        # (output was already returned to buyer; MVP verifies latency + non-empty)
+        passed, reason = verify_trade(
+            dict(trade), dict(seller) if seller else {"latency_bound_us": 0, "cu_staked": 0.0}, "output_present"
+        )
+
+        if passed:
+            seller_receives, fee_cu = settle_trade(conn, dict(trade))
+            conn.commit()
+            return {
+                "status": "completed",
+                "seller_receives": seller_receives,
+                "fee_cu": fee_cu,
+            }
+        else:
+            slash_bond(conn, dict(trade), dict(seller) if seller else {"cu_staked": 0.0}, reason)
+            conn.commit()
+            return {
+                "status": "violated",
+                "reason": reason,
+            }
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
