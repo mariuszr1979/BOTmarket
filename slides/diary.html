@@ -323,15 +323,15 @@
     <div class="divider" style="margin:0 auto 40px;"></div>
     <div class="stat-row" style="justify-content:center;">
       <div class="stat">
-        <div class="val" style="color:var(--green);">3</div>
+        <div class="val" style="color:var(--green);">4</div>
         <div class="lbl">Steps Complete</div>
       </div>
       <div class="stat">
-        <div class="val" style="color:var(--accent);">35</div>
+        <div class="val" style="color:var(--accent);">46</div>
         <div class="lbl">Tests Passing</div>
       </div>
       <div class="stat">
-        <div class="val" style="color:var(--purple);">12</div>
+        <div class="val" style="color:var(--purple);">13</div>
         <div class="lbl">Files Changed</div>
       </div>
       <div class="stat">
@@ -341,8 +341,8 @@
     </div>
     <div style="margin-top:48px;">
       <div class="progress-bar" style="max-width:600px;margin:0 auto;">
-        <div class="progress-fill" style="width:23%;background:linear-gradient(90deg,var(--green),var(--accent));">
-          3/13
+        <div class="progress-fill" style="width:31%;background:linear-gradient(90deg,var(--green),var(--accent));">
+          4/13
         </div>
       </div>
       <div style="font-size:12px;color:var(--dim);margin-top:8px;">Steps 0–12 · Weekend 1 of 5</div>
@@ -832,6 +832,128 @@ def register_agent():
 </section>
 
 <!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 3 — OVERVIEW -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 3 / 12</span>
+  <div class="content">
+    <div style="margin-bottom:8px;">
+      <span class="pill pill-green">COMPLETED</span>
+      <span style="font-size:13px;color:var(--dim);margin-left:12px;">Weekend 1 · Session 1</span>
+    </div>
+    <h2>Step 3: Schema Store</h2>
+    <p class="subtitle" style="margin-bottom:36px;">
+      Content-addressed schema registration. Same schema → same hash. Always.
+      No labels, no categories, no taxonomy. Pure SHA-256.
+    </p>
+
+    <div class="g2">
+      <div class="card">
+        <h3 style="color:var(--accent);">How It Works</h3>
+        <div class="mono-block" style="font-size:12px;margin-top:12px;">1. canonical_input  = json.dumps(
+     input_schema, sort_keys=True,
+     separators=(',',':'))
+
+2. canonical_output = json.dumps(
+     output_schema, sort_keys=True,
+     separators=(',',':'))
+
+3. combined = input + "||" + output
+
+4. capability_hash =
+     sha256(combined).hexdigest()
+
+5. INSERT OR IGNORE → idempotent</div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">API</h3>
+        <div class="mono-block" style="font-size:12px;margin-top:12px;">POST /v1/schemas/register
+  Auth: X-API-Key header
+
+  Request: {
+    "input_schema":  {"type": "text"},
+    "output_schema": {"type": "text"}
+  }
+
+  Response: {
+    "capability_hash": "d4e5f6..."
+  }
+
+  ✓ 64-char hex SHA-256
+  ✓ Deterministic (key order irrelevant)
+  ✓ Idempotent (10× same → 1 row)</div>
+        <div style="margin-top:16px;">
+          <span class="pill pill-blue">PS#6</span>
+          <span style="font-size:12px;color:var(--muted);margin-left:8px;">Discovery by Example — content-addressed, not label-addressed</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 3 — AUTH + TESTS -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 3 — Auth + Tests</span>
+  <div class="content">
+    <h2>API Key Authentication Added</h2>
+    <p class="subtitle" style="margin-bottom:32px;">First authenticated endpoint. 11 new tests. 0 violations.</p>
+
+    <div class="g2">
+      <div class="card">
+        <h3 style="color:var(--accent);">authenticate()</h3>
+        <p style="margin-bottom:12px;">Reusable auth function for all future endpoints.</p>
+        <div class="mono-block" style="font-size:12px;">def authenticate(x_api_key):
+    row = db.execute(
+      "SELECT pubkey FROM agents
+       WHERE api_key = ?",
+      (x_api_key,)
+    ).fetchone()
+    if row is None:
+        raise 401
+    return row["pubkey"]</div>
+        <div style="margin-top:12px;font-size:13px;color:var(--muted);">
+          <span style="color:var(--green);">●</span> No API key → 422 (missing header)<br>
+          <span style="color:var(--green);">●</span> Bad API key → 401<br>
+          <span style="color:var(--green);">●</span> Valid key → returns agent pubkey
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">11 New Tests</h3>
+        <div style="font-size:13px;color:var(--muted);line-height:2;margin-top:8px;">
+          ✓ Returns 201<br>
+          ✓ Returns capability_hash<br>
+          ✓ Hash is deterministic<br>
+          ✓ Different schemas → different hash<br>
+          ✓ Key order irrelevant<br>
+          ✓ 10× same → 1 DB row<br>
+          ✓ Persisted in DB<br>
+          ✓ Event recorded<br>
+          ✓ Missing auth → 422<br>
+          ✓ Invalid auth → 401<br>
+          ✓ No extra fields in response
+        </div>
+      </div>
+    </div>
+
+    <div class="g2" style="margin-top:24px;">
+      <div class="card" style="text-align:center;border-top:3px solid var(--green);">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">0</div>
+        <div style="font-size:14px;color:var(--muted);margin-top:4px;">Rule Violations</div>
+      </div>
+      <div class="card" style="text-align:center;border-top:3px solid var(--accent);">
+        <div style="font-size:40px;font-weight:900;color:var(--accent);">46</div>
+        <div style="font-size:14px;color:var(--muted);margin-top:4px;">Total Tests Passing</div>
+        <div style="font-size:12px;color:var(--dim);margin-top:4px;">35 prior + 11 new</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
 <!-- SLIDE: ROADMAP — WHAT'S NEXT -->
 <!-- ═══════════════════════════════════════════ -->
 <section class="slide">
@@ -839,7 +961,7 @@ def register_agent():
   <span class="slide-num">Roadmap</span>
   <div class="content">
     <h2>What's Next</h2>
-    <p class="subtitle" style="margin-bottom:32px;">13 steps from skeleton to deployed exchange. Steps 0–2 done.</p>
+    <p class="subtitle" style="margin-bottom:32px;">13 steps from skeleton to deployed exchange. Steps 0–3 done.</p>
 
     <div class="g2">
       <div>
@@ -856,9 +978,9 @@ def register_agent():
             <h4><span style="color:var(--green);">●</span> Step 2 — Agent Registration</h4>
             <p>POST /v1/agents/register + events.py. 13 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
-          <div class="timeline-item pending">
-            <h4>Step 3 — Schema Store</h4>
-            <p>SHA-256 capability hash from input + output schemas.</p>
+          <div class="timeline-item">
+            <h4><span style="color:var(--green);">●</span> Step 3 — Schema Store</h4>
+            <p>SHA-256 capability hash + auth. 11 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
           <div class="timeline-item pending">
             <h4>Step 4 — Seller Registration</h4>
@@ -925,7 +1047,11 @@ def register_agent():
     <div class="card">
       <div class="timeline">
         <div class="timeline-item">
-          <h4><code>NEW</code> — Steps 1–2: Agent Registration — 35 tests passing</h4>
+          <h4><code>NEW</code> — Step 3: Schema Store — 46 tests passing</h4>
+          <p>POST /v1/schemas/register, authenticate(), SHA-256 content-addressed hashing. 11 new tests.</p>
+        </div>
+        <div class="timeline-item">
+          <h4><code>00fdb67</code> — Steps 1–2: Agent Registration — 35 tests passing</h4>
           <p>POST /v1/agents/register, events.py record_event(), 13 new tests. 0 rule violations.</p>
         </div>
         <div class="timeline-item">
