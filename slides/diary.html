@@ -323,11 +323,11 @@
     <div class="divider" style="margin:0 auto 40px;"></div>
     <div class="stat-row" style="justify-content:center;">
       <div class="stat">
-        <div class="val" style="color:var(--green);">10</div>
+        <div class="val" style="color:var(--green);">11</div>
         <div class="lbl">Steps Complete</div>
       </div>
       <div class="stat">
-        <div class="val" style="color:var(--accent);">139</div>
+        <div class="val" style="color:var(--accent);">151</div>
         <div class="lbl">Tests Passing</div>
       </div>
       <div class="stat">
@@ -341,8 +341,8 @@
     </div>
     <div style="margin-top:48px;">
       <div class="progress-bar" style="max-width:600px;margin:0 auto;">
-        <div class="progress-fill" style="width:71%;background:linear-gradient(90deg,var(--green),var(--accent));">
-          10/14
+        <div class="progress-fill" style="width:79%;background:linear-gradient(90deg,var(--green),var(--accent));">
+          11/14
         </div>
       </div>
       <div style="font-size:12px;color:var(--dim);margin-top:8px;">Steps 0–13 · Weekend 3 of 6</div>
@@ -1591,6 +1591,104 @@ Errors:
 </section>
 
 <!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 10 — OVERVIEW -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 10 / 13</span>
+  <div class="content">
+    <div style="margin-bottom:8px;">
+      <span class="pill pill-green">COMPLETED</span>
+      <span style="font-size:13px;color:var(--dim);margin-left:12px;">Weekend 3 · Session 10</span>
+    </div>
+    <h2>Step 10: Binary TCP Server</h2>
+    <p class="subtitle" style="margin-bottom:36px;">
+      asyncio TCP on port 9000. Reads binary messages, routes to same core logic.
+      Persistent connections, handler dispatch, 10 concurrent clients tested.
+    </p>
+
+    <div class="g3">
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">✓</div>
+        <h3 style="margin-top:8px;">6 Handlers</h3>
+        <p>register, schema, seller,<br>match, execute, events</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">✓</div>
+        <h3 style="margin-top:8px;">Same Core</h3>
+        <p>TCP + JSON call identical<br>matching, settlement, events</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">✓</div>
+        <h3 style="margin-top:8px;">Persistent</h3>
+        <p>One connection per agent.<br>Multiple messages per conn.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:24px;">
+      <h3 style="color:var(--accent);">Architecture</h3>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--muted);line-height:2;margin-top:12px;">
+        Agent → TCP:9000 → [5B header] → handler dispatch → same core (matching.py, settlement.py, events.py)<br>
+        Agent → HTTP:8000 → FastAPI → same core (matching.py, settlement.py, events.py)<br>
+        Transport layer = separate. Business logic = shared.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 10 — TESTS + AUDIT -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 10 — Tests</span>
+  <div class="content">
+    <h2 style="color:var(--green);">12 New Tests</h2>
+    <p class="subtitle" style="margin-bottom:32px;">Register, schema, seller, match, full lifecycle, invalid msg, bad auth, valid binary, persistent conn, 10 concurrent, events query, no match.</p>
+
+    <div class="g2" style="margin-bottom:24px;">
+      <div class="card">
+        <h3 style="color:var(--green);">TCP Server Tests</h3>
+        <div style="font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;">
+          ✓ Register agent via TCP<br>
+          ✓ Register schema via TCP<br>
+          ✓ Register seller via TCP<br>
+          ✓ Match request via TCP<br>
+          ✓ Full lifecycle over TCP<br>
+          ✓ Invalid msg_type → ERROR<br>
+          ✓ Bad API key → ERROR<br>
+          ✓ Response is valid binary<br>
+          ✓ Multiple msgs one connection<br>
+          ✓ 10 concurrent connections<br>
+          ✓ Query events via TCP<br>
+          ✓ No match via TCP
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">Rules Audit</h3>
+        <div class="rule-audit" style="margin-top:12px;">
+          <span class="rule-id">R0</span>  <span class="rule-name">~200 lines, handler dispatch</span>    <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R3</span>  <span class="rule-name">Binary TCP as primary protocol</span>  <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R4</span>  <span class="rule-name">Same security on both transports</span> <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R10</span> <span class="rule-name">Transport separate from logic</span>   <span class="rule-status rule-pass">✓ PASS</span>
+        </div>
+        <div class="g2" style="margin-top:24px;">
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--green);">0</div>
+            <div style="font-size:12px;color:var(--dim);">VIOLATIONS</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--accent);">151</div>
+            <div style="font-size:12px;color:var(--dim);">TESTS PASSING</div>
+            <div style="font-size:11px;color:var(--dim);">139 prior + 12 new</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
 <!-- SLIDE: ROADMAP — WHAT'S NEXT -->
 <!-- ═══════════════════════════════════════════ -->
 <section class="slide">
@@ -1598,7 +1696,7 @@ Errors:
   <span class="slide-num">Roadmap</span>
   <div class="content">
     <h2>What's Next</h2>
-    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–9 done.</p>
+    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–10 done.</p>
 
     <div class="g2">
       <div>
@@ -1647,9 +1745,9 @@ Errors:
             <h4><span style="color:var(--green);">●</span> Step 9 — Binary Wire Format</h4>
             <p>Typed pack/unpack for all 10 msg types. 18 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
-          <div class="timeline-item pending">
-            <h4>Step 10 — Binary TCP Server</h4>
-            <p>Route binary messages to exchange core. Port 9000.</p>
+          <div class="timeline-item">
+            <h4><span style="color:var(--green);">●</span> Step 10 — Binary TCP Server</h4>
+            <p>Full handler dispatch, persistent connections. 12 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
           <div class="timeline-item pending">
             <h4>Step 11 — Integration Testing</h4>
@@ -1688,7 +1786,11 @@ Errors:
     <div class="card">
       <div class="timeline">
         <div class="timeline-item">
-          <h4><code>NEW</code> — Step 9: Binary Wire Format — 139 tests passing</h4>
+          <h4><code>da66e0a</code> — Step 10: Binary TCP Server — 151 tests passing</h4>
+          <p>6 handlers, persistent connections, handler dispatch, 10 concurrent clients. 12 new tests.</p>
+        </div>
+        <div class="timeline-item">
+          <h4><code>ffd3eb3</code> — Step 9: Binary Wire Format — 139 tests passing</h4>
           <p>Typed pack/unpack for all 10 message types, exact byte sizes, 1000 random roundtrips. 18 new tests.</p>
         </div>
         <div class="timeline-item">
