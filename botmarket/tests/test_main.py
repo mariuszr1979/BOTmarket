@@ -123,6 +123,15 @@ def _register(client):
     return data["agent_id"], data["api_key"]
 
 
+def _seed_balance(agent_id, amount):
+    """Directly set cu_balance for an agent (test helper)."""
+    import db
+    conn = db.get_connection()
+    conn.execute("UPDATE agents SET cu_balance = ? WHERE pubkey = ?", (amount, agent_id))
+    conn.commit()
+    conn.close()
+
+
 SAMPLE_INPUT = {"type": "text", "max_bytes": 100000}
 SAMPLE_OUTPUT = {"type": "text", "max_bytes": 5000}
 
@@ -295,8 +304,9 @@ def _register_schema(client, api_key, input_s=None, output_s=None):
 
 
 def test_seller_register_returns_201(client):
-    _, api_key = _register(client)
+    agent_id, api_key = _register(client)
     cap_hash = _register_schema(client, api_key)
+    _seed_balance(agent_id, 20.0)
     resp = client.post(
         "/v1/sellers/register",
         json={"capability_hash": cap_hash, "price_cu": 20.0, "capacity": 100},
@@ -306,8 +316,9 @@ def test_seller_register_returns_201(client):
 
 
 def test_seller_register_response_fields(client):
-    _, api_key = _register(client)
+    agent_id, api_key = _register(client)
     cap_hash = _register_schema(client, api_key)
+    _seed_balance(agent_id, 20.0)
     data = client.post(
         "/v1/sellers/register",
         json={"capability_hash": cap_hash, "price_cu": 20.0, "capacity": 100},
@@ -317,8 +328,9 @@ def test_seller_register_response_fields(client):
 
 
 def test_seller_persisted_in_db(client):
-    _, api_key = _register(client)
+    agent_id, api_key = _register(client)
     cap_hash = _register_schema(client, api_key)
+    _seed_balance(agent_id, 15.0)
     client.post(
         "/v1/sellers/register",
         json={"capability_hash": cap_hash, "price_cu": 15.0, "capacity": 50},
@@ -337,8 +349,9 @@ def test_seller_persisted_in_db(client):
 
 
 def test_seller_records_event(client):
-    _, api_key = _register(client)
+    agent_id, api_key = _register(client)
     cap_hash = _register_schema(client, api_key)
+    _seed_balance(agent_id, 20.0)
     client.post(
         "/v1/sellers/register",
         json={"capability_hash": cap_hash, "price_cu": 20.0, "capacity": 10},
@@ -407,9 +420,10 @@ def test_seller_requires_auth(client):
 
 
 def test_seller_same_agent_multiple_capabilities(client):
-    _, api_key = _register(client)
+    agent_id, api_key = _register(client)
     h1 = _register_schema(client, api_key)
     h2 = _register_schema(client, api_key, {"type": "image"}, {"type": "label"})
+    _seed_balance(agent_id, 30.0)
     client.post("/v1/sellers/register", json={"capability_hash": h1, "price_cu": 10.0, "capacity": 5}, headers={"X-API-Key": api_key})
     client.post("/v1/sellers/register", json={"capability_hash": h2, "price_cu": 20.0, "capacity": 3}, headers={"X-API-Key": api_key})
     r1 = client.get(f"/v1/sellers/{h1}").json()
@@ -419,9 +433,11 @@ def test_seller_same_agent_multiple_capabilities(client):
 
 
 def test_seller_multiple_agents_same_capability(client):
-    _, key1 = _register(client)
-    _, key2 = _register(client)
+    id1, key1 = _register(client)
+    id2, key2 = _register(client)
     cap_hash = _register_schema(client, key1)
+    _seed_balance(id1, 30.0)
+    _seed_balance(id2, 10.0)
     client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": 30.0, "capacity": 5}, headers={"X-API-Key": key1})
     client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": 10.0, "capacity": 5}, headers={"X-API-Key": key2})
     data = client.get(f"/v1/sellers/{cap_hash}").json()
@@ -440,7 +456,8 @@ def test_get_sellers_sorted_by_price(client):
     """3 sellers at 30, 10, 20 CU → returned sorted 10, 20, 30."""
     keys = [_register(client) for _ in range(3)]
     cap_hash = _register_schema(client, keys[0][1])
-    for (_, key), price in zip(keys, [30.0, 10.0, 20.0]):
+    for (agent_id, key), price in zip(keys, [30.0, 10.0, 20.0]):
+        _seed_balance(agent_id, price)
         client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": price, "capacity": 5}, headers={"X-API-Key": key})
     data = client.get(f"/v1/sellers/{cap_hash}").json()
     prices = [s["price_cu"] for s in data["sellers"]]
@@ -463,6 +480,7 @@ def _setup_seller(client, price=20.0, capacity=10):
     """Register agent + schema + seller. Returns (seller_id, seller_key, cap_hash)."""
     seller_id, seller_key = _register(client)
     cap_hash = _register_schema(client, seller_key)
+    _fund_agent(client, seller_id, price)
     client.post(
         "/v1/sellers/register",
         json={"capability_hash": cap_hash, "price_cu": price, "capacity": capacity},
@@ -589,7 +607,8 @@ def test_match_cheapest_seller_wins(client):
     """3 sellers at 30, 10, 20 → buyer gets the 10 CU seller."""
     keys = [_register(client) for _ in range(3)]
     cap_hash = _register_schema(client, keys[0][1])
-    for (_, key), price in zip(keys, [30.0, 10.0, 20.0]):
+    for (agent_id, key), price in zip(keys, [30.0, 10.0, 20.0]):
+        _seed_balance(agent_id, price)
         client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": price, "capacity": 5}, headers={"X-API-Key": key})
     buyer_id, buyer_key = _register(client)
     _fund_agent(client, buyer_id, 100.0)
@@ -603,8 +622,10 @@ def test_match_cheapest_at_capacity_skipped(client):
     keys = [_register(client) for _ in range(2)]
     cap_hash = _register_schema(client, keys[0][1])
     # Seller 1: cheap but capacity=1
+    _seed_balance(keys[0][0], 10.0)
     client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": 10.0, "capacity": 1}, headers={"X-API-Key": keys[0][1]})
     # Seller 2: more expensive but capacity=5
+    _seed_balance(keys[1][0], 25.0)
     client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": 25.0, "capacity": 5}, headers={"X-API-Key": keys[1][1]})
     # First buyer takes the cheap seller
     buyer1_id, buyer1_key = _register(client)
@@ -622,7 +643,9 @@ def test_match_max_price_filter(client):
     """max_price_cu filters out sellers above the limit."""
     keys = [_register(client) for _ in range(2)]
     cap_hash = _register_schema(client, keys[0][1])
+    _seed_balance(keys[0][0], 10.0)
     client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": 10.0, "capacity": 5}, headers={"X-API-Key": keys[0][1]})
+    _seed_balance(keys[1][0], 30.0)
     client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": 30.0, "capacity": 5}, headers={"X-API-Key": keys[1][1]})
     buyer_id, buyer_key = _register(client)
     _fund_agent(client, buyer_id, 100.0)
@@ -965,15 +988,16 @@ def test_settle_pass_seller_credited(client):
     assert row["cu_balance"] == 197.0
 
 
-def test_settle_pass_escrow_deleted(client):
-    """Escrow row deleted after successful settlement."""
+def test_settle_pass_escrow_released(client):
+    """Escrow row marked 'released' after successful settlement."""
     buyer_id, buyer_key, seller_id, trade_id, _ = _full_trade_cycle(client, price=20.0)
     client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
     import db
     conn = db.get_connection()
-    row = conn.execute("SELECT trade_id FROM escrow WHERE trade_id = ?", (trade_id,)).fetchone()
+    row = conn.execute("SELECT status FROM escrow WHERE trade_id = ?", (trade_id,)).fetchone()
     conn.close()
-    assert row is None
+    assert row is not None
+    assert row["status"] == "released"
 
 
 def test_settle_pass_trade_status_completed(client):
@@ -1017,19 +1041,22 @@ def test_settle_pass_fee_breakdown_sums(client):
 
 
 def test_settle_cu_invariant_after_pass(client):
-    """After settlement: sum(balances) = total CU minus fees (fees leave system to platform)."""
+    """After settlement: sum(balances) + held_escrow + cu_staked + fees = total CU injected."""
     buyer_id, buyer_key, seller_id, trade_id, _ = _full_trade_cycle(client, price=200.0, buyer_cu=500.0)
     client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
     import db
     conn = db.get_connection()
     total_bal = conn.execute("SELECT SUM(cu_balance) FROM agents").fetchone()[0]
-    total_esc = conn.execute("SELECT COALESCE(SUM(cu_amount), 0) FROM escrow").fetchone()[0]
+    total_held_esc = conn.execute("SELECT COALESCE(SUM(cu_amount), 0) FROM escrow WHERE status = 'held'").fetchone()[0]
+    total_staked = conn.execute("SELECT COALESCE(SUM(cu_staked), 0) FROM sellers").fetchone()[0]
     conn.close()
-    # 500 initial - 200 (buyer debit) + 197 (seller credit) = 497
-    # escrow = 0 (deleted)
-    # total_bal = buyer(300) + seller(197) = 497
-    # 3 CU fee left the agent balances (goes to platform accounting)
-    assert total_bal + total_esc == 497.0
+    # Injected: 500 (buyer) + 200 (seller seed for stake)
+    # After staking: seller balance=0, cu_staked=200
+    # After trade: buyer=300, seller=197, fees=3
+    # total_bal(497) + held_escrow(0) + staked(200) + fees(3) = 700
+    total_injected = 700.0
+    fees = 200.0 * 0.015  # 3.0
+    assert abs((total_bal + total_held_esc + total_staked + fees) - total_injected) < 0.001
 
 
 def test_settle_trade_not_found(client):
@@ -1109,11 +1136,11 @@ def test_settle_fail_buyer_refunded(client):
     conn = db.get_connection()
     row = conn.execute("SELECT cu_balance FROM agents WHERE pubkey = ?", (buyer_id,)).fetchone()
     conn.close()
-    assert row["cu_balance"] == 100.0  # 80 (after match debit) + 20 (refund) = 100
+    assert row["cu_balance"] == 100.5  # 80 (after match debit) + 20 (refund) + 0.5 (slash share) = 100.5
 
 
-def test_settle_fail_escrow_deleted(client):
-    """Escrow deleted on violation too."""
+def test_settle_fail_escrow_refunded(client):
+    """Escrow marked 'refunded' on violation."""
     seller_id, seller_key, cap_hash = _setup_seller(client, price=20.0)
     buyer_id, buyer_key = _register(client)
     _fund_agent(client, buyer_id, 100.0)
@@ -1127,9 +1154,10 @@ def test_settle_fail_escrow_deleted(client):
     conn.close()
     client.post(f"/v1/trades/{match['trade_id']}/settle", headers={"X-API-Key": buyer_key})
     conn = db.get_connection()
-    row = conn.execute("SELECT trade_id FROM escrow WHERE trade_id = ?", (match["trade_id"],)).fetchone()
+    row = conn.execute("SELECT status FROM escrow WHERE trade_id = ?", (match["trade_id"],)).fetchone()
     conn.close()
-    assert row is None
+    assert row is not None
+    assert row["status"] == "refunded"
 
 
 def test_settle_fail_trade_status_violated(client):

@@ -17,7 +17,7 @@ from log import log
 from events import record_event, query_events
 from matching import rebuild_seller_tables, add_seller, get_sellers, match_request, increment_active_calls, decrement_active_calls
 from verification import verify_trade
-from settlement import settle_trade, slash_bond
+from settlement import settle_trade, slash_bond, maybe_set_sla
 
 
 @asynccontextmanager
@@ -126,17 +126,31 @@ def register_seller(body: SellerRegisterRequest, x_api_key: str = Header()):
         if row is None:
             raise HTTPException(status_code=404, detail="capability_hash not found")
 
+        # Stake = price_cu (seller puts up one-trade-worth as bond)
+        stake = body.price_cu
+        agent_row = conn.execute(
+            "SELECT cu_balance FROM agents WHERE pubkey = ?", (agent_pubkey,)
+        ).fetchone()
+        if agent_row is None or agent_row["cu_balance"] < stake:
+            raise HTTPException(status_code=400, detail="insufficient CU balance for stake")
+
+        conn.execute(
+            "UPDATE agents SET cu_balance = cu_balance - ? WHERE pubkey = ?",
+            (stake, agent_pubkey),
+        )
+
         now_ns = time.time_ns()
         conn.execute(
             "INSERT OR REPLACE INTO sellers "
             "(agent_pubkey, capability_hash, price_cu, latency_bound_us, capacity, active_calls, cu_staked, registered_at_ns) "
-            "VALUES (?, ?, ?, 0, ?, 0, 0.0, ?)",
-            (agent_pubkey, body.capability_hash, body.price_cu, body.capacity, now_ns),
+            "VALUES (?, ?, ?, 0, ?, 0, ?, ?)",
+            (agent_pubkey, body.capability_hash, body.price_cu, body.capacity, stake, now_ns),
         )
         record_event(conn, "seller_registered", json.dumps({
             "agent": agent_pubkey,
             "capability_hash": body.capability_hash,
             "price_cu": body.price_cu,
+            "cu_staked": stake,
         }))
         conn.commit()
     finally:
@@ -149,7 +163,7 @@ def register_seller(body: SellerRegisterRequest, x_api_key: str = Header()):
         "latency_bound_us": 0,
         "capacity": body.capacity,
         "active_calls": 0,
-        "cu_staked": 0.0,
+        "cu_staked": stake,
     }
     add_seller(seller)
 
@@ -342,6 +356,7 @@ def settle(trade_id: str, x_api_key: str = Header()):
 
         if passed:
             seller_receives, fee_cu = settle_trade(conn, dict(trade))
+            maybe_set_sla(conn, trade["seller_pubkey"], trade["capability_hash"])
             conn.commit()
             return {
                 "status": "completed",
@@ -465,11 +480,13 @@ def market_start():
     if _trader_proc is not None and _trader_proc.poll() is None:
         return {"status": "already_running", "pid": _trader_proc.pid}
     script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "auto_trader.py")
+    log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "auto_trader.log")
+    log_fh = open(log_file, "a")
     _trader_proc = subprocess.Popen(
-        [sys.executable, script],
+        [sys.executable, "-u", script],
         cwd=os.path.dirname(os.path.abspath(__file__)),
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=log_fh,
+        stderr=log_fh,
     )
     return {"status": "started", "pid": _trader_proc.pid}
 

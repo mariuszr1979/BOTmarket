@@ -69,6 +69,13 @@ def _run(loop, coro):
     return loop.run_until_complete(coro)
 
 
+def _seed_cu(agent_id, amount):
+    conn = db.get_connection()
+    conn.execute("UPDATE agents SET cu_balance = ? WHERE pubkey = ?", (amount, agent_id))
+    conn.commit()
+    conn.close()
+
+
 # ── Tests ────────────────────────────────────
 
 
@@ -110,6 +117,7 @@ def test_tcp_register_seller(tcp_server):
     cap_hash = json.loads(sp)["capability_hash"]
 
     seller_body = {"capability_hash": cap_hash, "price_cu": 20.0, "capacity": 5}
+    _seed_cu(agent["agent_id"], 20.0)
     rt, resp = _run(loop, _send_recv(host, port, MSG_REGISTER_SELLER, _tcp_payload(agent["api_key"], seller_body)))
     assert rt == MSG_REGISTER_SELLER
     data = json.loads(resp)
@@ -127,6 +135,7 @@ def test_tcp_match_request(tcp_server):
     _, sp = _run(loop, _send_recv(host, port, MSG_REGISTER_SCHEMA, _tcp_payload(seller["api_key"], schema_body)))
     cap_hash = json.loads(sp)["capability_hash"]
     seller_body = {"capability_hash": cap_hash, "price_cu": 20.0, "capacity": 5}
+    _seed_cu(seller["agent_id"], 20.0)
     _run(loop, _send_recv(host, port, MSG_REGISTER_SELLER, _tcp_payload(seller["api_key"], seller_body)))
 
     # Setup buyer and fund
@@ -161,6 +170,7 @@ def test_tcp_full_lifecycle(tcp_server):
     cap_hash = json.loads(sp)["capability_hash"]
 
     seller_body = {"capability_hash": cap_hash, "price_cu": 20.0, "capacity": 5}
+    _seed_cu(seller["agent_id"], 20.0)
     _run(loop, _send_recv(host, port, MSG_REGISTER_SELLER, _tcp_payload(seller["api_key"], seller_body)))
 
     conn = db.get_connection()

@@ -20,7 +20,7 @@ from events import record_event, query_events
 from log import log
 from matching import rebuild_seller_tables, add_seller, match_request, increment_active_calls, decrement_active_calls
 from verification import verify_trade
-from settlement import settle_trade, slash_bond
+from settlement import settle_trade, slash_bond, maybe_set_sla
 
 
 def _auth_key(api_key_bytes: bytes) -> str | None:
@@ -104,17 +104,31 @@ def handle_register_seller(payload: bytes) -> bytes:
         if row is None:
             return pack_error(0x03, b"capability_hash not found")
 
+        # Stake = price_cu
+        stake = body["price_cu"]
+        agent_row = conn.execute(
+            "SELECT cu_balance FROM agents WHERE pubkey = ?", (agent_pubkey,)
+        ).fetchone()
+        if agent_row is None or agent_row["cu_balance"] < stake:
+            return pack_error(0x04, b"insufficient CU balance for stake")
+
+        conn.execute(
+            "UPDATE agents SET cu_balance = cu_balance - ? WHERE pubkey = ?",
+            (stake, agent_pubkey),
+        )
+
         now_ns = time.time_ns()
         conn.execute(
             "INSERT OR REPLACE INTO sellers "
             "(agent_pubkey, capability_hash, price_cu, latency_bound_us, capacity, active_calls, cu_staked, registered_at_ns) "
-            "VALUES (?, ?, ?, 0, ?, 0, 0.0, ?)",
-            (agent_pubkey, body["capability_hash"], body["price_cu"], body["capacity"], now_ns),
+            "VALUES (?, ?, ?, 0, ?, 0, ?, ?)",
+            (agent_pubkey, body["capability_hash"], body["price_cu"], body["capacity"], stake, now_ns),
         )
         record_event(conn, "seller_registered", json.dumps({
             "agent": agent_pubkey,
             "capability_hash": body["capability_hash"],
             "price_cu": body["price_cu"],
+            "cu_staked": stake,
         }))
         conn.commit()
     finally:
@@ -127,7 +141,7 @@ def handle_register_seller(payload: bytes) -> bytes:
         "latency_bound_us": 0,
         "capacity": body["capacity"],
         "active_calls": 0,
-        "cu_staked": 0.0,
+        "cu_staked": stake,
     }
     add_seller(seller)
     resp = json.dumps({"status": "registered", "capability_hash": body["capability_hash"]}).encode()
@@ -272,6 +286,7 @@ def handle_settle(payload: bytes) -> bytes:
 
         if passed:
             seller_receives, fee_cu = settle_trade(conn, dict(trade))
+            maybe_set_sla(conn, trade["seller_pubkey"], trade["capability_hash"])
             conn.commit()
             resp = json.dumps({"status": "completed", "seller_receives": seller_receives, "fee_cu": fee_cu}).encode()
         else:

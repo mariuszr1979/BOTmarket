@@ -31,9 +31,10 @@ def _full_trade(client):
     buyer_id, buyer_key = _register(client)
     seller_id, seller_key = _register(client)
 
-    # Seed buyer
+    # Seed buyer and seller
     conn = db.get_connection()
     conn.execute("UPDATE agents SET cu_balance = 1000 WHERE pubkey = ?", (buyer_id,))
+    conn.execute("UPDATE agents SET cu_balance = 100 WHERE pubkey = ?", (seller_id,))
     conn.commit()
     conn.close()
 
@@ -154,7 +155,12 @@ def test_sellers_list_empty(client):
 
 def test_sellers_list_returns_sellers(client):
     import hashlib
-    _, key = _register(client)
+    import db
+    agent_id, key = _register(client)
+    conn = db.get_connection()
+    conn.execute("UPDATE agents SET cu_balance = 100 WHERE pubkey = ?", (agent_id,))
+    conn.commit()
+    conn.close()
     schemas = {"input_schema": {"type": "string"}, "output_schema": {"type": "string"}}
     client.post("/v1/schemas/register", json=schemas, headers={"x-api-key": key})
     ci = json.dumps(schemas["input_schema"], sort_keys=True, separators=(",", ":"))
@@ -170,8 +176,13 @@ def test_sellers_list_returns_sellers(client):
 
 def test_sellers_list_sorted_by_price(client):
     import hashlib
+    import db
     for price in [50, 10, 30]:
-        _, key = _register(client)
+        agent_id, key = _register(client)
+        conn = db.get_connection()
+        conn.execute("UPDATE agents SET cu_balance = 100 WHERE pubkey = ?", (agent_id,))
+        conn.commit()
+        conn.close()
         schemas = {"input_schema": {"type": "string", "p": price}, "output_schema": {"type": "string"}}
         client.post("/v1/schemas/register", json=schemas, headers={"x-api-key": key})
         ci = json.dumps(schemas["input_schema"], sort_keys=True, separators=(",", ":"))

@@ -96,6 +96,14 @@ def register_all():
 
         cap_hash = _capability_hash(agent_def["input_schema"], agent_def["output_schema"])
 
+        # Seed seller with CU for staking
+        import db
+        conn = db.get_connection()
+        conn.execute("UPDATE agents SET cu_balance = ? WHERE pubkey = ?",
+                     (agent_def["price_cu"], agent_id))
+        conn.commit()
+        conn.close()
+
         # Register as seller
         _api("POST", "/v1/sellers/register", {
             "capability_hash": cap_hash,

@@ -50,6 +50,13 @@ AGENT_DEFS = [
 ]
 
 
+def _seed_cu(pubkey, amount):
+    conn = db.get_connection()
+    conn.execute("UPDATE agents SET cu_balance = ? WHERE pubkey = ?", (amount, pubkey))
+    conn.commit()
+    conn.close()
+
+
 # ── Tests ────────────────────────────────────────────────
 
 
@@ -59,6 +66,8 @@ def test_all_5_agents_register_as_sellers(client):
         resp = client.post("/v1/agents/register")
         assert resp.status_code == 201
         data = resp.json()
+
+        _seed_cu(data["agent_id"], agent_def["price_cu"])
 
         schema_resp = client.post("/v1/schemas/register", json={
             "input_schema": agent_def["input_schema"],
@@ -89,6 +98,7 @@ def test_buyer_can_match_each_seller(client):
     sellers = []
     for agent_def in AGENT_DEFS:
         s = client.post("/v1/agents/register").json()
+        _seed_cu(s["agent_id"], agent_def["price_cu"])
         client.post("/v1/schemas/register", json={
             "input_schema": agent_def["input_schema"],
             "output_schema": agent_def["output_schema"],
@@ -122,6 +132,8 @@ def test_full_trade_lifecycle_per_agent(client):
 
         seller = client.post("/v1/agents/register").json()
         buyer = client.post("/v1/agents/register").json()
+
+        _seed_cu(seller["agent_id"], agent_def["price_cu"])
 
         client.post("/v1/schemas/register", json={
             "input_schema": agent_def["input_schema"],

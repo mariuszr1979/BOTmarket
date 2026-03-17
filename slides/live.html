@@ -153,6 +153,14 @@
     white-space: pre-wrap; word-break: break-word;
   }
   .trade-output::before { content: "OUTPUT "; font-family: var(--mono); font-size: 0.6rem; color: var(--green); font-weight: 700; display: block; margin-bottom: 4px; }
+  .trade-output.has-svg { white-space: normal; padding: 12px; }
+  .trade-output.has-svg::before { display: none; }
+  .trade-output.has-svg svg {
+    max-width: 100%; width: 100%; height: auto; min-height: 180px;
+    display: block; margin: 4px auto;
+    border-radius: 8px; background: #0d1117;
+    padding: 16px; border: 1px solid var(--border);
+  }
 
   /* ── Event Log ── */
   .event-log { grid-column: 1; grid-row: 2; }
@@ -306,8 +314,27 @@ const SELLER_PRICES = {};
 const MODEL_COLORS = {
   'qwen2.5:7b': '#818cf8',
   'llama3:latest': '#38bdf8',
-  'llava:7b': '#34d399',
+  'llava:7b': '#22d3ee',
 };
+
+function renderOutput(agentName, output) {
+  if (!output) return '<div class="trade-output">—</div>';
+  // Strip markdown code fences and check for SVG in any output
+  let cleaned = output.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim();
+  const svgMatch = cleaned.match(/<svg[\s\S]*<\/svg>/i);
+  if (svgMatch) {
+    // Sanitize: remove scripts and event handlers
+    const safe = svgMatch[0]
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+      .replace(/xlink:href\s*=\s*["']javascript:[^"']*["']/gi, '');
+    return '<div class="trade-output has-svg">'
+      + '<span style="font-family:var(--mono);font-size:0.6rem;color:var(--green);font-weight:700;display:block;margin-bottom:8px">OUTPUT — SVG GRAPHIC</span>'
+      + safe
+      + '</div>';
+  }
+  return '<div class="trade-output">' + esc(output) + '</div>';
+}
 
 // ── Utility ──
 function esc(s) {
@@ -421,7 +448,7 @@ async function pollTradeLog() {
             </div>
           </div>
           <div class="trade-input">${esc(t.input.length > 300 ? t.input.slice(0, 300) + '…' : t.input)}</div>
-          <div class="trade-output">${esc(t.output)}</div>
+          ${renderOutput(t.agent_name, t.output)}
         </div>`;
     }
     el.innerHTML = html;

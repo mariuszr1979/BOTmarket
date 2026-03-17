@@ -110,6 +110,8 @@ def _register_and_setup(client):
     seller = client.post("/v1/agents/register").json()
     buyer = client.post("/v1/agents/register").json()
 
+    _seed_cu(seller["agent_id"], 20.0)
+
     schema = client.post("/v1/schemas/register", json={
         "input_schema": {"type": "string", "task": "summarize"},
         "output_schema": {"type": "string", "result": "summary"},
@@ -198,6 +200,8 @@ def test_insufficient_cu(client):
     seller = client.post("/v1/agents/register").json()
     buyer = client.post("/v1/agents/register").json()
 
+    _seed_cu(seller["agent_id"], 50.0)
+
     schema = client.post("/v1/schemas/register", json={
         "input_schema": {"type": "string"},
         "output_schema": {"type": "string"},
@@ -226,6 +230,8 @@ def test_seller_at_capacity(client):
     seller = client.post("/v1/agents/register").json()
     buyer_b = client.post("/v1/agents/register").json()
     buyer_c = client.post("/v1/agents/register").json()
+
+    _seed_cu(seller["agent_id"], 10.0)
 
     schema = client.post("/v1/schemas/register", json={
         "input_schema": {"type": "string", "cap_test": True},
@@ -260,6 +266,8 @@ def test_seller_at_capacity(client):
 def test_bond_slash_sla_violation(client):
     seller = client.post("/v1/agents/register").json()
     buyer = client.post("/v1/agents/register").json()
+
+    _seed_cu(seller["agent_id"], 20.0)
 
     schema = client.post("/v1/schemas/register", json={
         "input_schema": {"type": "string", "sla": True},
@@ -335,6 +343,7 @@ def test_multiple_sellers_price_sorting(client):
 
     # Register each as seller at different prices
     for s, price in zip(sellers, prices):
+        _seed_cu(s["agent_id"], price)
         client.post("/v1/sellers/register", json={
             "capability_hash": cap_hash,
             "price_cu": price,
@@ -366,14 +375,17 @@ def test_cu_invariant_50_random_trades(client):
         "output_schema": {"type": "string"},
     }, headers={"x-api-key": seller["api_key"]}).json()
 
+    _seed_cu(seller["agent_id"], 1.0)
+
     client.post("/v1/sellers/register", json={
         "capability_hash": schema["capability_hash"],
         "price_cu": 1.0,
         "capacity": 100,
     }, headers={"x-api-key": seller["api_key"]})
 
-    total_seeded = 200.0
-    _seed_cu(buyer["agent_id"], total_seeded)
+    seller_stake = 1.0
+    total_seeded = 200.0 + seller_stake
+    _seed_cu(buyer["agent_id"], 200.0)
 
     completed = 0
     for i in range(50):
@@ -397,14 +409,24 @@ def test_cu_invariant_50_random_trades(client):
 
     assert completed == 50, f"only completed {completed} trades"
 
-    # Invariant: sum(balances) = total_seeded - total_fees
+    # Invariant: sum(balances) + cu_staked + fees = total_seeded
     # Fees go to platform (not tracked in agent balances)
     seller_bal = _get_balance(seller["agent_id"])
     buyer_bal = _get_balance(buyer["agent_id"])
     total_fees = completed * 1.0 * FEE_TOTAL  # 50 * 0.015
 
-    assert abs((seller_bal + buyer_bal + total_fees) - total_seeded) < 0.001, \
-        f"invariant broken: seller={seller_bal} buyer={buyer_bal} fees={total_fees} total={seller_bal + buyer_bal + total_fees}"
+    # cu_staked is locked in sellers table, not in agent balance
+    conn = db.get_connection()
+    try:
+        staked_row = conn.execute(
+            "SELECT cu_staked FROM sellers WHERE agent_pubkey = ?", (seller["agent_id"],)
+        ).fetchone()
+    finally:
+        conn.close()
+    cu_staked = staked_row["cu_staked"] if staked_row else 0.0
+
+    assert abs((seller_bal + buyer_bal + total_fees + cu_staked) - total_seeded) < 0.001, \
+        f"invariant broken: seller={seller_bal} buyer={buyer_bal} fees={total_fees} staked={cu_staked} total={seller_bal + buyer_bal + total_fees + cu_staked}"
 
     # No negative balances
     assert seller_bal >= 0
@@ -439,6 +461,13 @@ def test_binary_round_trip(tcp_server):
         schema = json.loads(body)
 
         # Register seller
+        # Seed seller with CU for staking
+        conn = db.get_connection()
+        try:
+            conn.execute("UPDATE agents SET cu_balance = 20.0 WHERE pubkey = ?", (seller["agent_id"],))
+            conn.commit()
+        finally:
+            conn.close()
         payload = _tcp_payload(seller["api_key"], {
             "capability_hash": schema["capability_hash"],
             "price_cu": 20.0,
@@ -494,6 +523,8 @@ def test_binary_json_equivalence(client, tcp_server):
     json_seller = client.post("/v1/agents/register").json()
     json_buyer = client.post("/v1/agents/register").json()
 
+    _seed_cu(json_seller["agent_id"], 20.0)
+
     schema_json = client.post("/v1/schemas/register", json={
         "input_schema": {"type": "string", "equiv_test": "json_path"},
         "output_schema": {"type": "string"},
@@ -534,6 +565,14 @@ def test_binary_json_equivalence(client, tcp_server):
         })
         _, body = await _send_recv(host, port, MSG_REGISTER_SCHEMA, payload)
         tcp_schema = json.loads(body)
+
+        # Seed TCP seller with CU for staking
+        conn = db.get_connection()
+        try:
+            conn.execute("UPDATE agents SET cu_balance = 20.0 WHERE pubkey = ?", (tcp_seller["agent_id"],))
+            conn.commit()
+        finally:
+            conn.close()
 
         payload = _tcp_payload(tcp_seller["api_key"], {
             "capability_hash": tcp_schema["capability_hash"],

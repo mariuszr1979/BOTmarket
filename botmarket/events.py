@@ -1,11 +1,20 @@
 # events.py — Event log (record + query raw facts)
+import hashlib
 import time
 
 
 def record_event(conn, event_type, event_data):
+    # Get previous event hash for chain
+    row = conn.execute(
+        "SELECT event_hash FROM events ORDER BY seq DESC LIMIT 1"
+    ).fetchone()
+    prev_hash = row["event_hash"] if row and row["event_hash"] else ""
+    event_hash = hashlib.sha256((prev_hash + event_data).encode()).hexdigest()
+
     conn.execute(
-        "INSERT INTO events (event_type, event_data, timestamp_ns) VALUES (?, ?, ?)",
-        (event_type, event_data, time.time_ns()),
+        "INSERT INTO events (previous_hash, event_hash, event_type, event_data, timestamp_ns) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (prev_hash, event_hash, event_type, event_data, time.time_ns()),
     )
 
 
