@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOTmarket — Cost Comparison: Money Talks</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0a0a0f; --surface: #12121a; --border: #1e1e2e;
+    --text: #e4e4e7; --muted: #71717a; --dim: #52525b;
+    --accent: #6366f1; --accent2: #8b5cf6; --green: #22c55e;
+    --cyan: #06b6d4; --amber: #f59e0b; --red: #ef4444; --blue: #38bdf8;
+    --mono: 'JetBrains Mono', monospace; --sans: 'Inter', system-ui, sans-serif;
+  }
+  html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); }
+  .slide {
+    min-height: 100vh; scroll-snap-align: start;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    padding: 60px 80px; position: relative; overflow: hidden;
+  }
+  .sn { position: absolute; bottom: 30px; right: 40px; font-size: 14px; color: var(--muted); font-weight: 500; }
+  .logo { font-size: 18px; font-weight: 700; color: var(--accent); position: absolute; top: 30px; left: 40px; letter-spacing: -0.5px; }
+  .nav { position: absolute; bottom: 30px; left: 40px; font-size: 12px; color: var(--dim); letter-spacing: 0.05em; }
+  h1 { font-size: 64px; font-weight: 900; letter-spacing: -2px; line-height: 1.05; }
+  h2 { font-size: 40px; font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 28px; }
+  .gradient-text {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 50%, var(--cyan) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .content { max-width: 1100px; width: 100%; }
+  .slide-title { text-align: center; }
+
+  /* ── Cost card ── */
+  .cost-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cost-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 22px;
+  }
+  .cost-card h4 {
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    margin-bottom: 10px; color: var(--muted);
+  }
+  .cost-line {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 13px; padding: 4px 0; border-bottom: 1px solid rgba(30,30,46,0.4);
+  }
+  .cost-line:last-child { border-bottom: none; }
+  .cost-line .label { color: var(--muted); }
+  .cost-line .val { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+  .cost-line .val.red { color: var(--red); }
+  .cost-line .val.green { color: var(--green); }
+  .cost-line .val.amber { color: var(--amber); }
+  .total-line { border-top: 2px solid var(--border); margin-top: 8px; padding-top: 10px; font-weight: 700; }
+
+  /* ── Comparison table ── */
+  .ct { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .ct th {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); text-align: right; padding: 10px 14px; border-bottom: 1px solid var(--border);
+  }
+  .ct th:first-child { text-align: left; }
+  .ct td { padding: 10px 14px; border-bottom: 1px solid rgba(30,30,46,0.4); text-align: right; font-family: var(--mono); font-size: 12px; }
+  .ct td:first-child { text-align: left; font-family: var(--sans); font-size: 13px; font-weight: 600; }
+  .ct tr:last-child td { border-bottom: none; }
+  .ct .row-ours td { color: var(--green); font-weight: 700; }
+  .ct .row-ours td:first-child { color: var(--green); }
+
+  /* ── Scenario card ── */
+  .scenario {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 24px 28px; margin-bottom: 16px;
+  }
+  .scenario-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .scenario-icon { font-size: 28px; }
+  .scenario-title { font-size: 18px; font-weight: 700; }
+  .scenario-sub { font-size: 13px; color: var(--muted); }
+  .cost-compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; }
+  .cost-old { text-align: center; }
+  .cost-new { text-align: center; }
+  .cost-old .amount { font-family: var(--mono); font-size: 24px; font-weight: 800; color: var(--red); }
+  .cost-new .amount { font-family: var(--mono); font-size: 24px; font-weight: 800; color: var(--green); }
+  .cost-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+  .arrow { font-size: 24px; color: var(--dim); }
+  .savings { text-align: center; margin-top: 12px; font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--cyan); }
+
+  /* ── Bar chart ── */
+  .bar-chart { margin-top: 8px; }
+  .bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .bar-label { width: 130px; font-size: 12px; font-weight: 600; text-align: right; }
+  .bar-track { flex: 1; height: 24px; background: var(--border); border-radius: 4px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 10px; }
+  .bar-fill span { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--bg); white-space: nowrap; }
+  .bar-val { width: 80px; font-family: var(--mono); font-size: 12px; font-weight: 700; }
+
+  .note { font-size: 12px; color: var(--dim); font-style: italic; margin-top: 16px; text-align: center; }
+
+  @media (max-width: 900px) {
+    .slide { padding: 40px 24px; }
+    h1 { font-size: 40px; } h2 { font-size: 30px; }
+    .cost-grid { grid-template-columns: 1fr; }
+    .cost-compare { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════ SLIDE 1: Title ═══════ -->
+<section class="slide slide-title">
+  <span class="logo">BOTmarket</span>
+  <h1><span class="gradient-text">Money Talks</span></h1>
+  <p style="font-size:18px; color:var(--muted); margin-top:20px; letter-spacing:2px; text-transform:uppercase;">The real cost of every alternative</p>
+  <p style="font-size:15px; color:var(--dim); margin-top:36px; max-width:650px; text-align:center; line-height:1.7;">
+    Every participant — LLM provider, agent developer, enterprise, indie operator —<br>
+    makes the same calculation: <strong style="color:var(--text);">What does this cost me?</strong>
+  </p>
+  <span class="nav">SCROLL ↓</span>
+  <span class="sn">1 / 12</span>
+</section>
+
+<!-- ═══════ SLIDE 2: The Hidden Costs ═══════ -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <h2>The 6 Costs Nobody Counts</h2>
+    <p style="font-size:14px; color:var(--muted); margin-bottom:24px;">Everyone compares API price per token. Nobody counts the rest. The real bill is 5–20× the API fee.</p>
+
+    <div class="cost-grid">
+      <div class="cost-card">
+        <h4 style="color:var(--red);">① Integration Cost</h4>
+        <div class="cost-line"><span class="label">Dev hours per new provider</span><span class="val red">8-40 hrs</span></div>
+        <div class="cost-line"><span class="label">At $100/hr loaded cost</span><span class="val red">$800–$4,000</span></div>
+        <div class="cost-line"><span class="label">Per provider, per capability</span><span class="val red">Each time</span></div>
+      </div>
+      <div class="cost-card">
+        <h4 style="color:var(--red);">② Downtime Cost</h4>
+        <div class="cost-line"><span class="label">OpenAI outage (avg 2-4/month)</span><span class="val red">30-120 min</span></div>
+        <div class="cost-line"><span class="label">Agent fleet idle cost</span><span class="val red">$50–$500/hr</span></div>
+        <div class="cost-line"><span class="label">No automatic failover</span><span class="val red">Manual switch</span></div>
+      </div>
+      <div class="cost-card">
+        <h4 style="color:var(--red);">③ Overpaying Cost</h4>
+        <div class="cost-line"><span class="label">No price comparison</span><span class="val red">10-40% premium</span></div>
+        <div class="cost-line"><span class="label">GPT-4o vs equivalent</span><span class="val red">$15 vs $2/M tok</span></div>
+        <div class="cost-line"><span class="label">Annual waste (1K agents)</span><span class="val red">$12K–$50K</span></div>
+      </div>
+      <div class="cost-card">
+        <h4 style="color:var(--red);">④ Lock-in Cost</h4>
+        <div class="cost-line"><span class="label">Switching provider</span><span class="val red">2-8 weeks</span></div>
+        <div class="cost-line"><span class="label">Code rewrite + testing</span><span class="val red">$5K–$20K</span></div>
+        <div class="cost-line"><span class="label">Risk: stay with worse deal</span><span class="val red">Indefinite</span></div>
+      </div>
+      <div class="cost-card">
+        <h4 style="color:var(--red);">⑤ Quality Assurance Cost</h4>
+        <div class="cost-line"><span class="label">Build monitoring/alerting</span><span class="val red">$2K–$10K</span></div>
+        <div class="cost-line"><span class="label">Maintain quality benchmarks</span><span class="val red">Ongoing</span></div>
+        <div class="cost-line"><span class="label">Detect quality degradation</span><span class="val red">Days-weeks</span></div>
+      </div>
+      <div class="cost-card">
+        <h4 style="color:var(--green);">⑥ BOTmarket Eliminates All 5</h4>
+        <div class="cost-line"><span class="label">Integration</span><span class="val green">1 SDK, once</span></div>
+        <div class="cost-line"><span class="label">Downtime</span><span class="val green">Auto-failover</span></div>
+        <div class="cost-line"><span class="label">Overpaying</span><span class="val green">Market price</span></div>
+        <div class="cost-line"><span class="label">Lock-in</span><span class="val green">Switch in 1 trade</span></div>
+        <div class="cost-line"><span class="label">Quality</span><span class="val green">SLA built in</span></div>
+      </div>
+    </div>
+  </div>
+  <span class="sn">2 / 12</span>
+</section>
+
+<!-- ═══════ SLIDE 3: Indie Agent Developer ═══════ -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <h2>Scenario 1: <span style="color:var(--cyan);">Indie Agent Developer</span></h2>
+    <p style="font-size:14px; color:var(--muted); margin-bottom:24px;">Runs 5 agents. Needs LLM inference + image generation + code review. Today: 3 separate API subscriptions.</p>
+
+    <div class="scenario">
+      <div class="scenario-header">
+        <span class="scenario-title">Monthly Cost: Direct API</span>
+      </div>
+      <div class="cost-grid">
+        <div class="cost-card">
+          <h4>Direct API (today)</h4>
+          <div class="cost-line"><span class="label">OpenAI API (5 agents × ~$20)</span><span class="val red">$100</span></div>
+          <div class="cost-line"><span class="label">Replicate (image gen)</span><span class="val red">$30</span></div>
+          <div class="cost-line"><span class="label">CodeRabbit / code review</span><span class="val red">$24</span></div>
+          <div class="cost-line"><span class="label">Integration time (3 APIs × 8hr × $50)</span><span class="val red">$1,200</span></div>
+          <div class="cost-line"><span class="label">Monitoring / error handling</span><span class="val red">$200</span></div>
+          <div class="cost-line total-line"><span class="label">Month 1 total</span><span class="val red">$1,554</span></div>
+          <div class="cost-line"><span class="label">Ongoing monthly</span><span class="val red">$154</span></div>
+        </div>
+        <div class="cost-card">
+          <h4>BOTmarket</h4>
+          <div class="cost-line"><span class="label">Same compute via exchange</span><span class="val green">$130</span></div>
+          <div class="cost-line"><span class="label">BOTmarket fee (1.5%)</span><span class="val green">$1.95</span></div>
+          <div class="cost-line"><span class="label">Integration (1 SDK, once)</span><span class="val green">$200</span></div>
+          <div class="cost-line"><span class="label">Monitoring / quality</span><span class="val green">$0 (built in)</span></div>
+          <div class="cost-line total-line"><span class="label">Month 1 total</span><span class="val green">$332</span></div>
+          <div class="cost-line"><span class="label">Ongoing monthly</span><span class="val green">$132</span></div>
+        </div>
+      </div>
+      <p class="savings">Year 1 savings: ~$1,486 (78% cheaper month 1, 14% cheaper ongoing + auto-failover + price discovery)</p>
+    </div>
+
+    <p class="note">Market competition between sellers drives the 15% price reduction vs fixed vendor pricing.
+    With free CU bootstrap: Month 1 = $200 (SDK setup only).</p>
+  </div>
+  <span class="sn">3 / 12</span>
+</section>
+
+<!-- ═══════ SLIDE 4: Startup / Small Team ═══════ -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <h2>Scenario 2: <span style="color:var(--cyan);">Startup (50 Agents)</span></h2>
+    <p style="font-size:14px; color:var(--muted); margin-bottom:24px;">AI-native SaaS. 50 agents across 8 capabilities. Today: wired to 5 providers with custom integrations each.</p>
+
+    <div class="scenario">
+      <div class="cost-grid">
+        <div class="cost-card">
+          <h4>Direct API (today)</h4>
+          <div class="cost-line"><span class="label">LLM APIs (50 agents)</span><span class="val red">$2,000</span></div>
+          <div class="cost-line"><span class="label">Specialized APIs (vision, audio, code)</span><span class="val red">$800</span></div>
+          <div class="cost-line"><span class="label">Integration (5 providers × 20hr × $100)</span><span class="val red">$10,000</span></div>
+          <div class="cost-line"><span class="label">Monitoring / alerting stack</span><span class="val red">$500</span></div>
+          <div class="cost-line"><span class="label">1 downtime incident / month (~2hr)</span><span class="val red">$400</span></div>
+          <div class="cost-line total-line"><span class="label">Month 1 total</span><span class="val red">$13,700</span></div>
+          <div class="cost-line"><span class="label">Ongoing monthly</span><span class="val red">$3,700</span></div>
+        </div>
+        <div class="cost-card">
+          <h4>BOTmarket</h4>
+          <div class="cost-line"><span class="label">Same compute via exchange</span><span class="val green">$2,400</span></div>
+          <div class="cost-line"><span class="label">BOTmarket fee (1.5%)</span><span class="val green">$36</span></div>
+          <div class="cost-line"><span class="label">Integration (1 SDK, once)</span><span class="val green">$500</span></div>
+          <div class="cost-line"><span class="label">Monitoring / quality / failover</span><span class="val green">$0 (built in)</span></div>
+          <div class="cost-line"><span class="label">Downtime</span><span class="val green">$0 (auto-failover)</span></div>
+          <div class="cost-line total-line"><span class="label">Month 1 total</span><span class="val green">$2,936</span></div>
+          <div class="cost-line"><span class="label">Ongoing monthly</span><span class="val green">$2,436</span></div>
+        </div>
+      </div>
+      <p class="savings">Year 1 savings: ~$25,672. Integration cost alone pays for 4+ months of BOTmarket trading.</p>
+    </div>
+  </div>
+  <span class="sn">4 / 12</span>
+</section>
+
+<!-- ═══════ SLIDE 5: Enterprise ═══════ -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <h2>Scenario 3: <span style="color:var(--cyan);">Enterprise (1,000 Agents)</span></h2>
+    <p style="font-size:14px; color:var(--muted); margin-bottom:24px;">Large corp. 1,000 agents across 20+ capabilities. Today: vendor contracts, procurement cycles, dedicated DevOps.</p>
+
+    <div class="scenario">
+      <div class="cost-grid">
+        <div class="cost-card">
+          <h4>Enterprise direct (today)</h4>
+          <div class="cost-line"><span class="label">LLM APIs (enterprise tier)</span><span class="val red">$30,000</span></div>
+          <div class="cost-line"><span class="label">Specialized service APIs</span><span class="val red">$15,000</span></div>
+          <div class="cost-line"><span class="label">Integration team (2 FTE × $12K)</span><span class="val red">$24,000</span></div>
+          <div class="cost-line"><span class="label">Vendor management / procurement</span><span class="val red">$5,000</span></div>
+          <div class="cost-line"><span class="label">Monitoring / observability</span><span class="val red">$3,000</span></div>
+          <div class="cost-line"><span class="label">Downtime cost (avg 4hr/month)</span><span class="val red">$8,000</span></div>
+          <div class="cost-line total-line"><span class="label">Monthly total</span><span class="val red">$85,000</span></div>
+        </div>
+        <div class="cost-card">
+          <h4>BOTmarket</h4>
+          <div class="cost-line"><span class="label">Same compute via exchange</span><span class="val green">$38,000</span></div>
+          <div class="cost-line"><span class="label">BOTmarket fee (1.5%)</span><span class="val green">$570</span></div>
+          <div class="cost-line"><span class="label">Integration (1 SDK + policy config)</span><span class="val green">$2,000</span></div>
+          <div class="cost-line"><span class="label">Vendor management</span><span class="val green">$0 (market handles)</span></div>
+          <div class="cost-line"><span class="label">Monitoring / quality / failover</span><span class="val green">$0 (built in)</span></div>
+          <div class="cost-line"><span class="label">Downtime</span><span class="val green">$0 (auto-failover)</span></div>
+          <div class="cost-line total-line"><span class="label">Monthly total</span><span class="val green">$40,570</span></div>
+        </div>
+      </div>
+      <p class="savings">Annual savings: ~$533K. The integration team alone costs more than all BOTmarket fees.</p>
+    </div>
+  </div>
+  <span class="sn">5 / 12</span>
+</section>
+
+<!-- ═══════ SLIDE 6: LLM Provider / Compute Seller ═══════ -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <h2>Scenario 4: <span style="color:var(--amber);">LLM Provider / Compute Seller</span></h2>
+    <p style="font-size:14px; color:var(--muted); margin-bottom:24px;">GPU owner or fine-tuned model operator. Has spare capacity. Wants customers. Today: build your own platform.</p>
+
+    <div class="scenario">
+      <div class="cost-grid">
+        <div class="cost-card">
+          <h4>Sell independently (today)</h4>
+          <div class="cost-line"><span class="label">Build API gateway / billing</span><span class="val red">$5K–$20K</span></div>
+          <div class="cost-line"><span class="label">Customer acquisition</span><span class="val red">$1K–$5K/mo</span></div>
+          <div class="cost-line"><span class="label">Support / documentation</span><span class="val red">$500/mo</span></div>
+          <div class="cost-line"><span class="label">Payment processing (Stripe 2.9%)</span><span class="val red">2.9% + $0.30</span></div>
+          <div class="cost-line"><span class="label">Time to first customer</span><span class="val red">Weeks–Months</span></div>
+          <div class="cost-line total-line"><span class="label">Setup + Month 1</span><span class="val red">$7K–$26K</span></div>
+        </div>
+        <div class="cost-card">
+          <h4>Sell on BOTmarket</h4>
+          <div class="cost-line"><span class="label">Build API gateway / billing</span><span class="val green">$0 (exchange)</span></div>
+          <div class="cost-line"><span class="label">Customer acquisition</span><span class="val green">$0 (order book)</span></div>
+          <div class="cost-line"><span class="label">Support / documentation</span><span class="val green">Schema only</span></div>
+          <div class="cost-line"><span class="label">Exchange fee</span><span class="val green">1.5% on sales</span></div>
+          <div class="cost-line"><span class="label">Time to first customer</span><span class="val green">Minutes</span></div>
+          <div class="cost-line total-line"><span class="label">Setup + Month 1</span><span class="val green">~$0 + 1.5% fee</span></div>
+        </div>
+      </div>
+      <p class="savings">Seller keeps 98.5% of revenue. No upfront investment. No customer acquisition cost. GPU idle time → immediate income.</p>
+    </div>
+  </div>
+  <span class="sn">6 / 12</span>
+</section>
+
+<!-- ═══════ SLIDE 7: API Gateway User ═══════ -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <h2>Scenario 5: <span style="color:var(--amber);">API Gateway User</span></h2>
+    <p style="font-size:14px; color:var(--muted); margin-bottom:24px;">Currently using OpenRouter / LiteLLM. Gets multi-provider routing. Thinks they're optimized.</p>
+
+    <div class="scenario">
+      <div class="cost-grid">
+        <div class="cost-card">
+          <h4>API Gateway (today)</h4>
+          <div class="cost-line"><span class="label">Gateway markup</span><span class="val amber">5-15% over provider</span></div>
+          <div class="cost-line"><span class="label">LLM-only (no image/audio/code)</span><span class="val red">Separate APIs</span></div>
+          <div class="cost-line"><span class="label">Routing rules</span><span class="val red">Human-configured</span></div>
+          <div class="cost-line"><span class="label">Quality tracking</span><span class="val red">Basic / none</span></div>
+          <div class="cost-line"><span class="label">New capabilities</span><span class="val red">Wait for gateway</span></div>
+          <div class="cost-line total-line"><span class="label">On $2K/mo spend</span><span class="val red">$2,100–$2,300</span></div>
+        </div>
+        <div class="cost-card">
+          <h4>BOTmarket</h4>
+          <div class="cost-line"><span class="label">Exchange fee</span><span class="val green">1.5% flat</span></div>
+          <div class="cost-line"><span class="label">All capabilities</span><span class="val green">Any schema hash</span></div>
+          <div class="cost-line"><span class="label">Routing</span><span class="val green">Agent-autonomous</span></div>
+          <div class="cost-line"><span class="label">Quality tracking</span><span class="val green">SLA + staking</span></div>
+          <div class="cost-line"><span class="label">New capabilities</span><span class="val green">Instant (any seller)</span></div>
+          <div class="cost-line total-line"><span class="label">On $2K/mo spend</span><span class="val green">$1,730</span></div>
+        </div>
+      </div>
+      <p class="savings">Gateways add 5-15% markup and only route LLM. BOTmarket adds 1.5%, routes everything, and agents control routing.</p>
+    </div>
+  </div>
+  <span class="sn">7 / 12</span>
+</section>
+
+<!-- ═══════ SLIDE 8: Blockchain User ═══════ -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <h2>Scenario 6: <span style="color:var(--amber);">Blockchain Agent Market User</span></h2>
+    <p style="font-size:14px; color:var(--muted); margin-bottom:24px;">Using NEAR AI Market, Fetch.ai, or SingularityNET. On-chain agent economy.</p>
+
+    <div class="scenario">
+      <div class="cost-grid">
+        <div class="cost-card">
+          <h4>Blockchain (today)</h4>
+          <div class="cost-line"><span class="label">Gas fee per trade</span><span class="val red">$0.01–$0.50</span></div>
+          <div class="cost-line"><span class="label">On 10K trades/day</span><span class="val red">$100–$5,000/day</span></div>
+          <div class="cost-line"><span class="label">Token acquisition friction</span><span class="val red">Exchange → wallet → gas</span></div>
+          <div class="cost-line"><span class="label">Token volatility risk</span><span class="val red">±20% / month</span></div>
+          <div class="cost-line"><span class="label">Latency per trade</span><span class="val red">1-6 seconds</span></div>
+          <div class="cost-line"><span class="label">Smart contract audit</span><span class="val red">$5K–$50K</span></div>
+          <div class="cost-line total-line"><span class="label">Monthly (10K trades/day)</span><span class="val red">$3K–$150K+</span></div>
+        </div>
+        <div class="cost-card">
+          <h4>BOTmarket</h4>
+          <div class="cost-line"><span class="label">Fee per trade</span><span class="val green">1.5% of CU</span></div>
+          <div class="cost-line"><span class="label">On 10K trades/day (avg 100 CU)</span><span class="val green">$15/day</span></div>
+          <div class="cost-line"><span class="label">Token friction</span><span class="val green">None (CU is internal)</span></div>
+          <div class="cost-line"><span class="label">Volatility risk</span><span class="val green">CU = 1ms GPU (stable)</span></div>
+          <div class="cost-line"><span class="label">Latency per trade</span><span class="val green">&lt;1ms match</span></div>
+          <div class="cost-line"><span class="label">Audit requirement</span><span class="val green">$0 (no smart contract)</span></div>
+          <div class="cost-line total-line"><span class="label">Monthly (10K trades/day)</span><span class="val green">~$450</span></div>
+        </div>
+      </div>
+      <p class="savings">Blockchain gas fees alone can exceed 100× BOTmarket's total fee. Plus: no token risk, no wallet setup, no block wait.</p>
+    </div>
+  </div>
+  <span class="sn">8 / 12</span>
+</section>
+
+<!-- ═══════ SLIDE 9: Cost per trade — bar chart ═══════ -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <h2><span class="gradient-text">Cost Per Trade (100 CU ≈ $0.10)</span></h2>
+    <p style="font-size:14px; color:var(--muted); margin-bottom:28px;">All-in cost including fees, integration amortized over 10K trades, and hidden costs.</p>
+
+    <div class="bar-chart">
+      <div class="bar-row">
+        <span class="bar-label">Blockchain</span>
+        <div class="bar-track"><div class="bar-fill" style="width:95%; background:var(--red);"><span>Gas + token + latency cost</span></div></div>
+        <span class="bar-val" style="color:var(--red);">$0.05–$0.50</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">DIY Build</span>
+        <div class="bar-track"><div class="bar-fill" style="width:60%; background:var(--red);"><span>Dev cost amortized + API</span></div></div>
+        <span class="bar-val" style="color:var(--red);">$0.015–$0.12</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Direct API</span>
+        <div class="bar-track"><div class="bar-fill" style="width:40%; background:var(--amber);"><span>API price + integration + no failover</span></div></div>
+        <span class="bar-val" style="color:var(--amber);">$0.010–$0.05</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">API Gateway</span>
+        <div class="bar-track"><div class="bar-fill" style="width:35%; background:var(--amber);"><span>API + 5-15% gateway markup</span></div></div>
+        <span class="bar-val" style="color:var(--amber);">$0.011–$0.04</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Framework</span>
+        <div class="bar-track"><div class="bar-fill" style="width:30%; background:var(--amber);"><span>Same process only — doesn't scale</span></div></div>
+        <span class="bar-val" style="color:var(--amber);">$0.010</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label" style="color:var(--green);">BOTmarket</span>
+        <div class="bar-track"><div class="bar-fill" style="width:12%; background:var(--green);"><span>Market price + 1.5%</span></div></div>
+        <span class="bar-val" style="color:var(--green);">$0.0015</span>
+      </div>
+    </div>
+
+    <p class="note">Framework is cheapest per-call (same-process) but can't scale beyond one machine, has no discovery, no failover, and no cross-framework support.</p>
+  </div>
+  <span class="sn">9 / 12</span>
+</section>
+
+<!-- ═══════ SLIDE 10: Annual Cost at Scale ═══════ -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <h2><span class="gradient-text">Annual Total Cost of Ownership</span></h2>
+    <p style="font-size:14px; color:var(--muted); margin-bottom:20px;">For a 100-agent fleet doing 5,000 trades/day across 10 capabilities.</p>
+
+    <table class="ct">
+      <thead>
+        <tr>
+          <th style="width:16%;">Alternative</th>
+          <th>Compute<br>Cost</th>
+          <th>Integration<br>(Year 1)</th>
+          <th>Maintenance<br>/yr</th>
+          <th>Downtime<br>Cost /yr</th>
+          <th>Overpay<br>Premium</th>
+          <th style="color:var(--text);">Total<br>Year 1</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Direct API</td>
+          <td>$60K</td>
+          <td>$40K</td>
+          <td>$12K</td>
+          <td>$10K</td>
+          <td>$9K</td>
+          <td style="color:var(--red); font-weight:700;">$131K</td>
+        </tr>
+        <tr>
+          <td>API Gateway</td>
+          <td>$66K</td>
+          <td>$5K</td>
+          <td>$6K</td>
+          <td>$5K</td>
+          <td>$6K</td>
+          <td style="color:var(--amber); font-weight:700;">$88K</td>
+        </tr>
+        <tr>
+          <td>Blockchain</td>
+          <td>$60K</td>
+          <td>$30K</td>
+          <td>$10K</td>
+          <td>$2K</td>
+          <td>$18K gas</td>
+          <td style="color:var(--red); font-weight:700;">$120K</td>
+        </tr>
+        <tr>
+          <td>DIY Build</td>
+          <td>$55K</td>
+          <td>$80K</td>
+          <td>$24K</td>
+          <td>$8K</td>
+          <td>$5K</td>
+          <td style="color:var(--red); font-weight:700;">$172K</td>
+        </tr>
+        <tr class="row-ours">
+          <td>BOTmarket</td>
+          <td>$51K</td>
+          <td>$2K</td>
+          <td>$0</td>
+          <td>$0</td>
+          <td>$0.77K fee</td>
+          <td style="color:var(--green); font-weight:700;">$54K</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="savings" style="margin-top:20px;">BOTmarket saves 39–69% vs every alternative at the 100-agent scale.</p>
+    <p class="note">Compute cost is lower on BOTmarket because market competition among sellers drives prices below fixed vendor rates.</p>
+  </div>
+  <span class="sn">10 / 12</span>
+</section>
+
+<!-- ═══════ SLIDE 11: Who Saves What ═══════ -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <h2><span class="gradient-text">Who Saves What</span></h2>
+
+    <div class="cost-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+      <div class="cost-card" style="border-top:3px solid var(--cyan);">
+        <h4 style="color:var(--cyan);">Agent Developer (Buyer)</h4>
+        <div class="cost-line"><span class="label">Saves on integration</span><span class="val green">80-95%</span></div>
+        <div class="cost-line"><span class="label">Saves on compute</span><span class="val green">15-30%</span></div>
+        <div class="cost-line"><span class="label">Saves on downtime</span><span class="val green">~100%</span></div>
+        <div class="cost-line"><span class="label">Saves on quality assurance</span><span class="val green">~100%</span></div>
+        <div class="cost-line total-line"><span class="label">Pays</span><span class="val" style="color:var(--text);">1.5% on trades</span></div>
+      </div>
+      <div class="cost-card" style="border-top:3px solid var(--amber);">
+        <h4 style="color:var(--amber);">Compute Seller</h4>
+        <div class="cost-line"><span class="label">Saves on platform build</span><span class="val green">$5K–$20K</span></div>
+        <div class="cost-line"><span class="label">Saves on customer acquisition</span><span class="val green">~100%</span></div>
+        <div class="cost-line"><span class="label">Saves on billing/payment</span><span class="val green">~100%</span></div>
+        <div class="cost-line"><span class="label">Monetizes idle GPU time</span><span class="val green">New revenue</span></div>
+        <div class="cost-line total-line"><span class="label">Pays</span><span class="val" style="color:var(--text);">1.5% on sales</span></div>
+      </div>
+      <div class="cost-card" style="border-top:3px solid var(--accent2);">
+        <h4 style="color:var(--accent2);">Enterprise / Corporation</h4>
+        <div class="cost-line"><span class="label">Saves on integration team</span><span class="val green">1-2 FTEs</span></div>
+        <div class="cost-line"><span class="label">Saves on vendor management</span><span class="val green">~100%</span></div>
+        <div class="cost-line"><span class="label">Saves on downtime</span><span class="val green">$50K–$200K/yr</span></div>
+        <div class="cost-line"><span class="label">Saves on procurement</span><span class="val green">Weeks→Minutes</span></div>
+        <div class="cost-line total-line"><span class="label">Pays</span><span class="val" style="color:var(--text);">1.5% on trades</span></div>
+      </div>
+    </div>
+
+    <p style="font-size:16px; color:var(--text); text-align:center; margin-top:28px; font-weight:600;">
+      Every participant saves more than the 1.5% fee costs them.
+    </p>
+    <p style="font-size:13px; color:var(--dim); text-align:center; margin-top:8px;">
+      That's why the fee survives: it's cheaper to pay 1.5% than to build any of this yourself.
+    </p>
+  </div>
+  <span class="sn">11 / 12</span>
+</section>
+
+<!-- ═══════ SLIDE 12: The Bottom Line ═══════ -->
+<section class="slide slide-title">
+  <span class="logo">BOTmarket</span>
+  <h2 style="font-size:36px; margin-bottom:36px;"><span class="gradient-text">The Bottom Line</span></h2>
+
+  <div style="max-width:700px; text-align:center;">
+    <p style="font-size:48px; font-weight:900; letter-spacing:-2px; color:var(--green); margin-bottom:16px;">1.5%</p>
+    <p style="font-size:18px; color:var(--muted); margin-bottom:36px;">
+      That's BOTmarket's entire cost. Everything else — discovery, matching,<br>
+      failover, quality, settlement — is included.
+    </p>
+
+    <div style="text-align:left; max-width:600px; margin:0 auto;">
+      <p style="font-size:15px; color:var(--text); line-height:1.8; margin-bottom:20px;">
+        <strong style="color:var(--red);">Direct API:</strong> Pay vendor price + build everything yourself.<br>
+        <strong style="color:var(--amber);">Gateway:</strong> Pay vendor price + 5-15% markup + LLM only.<br>
+        <strong style="color:var(--red);">Blockchain:</strong> Pay vendor price + gas + token risk + latency.<br>
+        <strong style="color:var(--red);">DIY:</strong> Pay vendor price + $80K/yr integration team.<br>
+        <strong style="color:var(--green);">BOTmarket:</strong> Pay market price + 1.5%. Done.
+      </p>
+
+      <p style="font-size:16px; color:var(--text); font-weight:700; margin-top:28px; text-align:center;">
+        Agents don't have psychology. They have calculators.<br>
+        <span style="color:var(--green);">The math always wins.</span>
+      </p>
+    </div>
+  </div>
+
+  <span class="sn">12 / 12</span>
+</section>
+
+</body>
+</html>
