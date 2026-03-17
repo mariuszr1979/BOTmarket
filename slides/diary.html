@@ -323,11 +323,11 @@
     <div class="divider" style="margin:0 auto 40px;"></div>
     <div class="stat-row" style="justify-content:center;">
       <div class="stat">
-        <div class="val" style="color:var(--green);">9</div>
+        <div class="val" style="color:var(--green);">10</div>
         <div class="lbl">Steps Complete</div>
       </div>
       <div class="stat">
-        <div class="val" style="color:var(--accent);">121</div>
+        <div class="val" style="color:var(--accent);">139</div>
         <div class="lbl">Tests Passing</div>
       </div>
       <div class="stat">
@@ -341,8 +341,8 @@
     </div>
     <div style="margin-top:48px;">
       <div class="progress-bar" style="max-width:600px;margin:0 auto;">
-        <div class="progress-fill" style="width:64%;background:linear-gradient(90deg,var(--green),var(--accent));">
-          9/14
+        <div class="progress-fill" style="width:71%;background:linear-gradient(90deg,var(--green),var(--accent));">
+          10/14
         </div>
       </div>
       <div style="font-size:12px;color:var(--dim);margin-top:8px;">Steps 0–13 · Weekend 3 of 6</div>
@@ -1487,6 +1487,110 @@ Errors:
 </section>
 
 <!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 9 — OVERVIEW -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 9 / 13</span>
+  <div class="content">
+    <div style="margin-bottom:8px;">
+      <span class="pill pill-green">COMPLETED</span>
+      <span style="font-size:13px;color:var(--dim);margin-left:12px;">Weekend 3 · Session 9</span>
+    </div>
+    <h2>Step 9: Binary Wire Format</h2>
+    <p class="subtitle" style="margin-bottom:36px;">
+      Typed pack/unpack for all 10 message types. stdlib struct only.
+      The investor-facing number: 77 bytes vs ~350 bytes JSON = 4.5× smaller.
+    </p>
+
+    <div class="g3">
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--accent);">77 B</div>
+        <h3 style="margin-top:8px;">Match Request</h3>
+        <p>5 header + 72 payload<br>vs ~350 bytes JSON</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--accent);">78 B</div>
+        <h3 style="margin-top:8px;">Match Response</h3>
+        <p>5 header + 73 payload<br>vs ~450 bytes JSON</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">10</div>
+        <h3 style="margin-top:8px;">Message Types</h3>
+        <p>All with typed<br>pack + unpack</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:24px;">
+      <h3 style="color:var(--accent);">Size Comparison</h3>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--muted);line-height:2;margin-top:12px;">
+        Match request:  Binary 77 B vs JSON ~350 B → <span style="color:var(--green);font-weight:700;">4.5× smaller</span><br>
+        Match response: Binary 78 B vs JSON ~450 B → <span style="color:var(--green);font-weight:700;">5.8× smaller</span><br>
+        Full lifecycle: Binary ~400 B vs JSON ~4,000 B → <span style="color:var(--green);font-weight:700;">10× less bandwidth</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 9 — TESTS + AUDIT -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 9 — Tests</span>
+  <div class="content">
+    <h2 style="color:var(--green);">18 New Tests</h2>
+    <p class="subtitle" style="margin-bottom:32px;">Exact byte sizes, typed roundtrips for all 10 types, 1000 random messages, big-endian verification, no external deps.</p>
+
+    <div class="g2" style="margin-bottom:24px;">
+      <div class="card">
+        <h3 style="color:var(--green);">Wire Format Tests</h3>
+        <div style="font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;">
+          ✓ Match request = 77 bytes exact<br>
+          ✓ Match response = 78 bytes exact<br>
+          ✓ Match request roundtrip<br>
+          ✓ Match response roundtrip<br>
+          ✓ Register agent roundtrip<br>
+          ✓ Register schema roundtrip<br>
+          ✓ Register seller roundtrip<br>
+          ✓ Execute roundtrip<br>
+          ✓ Execute response roundtrip<br>
+          ✓ Query events roundtrip<br>
+          ✓ Query events (no filter)<br>
+          ✓ Events response roundtrip<br>
+          ✓ Error roundtrip<br>
+          ✓ Big-endian byte order<br>
+          ✓ 1000 random messages 100%<br>
+          ✓ No external dependencies<br>
+          ✓ Pad32 truncates long input<br>
+          ✓ Pad32 pads short input
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">Rules Audit</h3>
+        <div class="rule-audit" style="margin-top:12px;">
+          <span class="rule-id">R0</span>  <span class="rule-name">struct.pack/unpack, 2-3 lines each</span> <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R1</span>  <span class="rule-name">All byte sizes computed on paper</span>  <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R3</span>  <span class="rule-name">Binary-only core, not deferred</span>    <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R10</span> <span class="rule-name">Pure functions, no state</span>          <span class="rule-status rule-pass">✓ PASS</span>
+        </div>
+        <div class="g2" style="margin-top:24px;">
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--green);">0</div>
+            <div style="font-size:12px;color:var(--dim);">VIOLATIONS</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--accent);">139</div>
+            <div style="font-size:12px;color:var(--dim);">TESTS PASSING</div>
+            <div style="font-size:11px;color:var(--dim);">121 prior + 18 new</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
 <!-- SLIDE: ROADMAP — WHAT'S NEXT -->
 <!-- ═══════════════════════════════════════════ -->
 <section class="slide">
@@ -1494,7 +1598,7 @@ Errors:
   <span class="slide-num">Roadmap</span>
   <div class="content">
     <h2>What's Next</h2>
-    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–8 done.</p>
+    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–9 done.</p>
 
     <div class="g2">
       <div>
@@ -1539,9 +1643,9 @@ Errors:
             <h4><span style="color:var(--green);">●</span> Step 8 — Event Log</h4>
             <p>query_events(), GET /v1/events/{id}. 13 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
-          <div class="timeline-item pending">
-            <h4>Step 9 — Binary Wire Format</h4>
-            <p>Typed payloads for all 10 message types. wire.py complete.</p>
+          <div class="timeline-item">
+            <h4><span style="color:var(--green);">●</span> Step 9 — Binary Wire Format</h4>
+            <p>Typed pack/unpack for all 10 msg types. 18 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
           <div class="timeline-item pending">
             <h4>Step 10 — Binary TCP Server</h4>
@@ -1584,7 +1688,11 @@ Errors:
     <div class="card">
       <div class="timeline">
         <div class="timeline-item">
-          <h4><code>NEW</code> — Step 8: Event Log — 121 tests passing</h4>
+          <h4><code>NEW</code> — Step 9: Binary Wire Format — 139 tests passing</h4>
+          <p>Typed pack/unpack for all 10 message types, exact byte sizes, 1000 random roundtrips. 18 new tests.</p>
+        </div>
+        <div class="timeline-item">
+          <h4><code>cc96ccb</code> — Step 8: Event Log — 121 tests passing</h4>
           <p>query_events(), GET /v1/events/{id}, filter by type/limit, 10-trade stress test. 13 new tests.</p>
         </div>
         <div class="timeline-item">
