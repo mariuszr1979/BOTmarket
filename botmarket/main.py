@@ -9,7 +9,7 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from db import init_db, get_connection
 from events import record_event
-from matching import rebuild_seller_tables, add_seller, get_sellers
+from matching import rebuild_seller_tables, add_seller, get_sellers, match_request, increment_active_calls
 
 
 @asynccontextmanager
@@ -159,6 +159,70 @@ def list_sellers(capability_hash: str):
             }
             for s in sellers
         ],
+    }
+
+
+class MatchRequest(BaseModel):
+    capability_hash: str
+    max_price_cu: float | None = None
+    max_latency_us: int | None = None
+
+
+@app.post("/v1/match")
+def match(body: MatchRequest, x_api_key: str = Header()):
+    buyer_pubkey = authenticate(x_api_key)
+
+    seller = match_request(body.capability_hash, body.max_price_cu, body.max_latency_us)
+    if seller is None:
+        return {"status": "no_match"}
+
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT cu_balance FROM agents WHERE pubkey = ?", (buyer_pubkey,)
+        ).fetchone()
+        if row["cu_balance"] < seller["price_cu"]:
+            return {"status": "insufficient_cu"}
+
+        trade_id = str(uuid.uuid4())
+        now_ns = time.time_ns()
+
+        conn.execute(
+            "UPDATE agents SET cu_balance = cu_balance - ? WHERE pubkey = ?",
+            (seller["price_cu"], buyer_pubkey),
+        )
+        conn.execute(
+            "INSERT INTO trades (id, buyer_pubkey, seller_pubkey, capability_hash, price_cu, start_ns, status) "
+            "VALUES (?, ?, ?, ?, ?, ?, 'matched')",
+            (trade_id, buyer_pubkey, seller["agent_pubkey"], body.capability_hash, seller["price_cu"], now_ns),
+        )
+        conn.execute(
+            "INSERT INTO escrow (trade_id, buyer_pubkey, seller_pubkey, cu_amount, status) "
+            "VALUES (?, ?, ?, ?, 'held')",
+            (trade_id, buyer_pubkey, seller["agent_pubkey"], seller["price_cu"]),
+        )
+        conn.execute(
+            "UPDATE sellers SET active_calls = active_calls + 1 WHERE agent_pubkey = ? AND capability_hash = ?",
+            (seller["agent_pubkey"], body.capability_hash),
+        )
+        record_event(conn, "match_made", json.dumps({
+            "trade_id": trade_id,
+            "buyer": buyer_pubkey,
+            "seller": seller["agent_pubkey"],
+            "capability_hash": body.capability_hash,
+            "price_cu": seller["price_cu"],
+        }))
+        conn.commit()
+    finally:
+        conn.close()
+
+    increment_active_calls(seller["agent_pubkey"], body.capability_hash)
+
+    return {
+        "trade_id": trade_id,
+        "seller_pubkey": seller["agent_pubkey"],
+        "price_cu": seller["price_cu"],
+        "status": "matched",
     }
 
 

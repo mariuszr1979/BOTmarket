@@ -323,11 +323,11 @@
     <div class="divider" style="margin:0 auto 40px;"></div>
     <div class="stat-row" style="justify-content:center;">
       <div class="stat">
-        <div class="val" style="color:var(--green);">5</div>
+        <div class="val" style="color:var(--green);">6</div>
         <div class="lbl">Steps Complete</div>
       </div>
       <div class="stat">
-        <div class="val" style="color:var(--accent);">59</div>
+        <div class="val" style="color:var(--accent);">77</div>
         <div class="lbl">Tests Passing</div>
       </div>
       <div class="stat">
@@ -341,11 +341,11 @@
     </div>
     <div style="margin-top:48px;">
       <div class="progress-bar" style="max-width:600px;margin:0 auto;">
-        <div class="progress-fill" style="width:36%;background:linear-gradient(90deg,var(--green),var(--accent));">
-          5/14
+        <div class="progress-fill" style="width:43%;background:linear-gradient(90deg,var(--green),var(--accent));">
+          6/14
         </div>
       </div>
-      <div style="font-size:12px;color:var(--dim);margin-top:8px;">Steps 0–13 · Weekend 1 of 6</div>
+      <div style="font-size:12px;color:var(--dim);margin-top:8px;">Steps 0–13 · Weekend 2 of 6</div>
     </div>
   </div>
 </section>
@@ -1125,6 +1125,137 @@ get_sellers(capability_hash)
 </section>
 
 <!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 5 — OVERVIEW -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 5 / 13</span>
+  <div class="content">
+    <div style="margin-bottom:8px;">
+      <span class="pill pill-green">COMPLETED</span>
+      <span style="font-size:13px;color:var(--dim);margin-left:12px;">Weekend 2 · Session 1</span>
+    </div>
+    <h2>Step 5: Match Engine</h2>
+    <p class="subtitle" style="margin-bottom:36px;">
+      Buyer sends capability_hash → engine returns best seller. DNS model: query → answer.
+      CU debited, escrow created, active_calls incremented. All atomic.
+    </p>
+
+    <div class="g2">
+      <div class="card">
+        <h3 style="color:var(--accent);">POST /v1/match</h3>
+        <div class="mono-block" style="font-size:12px;margin-top:12px;">Auth: X-API-Key (buyer)
+
+Request: {
+  "capability_hash": "d4e5f6...",
+  "max_price_cu": 25,     // optional
+  "max_latency_us": 5000  // optional
+}
+
+Response (matched): {
+  "trade_id": "uuid...",
+  "seller_pubkey": "uuid...",
+  "price_cu": 20.0,
+  "status": "matched"
+}
+
+Response (no match):
+  {"status": "no_match"}
+
+Response (can't afford):
+  {"status": "insufficient_cu"}</div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">Algorithm</h3>
+        <div class="mono-block" style="font-size:12px;margin-top:12px;">1. Look up seller_tables[hash]
+   → sorted by (price ASC, latency ASC)
+
+2. For each seller:
+   a. Skip if price > max_price_cu
+   b. Skip if latency > max_latency_us
+   c. Skip if at capacity
+   d. MATCH → break
+
+3. Verify buyer CU ≥ price
+   → insufficient_cu if not
+
+4. Atomic:
+   - Debit buyer cu_balance
+   - Create trade (status=matched)
+   - Create escrow (status=held)
+   - Increment active_calls
+   - Record event</div>
+        <div style="margin-top:16px;">
+          <span class="pill pill-blue">PS#4</span>
+          <span style="font-size:12px;color:var(--muted);margin-left:8px;">Match, Don't Trade — no order book, no resting orders</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 5 — TESTS + AUDIT -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 5 — Tests</span>
+  <div class="content">
+    <h2 style="color:var(--green);">18 New Tests</h2>
+    <p class="subtitle" style="margin-bottom:32px;">Match engine: matched/no_match/insufficient_cu, CU debit, escrow, capacity, filters, invariant. 0 violations.</p>
+
+    <div class="g2" style="margin-bottom:24px;">
+      <div class="card">
+        <h3 style="color:var(--green);">Match Tests</h3>
+        <div style="font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;">
+          ✓ Returns matched + trade_id<br>
+          ✓ Response has exact 4 fields<br>
+          ✓ No sellers → no_match<br>
+          ✓ Insufficient CU → insufficient_cu<br>
+          ✓ Buyer CU debited correctly<br>
+          ✓ Escrow row created (held)<br>
+          ✓ Trade row created (matched)<br>
+          ✓ match_made event recorded<br>
+          ✓ active_calls incremented<br>
+          ✓ Cheapest seller wins (3 sellers)<br>
+          ✓ Cheapest at capacity → next cheapest<br>
+          ✓ max_price_cu filters correctly<br>
+          ✓ max_price_cu allows equal price<br>
+          ✓ Balance never goes negative<br>
+          ✓ CU invariant: Σbal + Σescrow = total<br>
+          ✓ Requires auth → 422<br>
+          ✓ No partial fills<br>
+          ✓ No resting orders (two matches → two trades)
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">Rules Audit</h3>
+        <div class="rule-audit" style="margin-top:12px;">
+          <span class="rule-id">R0</span>  <span class="rule-name">One function: match_request()</span>      <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R1</span>  <span class="rule-name">Algorithm on paper first</span>           <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R3</span>  <span class="rule-name">PS#4: Match, not trade</span>             <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R4</span>  <span class="rule-name">CU escrow = structural security</span>    <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R6</span>  <span class="rule-name">No partial fills, no resting orders</span> <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R8</span>  <span class="rule-name">trades + escrow tables exact</span>       <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R10</span> <span class="rule-name">Functions, raw SQL, events</span>         <span class="rule-status rule-pass">✓ PASS</span>
+        </div>
+        <div class="g2" style="margin-top:24px;">
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--green);">0</div>
+            <div style="font-size:12px;color:var(--dim);">VIOLATIONS</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--accent);">77</div>
+            <div style="font-size:12px;color:var(--dim);">TESTS PASSING</div>
+            <div style="font-size:11px;color:var(--dim);">59 prior + 18 new</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
 <!-- SLIDE: ROADMAP — WHAT'S NEXT -->
 <!-- ═══════════════════════════════════════════ -->
 <section class="slide">
@@ -1132,7 +1263,7 @@ get_sellers(capability_hash)
   <span class="slide-num">Roadmap</span>
   <div class="content">
     <h2>What's Next</h2>
-    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–4 done.</p>
+    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–5 done.</p>
 
     <div class="g2">
       <div>
@@ -1153,13 +1284,13 @@ get_sellers(capability_hash)
             <h4><span style="color:var(--green);">●</span> Step 3 — Schema Store</h4>
             <p>SHA-256 capability hash + auth. 11 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
-          <div class="timeline-item pending">
-            <h4>Step 4 — Seller Registration</h4>
-            <p>List as seller: capability + price + capacity. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
+          <div class="timeline-item">
+            <h4><span style="color:var(--green);">●</span> Step 4 — Seller Registration</h4>
+            <p>POST/GET sellers, in-memory tables. 13 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
-          <div class="timeline-item pending">
-            <h4>Step 5 — Match Engine</h4>
-            <p>Find best seller by hash. Price priority, then latency.</p>
+          <div class="timeline-item">
+            <h4><span style="color:var(--green);">●</span> Step 5 — Match Engine</h4>
+            <p>Best seller by hash + CU escrow. 18 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
           <div class="timeline-item pending">
             <h4>Step 6 — Trade Execution</h4>
@@ -1222,7 +1353,11 @@ get_sellers(capability_hash)
     <div class="card">
       <div class="timeline">
         <div class="timeline-item">
-          <h4><code>NEW</code> — Step 4: Seller Registration — 59 tests passing</h4>
+          <h4><code>NEW</code> — Step 5: Match Engine — 77 tests passing</h4>
+          <p>POST /v1/match, match_request(), CU escrow, capacity skip, filters. 18 new tests.</p>
+        </div>
+        <div class="timeline-item">
+          <h4><code>020bd53</code> — Step 4: Seller Registration — 59 tests passing</h4>
           <p>POST /v1/sellers/register, GET /v1/sellers/{hash}, matching.py implemented. 13 new tests.</p>
         </div>
         <div class="timeline-item">

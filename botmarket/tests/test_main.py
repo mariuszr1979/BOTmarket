@@ -445,3 +445,252 @@ def test_get_sellers_sorted_by_price(client):
     data = client.get(f"/v1/sellers/{cap_hash}").json()
     prices = [s["price_cu"] for s in data["sellers"]]
     assert prices == [10.0, 20.0, 30.0]
+
+
+# ── Helpers for Step 5+ ──────────────────────────────────
+
+
+def _fund_agent(client, agent_id, amount):
+    """Directly set cu_balance for an agent (test helper)."""
+    import db
+    conn = db.get_connection()
+    conn.execute("UPDATE agents SET cu_balance = ? WHERE pubkey = ?", (amount, agent_id))
+    conn.commit()
+    conn.close()
+
+
+def _setup_seller(client, price=20.0, capacity=10):
+    """Register agent + schema + seller. Returns (seller_id, seller_key, cap_hash)."""
+    seller_id, seller_key = _register(client)
+    cap_hash = _register_schema(client, seller_key)
+    client.post(
+        "/v1/sellers/register",
+        json={"capability_hash": cap_hash, "price_cu": price, "capacity": capacity},
+        headers={"X-API-Key": seller_key},
+    )
+    return seller_id, seller_key, cap_hash
+
+
+# ── Step 5: Match Engine ─────────────────────────────────
+
+
+def test_match_returns_matched(client):
+    """Buyer with enough CU gets matched to a seller."""
+    seller_id, _, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    resp = client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "matched"
+    assert data["seller_pubkey"] == seller_id
+    assert data["price_cu"] == 20.0
+    assert "trade_id" in data
+
+
+def test_match_response_fields(client):
+    """Response has exactly trade_id, seller_pubkey, price_cu, status."""
+    _, _, cap_hash = _setup_seller(client)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    data = client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key}).json()
+    assert set(data.keys()) == {"trade_id", "seller_pubkey", "price_cu", "status"}
+
+
+def test_match_no_sellers(client):
+    """No sellers for hash → no_match."""
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    data = client.post("/v1/match", json={"capability_hash": "nonexistent"}, headers={"X-API-Key": buyer_key}).json()
+    assert data == {"status": "no_match"}
+
+
+def test_match_insufficient_cu(client):
+    """Buyer has 0 CU → insufficient_cu."""
+    _, _, cap_hash = _setup_seller(client, price=20.0)
+    _, buyer_key = _register(client)
+    data = client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key}).json()
+    assert data == {"status": "insufficient_cu"}
+
+
+def test_match_buyer_cu_debited(client):
+    """Buyer CU decreases by price after match."""
+    _, _, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key})
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT cu_balance FROM agents WHERE pubkey = ?", (buyer_id,)).fetchone()
+    conn.close()
+    assert row["cu_balance"] == 80.0
+
+
+def test_match_escrow_created(client):
+    """Escrow row created with held status and correct amount."""
+    _, _, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    data = client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key}).json()
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT cu_amount, status FROM escrow WHERE trade_id = ?", (data["trade_id"],)).fetchone()
+    conn.close()
+    assert row["cu_amount"] == 20.0
+    assert row["status"] == "held"
+
+
+def test_match_trade_created(client):
+    """Trade row created with status=matched."""
+    seller_id, _, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    data = client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key}).json()
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT buyer_pubkey, seller_pubkey, price_cu, status FROM trades WHERE id = ?", (data["trade_id"],)).fetchone()
+    conn.close()
+    assert row["buyer_pubkey"] == buyer_id
+    assert row["seller_pubkey"] == seller_id
+    assert row["price_cu"] == 20.0
+    assert row["status"] == "matched"
+
+
+def test_match_event_recorded(client):
+    """Event match_made recorded with trade details."""
+    _, _, cap_hash = _setup_seller(client)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    data = client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key}).json()
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT event_data FROM events WHERE event_type = 'match_made' ORDER BY seq DESC LIMIT 1").fetchone()
+    conn.close()
+    payload = json.loads(row["event_data"])
+    assert payload["trade_id"] == data["trade_id"]
+    assert payload["buyer"] == buyer_id
+    assert payload["price_cu"] == 20.0
+
+
+def test_match_active_calls_incremented(client):
+    """Seller active_calls increases by 1 after match."""
+    seller_id, _, cap_hash = _setup_seller(client, price=20.0, capacity=5)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key})
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT active_calls FROM sellers WHERE agent_pubkey = ?", (seller_id,)).fetchone()
+    conn.close()
+    assert row["active_calls"] == 1
+
+
+def test_match_cheapest_seller_wins(client):
+    """3 sellers at 30, 10, 20 → buyer gets the 10 CU seller."""
+    keys = [_register(client) for _ in range(3)]
+    cap_hash = _register_schema(client, keys[0][1])
+    for (_, key), price in zip(keys, [30.0, 10.0, 20.0]):
+        client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": price, "capacity": 5}, headers={"X-API-Key": key})
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    data = client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key}).json()
+    assert data["price_cu"] == 10.0
+    assert data["seller_pubkey"] == keys[1][0]
+
+
+def test_match_cheapest_at_capacity_skipped(client):
+    """Cheapest seller at capacity → buyer gets next cheapest."""
+    keys = [_register(client) for _ in range(2)]
+    cap_hash = _register_schema(client, keys[0][1])
+    # Seller 1: cheap but capacity=1
+    client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": 10.0, "capacity": 1}, headers={"X-API-Key": keys[0][1]})
+    # Seller 2: more expensive but capacity=5
+    client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": 25.0, "capacity": 5}, headers={"X-API-Key": keys[1][1]})
+    # First buyer takes the cheap seller
+    buyer1_id, buyer1_key = _register(client)
+    _fund_agent(client, buyer1_id, 100.0)
+    d1 = client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer1_key}).json()
+    assert d1["price_cu"] == 10.0
+    # Second buyer → cheap seller at capacity → gets the 25 CU seller
+    buyer2_id, buyer2_key = _register(client)
+    _fund_agent(client, buyer2_id, 100.0)
+    d2 = client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer2_key}).json()
+    assert d2["price_cu"] == 25.0
+
+
+def test_match_max_price_filter(client):
+    """max_price_cu filters out sellers above the limit."""
+    keys = [_register(client) for _ in range(2)]
+    cap_hash = _register_schema(client, keys[0][1])
+    client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": 10.0, "capacity": 5}, headers={"X-API-Key": keys[0][1]})
+    client.post("/v1/sellers/register", json={"capability_hash": cap_hash, "price_cu": 30.0, "capacity": 5}, headers={"X-API-Key": keys[1][1]})
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    # max_price_cu=5 → even the 10 CU seller is too expensive
+    data = client.post("/v1/match", json={"capability_hash": cap_hash, "max_price_cu": 5.0}, headers={"X-API-Key": buyer_key}).json()
+    assert data["status"] == "no_match"
+
+
+def test_match_max_price_allows_equal(client):
+    """max_price_cu=10 allows a 10 CU seller (<=, not <)."""
+    _, _, cap_hash = _setup_seller(client, price=10.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    data = client.post("/v1/match", json={"capability_hash": cap_hash, "max_price_cu": 10.0}, headers={"X-API-Key": buyer_key}).json()
+    assert data["status"] == "matched"
+    assert data["price_cu"] == 10.0
+
+
+def test_match_buyer_balance_never_negative(client):
+    """Buyer with 15 CU, seller at 20 CU → insufficient, no negative balance."""
+    _, _, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 15.0)
+    data = client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key}).json()
+    assert data["status"] == "insufficient_cu"
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT cu_balance FROM agents WHERE pubkey = ?", (buyer_id,)).fetchone()
+    conn.close()
+    assert row["cu_balance"] == 15.0  # unchanged
+
+
+def test_match_cu_invariant(client):
+    """sum(balances) + sum(escrow) = total CU in system."""
+    _, _, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key})
+    import db
+    conn = db.get_connection()
+    total_balances = conn.execute("SELECT SUM(cu_balance) FROM agents").fetchone()[0]
+    total_escrow = conn.execute("SELECT COALESCE(SUM(cu_amount), 0) FROM escrow").fetchone()[0]
+    conn.close()
+    assert total_balances + total_escrow == 100.0
+
+
+def test_match_requires_auth(client):
+    """No API key → 422."""
+    resp = client.post("/v1/match", json={"capability_hash": "abc"})
+    assert resp.status_code == 422
+
+
+def test_match_no_partial_fills(client):
+    """Full price or no match — no partial fills."""
+    _, _, cap_hash = _setup_seller(client, price=50.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 49.99)
+    data = client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key}).json()
+    assert data["status"] == "insufficient_cu"
+
+
+def test_match_no_resting_orders(client):
+    """Match is instant one-shot — two matches use two separate trades."""
+    _, _, cap_hash = _setup_seller(client, price=10.0, capacity=5)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    d1 = client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key}).json()
+    d2 = client.post("/v1/match", json={"capability_hash": cap_hash}, headers={"X-API-Key": buyer_key}).json()
+    assert d1["trade_id"] != d2["trade_id"]
+    assert d1["status"] == "matched"
+    assert d2["status"] == "matched"

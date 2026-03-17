@@ -39,3 +39,26 @@ def add_seller(seller):
 def get_sellers(capability_hash):
     """Return list of sellers for a capability hash (sorted)."""
     return _seller_tables.get(capability_hash, [])
+
+
+def match_request(capability_hash, max_price_cu=None, max_latency_us=None):
+    """Find best seller: cheapest that passes all filters and has capacity."""
+    sellers = _seller_tables.get(capability_hash, [])
+    for seller in sellers:
+        if max_price_cu is not None and seller["price_cu"] > max_price_cu:
+            continue
+        if max_latency_us is not None and seller["latency_bound_us"] > max_latency_us:
+            continue
+        if seller["active_calls"] >= seller["capacity"]:
+            continue
+        return seller
+    return None
+
+
+def increment_active_calls(agent_pubkey, capability_hash):
+    """Increment active_calls for a seller in-memory."""
+    sellers = _seller_tables.get(capability_hash, [])
+    for seller in sellers:
+        if seller["agent_pubkey"] == agent_pubkey:
+            seller["active_calls"] += 1
+            break
