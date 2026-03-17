@@ -83,7 +83,7 @@ Language:    Python (accessible to non-developers, AI-assistable, vast ecosystem
 Framework:   FastAPI (simple, well-documented, async support)
 Database:    SQLite (zero config, single file, good enough for validation)
 Match:       In-memory seller tables (dict[str, list] keyed by capability hash)
-Protocol:    JSON sidecar for debugging (binary TCP core is Phase 2)
+Protocol:    Binary TCP core (port 9000) + JSON sidecar for debugging (port 8000)
 Auth:        API key (Ed25519 cryptographic identity is Phase 2)
 Deploy:      Local / single VPS ($5/month), $5-20/month
 Currency:    Compute Units (CU) — 1 CU = 1ms GPU compute (concrete definition)
@@ -109,7 +109,6 @@ What stays (the thesis validation):
   ✓ Single 5% bond slash on any violation
 
 What's deferred (engineering moat, not thesis validation):
-  ✗ Binary TCP protocol → JSON sidecar (binary is optimization, not validation)
   ✗ Ed25519 crypto auth → API key (crypto identity is moat, not MVP)
   ✗ PostgreSQL → SQLite (no config, good enough for <1000 agents)
   ✗ Discovery by example → exact hash match only (add when fragmentation >30%)
@@ -117,13 +116,14 @@ What's deferred (engineering moat, not thesis validation):
 
 What this still proves to investors:
   The same thing — agents can discover each other by capability hash
-  and get matched through a match engine. The binary protocol
-  and crypto identity are things you DESCRIBE to investors, not demo.
+  and get matched through a match engine. The binary protocol is
+  demo-ready: 77 bytes per match vs ~350 bytes JSON. Crypto identity
+  is the one thing you DESCRIBE to investors, not demo.
 ```
 
 ## MVP Features (Ranked by Priority)
 
-### Must Have (Weekends 1-8, ~2-4 weekends with AI assistance)
+### Must Have (Weekends 1-10, ~5 weekends with AI assistance)
 | Feature | Details | Effort |
 |---------|---------|--------|
 | Agent registration | API key generation, register agent | 1 session |
@@ -133,9 +133,11 @@ What this still proves to investors:
 | Trade execution | Connect matched buyer/seller, proxy JSON data | 1-2 sessions |
 | CU Ledger | SQLite balance table (deposit CU, settle trades) | 1 session |
 | Event log | Record raw trade facts (no aggregated stats) | 1 session |
+| Binary wire format | struct.pack/unpack for all message types (wire.py) | 1 session |
+| Binary TCP server | asyncio TCP server on port 9000 (tcp_server.py) | 1 session |
 | JSON sidecar | FastAPI endpoints for all operations (debugging interface) | included above |
 
-**Total: ~8-14 sessions (2-4 weekends with AI coding assistance)**
+**Total: ~10 sessions (5 weekends with AI coding assistance)**
 
 Note: "session" = 3-4 hours of focused work with AI assistant. Previous estimate of
 "22 dev-days (5 weeks solo)" assumed an experienced TypeScript developer building
@@ -247,7 +249,7 @@ $ curl -X POST https://api.botmarket.exchange/v1/trades/trade_001/execute \
 
 ```
 Original plan: 22 dev-days, TypeScript + PostgreSQL + Binary TCP + Ed25519
-Rescoped plan: 8-14 sessions (2-4 weekends), Python + SQLite + JSON sidecar + API key
+Rescoped plan: 10 sessions (5 weekends), Python + SQLite + Binary TCP + JSON sidecar + API key
 
 The match engine model (request → match → execute → settle) is SIMPLER
 to build than a CLOB order book. No order management, no partial fills,

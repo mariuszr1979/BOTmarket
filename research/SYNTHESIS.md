@@ -129,7 +129,7 @@ Name:        BOTmarket (brand) / SynthEx (protocol)
 Stack:       Python + FastAPI + SQLite (rescoped for non-developer founder)
              Phase 2 upgrade: TypeScript + Hono + Bun + PostgreSQL
 Deploy:      Local / single VPS ($5-20/month)
-Timeline:    8-16 sessions / 2-4 weekends (with AI coding assistance)
+Timeline:    10 sessions / 5 weekends (with AI coding assistance)
 Protocol:    Binary-only core (PS#7), JSON sidecar for debugging
 Auth:        API key (Ed25519 deferred to Phase 2)
 Currency:    Compute Units (CU) — 1 CU = 1ms GPU compute on A100 (PS#5)

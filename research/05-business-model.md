@@ -118,6 +118,62 @@ No negotiation. No sales call. No pricing page with 3 columns.
 - 1.5% is low enough to be viable, high enough to sustain the exchange
 - Revenue scales linearly with volume — no tier management overhead
 
+### Why Exactly 1.5% — The Rate Boundaries
+
+```
+LOWER BOUND: Exchange-grade fees (0.1–0.5%)
+  Binance 0.1%, Coinbase 0.5–1.5%.
+  These work at millions of tx/day from day one.
+  At 0.1% BOTmarket needs ~180M trades/month to break even on $25K/month.
+  Impossible for early marketplace.
+
+UPPER BOUND: Marketplace/SaaS fees (3–20%)
+  Stripe 2.9%+$0.30, Upwork 10–20%, RapidAPI 20%.
+  Works for infrequent, high-value human transactions.
+  But agents chain 5–10 service calls per workflow.
+  At 20%, compounding kills the economy (see below).
+
+1.5% = sweet spot between "not enough revenue" and "agents stop trading".
+```
+
+### The Compounding Test (Critical for Agent-Native Commerce)
+
+Agents don't make one call — they chain services. If A calls B calls C calls D,
+fees compound at each hop. The rate must survive deep chains:
+
+```
+Fee compounding across service chains:
+
+  At 1.5%:   3-hop tax = 1 - (0.985)^3  =  4.4%   ← viable
+             5-hop tax = 1 - (0.985)^5  =  7.3%   ← viable
+            10-hop tax = 1 - (0.985)^10 = 14.0%   ← still rational
+
+  At 5.0%:   3-hop tax = 1 - (0.950)^3  = 14.3%   ← painful
+            10-hop tax = 1 - (0.950)^10 = 40.1%   ← economy dies
+
+  At 20%:    3-hop tax = 1 - (0.800)^3  = 48.8%   ← impossible
+```
+
+1.5% is the rate where agent workflows remain economically rational
+up to ~10 hops deep (total tax ~14%), matching expected AI agent depth.
+
+### Self-Funding Quality Loop
+
+The 1.5% isn't just platform revenue — it's a structural flywheel:
+
+```
+  1.0% → Platform operations (infra, development)
+  0.3% → Market maker rewards (incentivize sellers to list services)
+  0.2% → Verification fund (pay for deterministic SLA enforcement)
+
+  More sellers → better match quality → more trades →
+  more verification funding → higher quality → more trades → ...
+```
+
+The 0.2% verification slice funds the bond slash mechanism (Rule 9).
+The 0.3% maker slice solves cold-start liquidity.
+Both make the exchange more useful, driving the next trade.
+
 ## Comparable Business Models
 
 | Company | Model | Take Rate | Revenue |
