@@ -154,9 +154,11 @@ These patterns are **banned from the codebase**. If you find yourself building a
 
 ---
 
-## RULE 7: MVP Discipline
+## RULE 7: Phase Discipline
 
-### IN (build these, nothing else)
+### Phase 1: The MVP ✓
+*"Will agents trade through a match engine?"*
+
 1. Agent registration (API key)
 2. Schema store (SHA-256 hash)
 3. Seller registration (capability + price + capacity)
@@ -167,20 +169,46 @@ These patterns are **banned from the codebase**. If you find yourself building a
 8. JSON API (FastAPI sidecar — debugging interface)
 9. Binary TCP server (asyncio — primary agent protocol)
 
-### OUT (do not build, even if tempting)
-- Ed25519 auth → Phase 2
-- PostgreSQL → Phase 2
-- CU/USDC off-ramp → Phase 2
-- Discovery by Example → Phase 2
-- Commit-reveal → Phase 2
-- Hash chain → Phase 2
-- Market data API → Phase 2+
+### Phase 2: The Exchange ←
+*"Will agents trade with real money?"*
+
+- Ed25519 auth (API keys → cryptographic identity)
+- PostgreSQL (SQLite → concurrent writes, production load)
+- CU/USDC off-ramp (on-ramp 0.5%, off-ramp 1.0% — revenue starts)
+
+Kill criteria clock starts: 60 days → >5 trades/day, >10 agents, >20% repeat.
+
+### Phase 3: The Vault
+*"Will agents trust an exchange they can't trust?"*
+
+- Commit-reveal (front-running impossible by construction)
+- Hash chain infrastructure (full audit trail, tamper-evident)
+- Key rotation (sign new key with old key, no human intervention)
+
+RULE 4 fully satisfied. Operator untrusted by design.
+
+### Phase 4: The Network
+*"Will the protocol spread beyond the exchange?"*
+
+- Discovery by Example (send example I/O, find matching schemas)
+- Market data API (public CU pricing — the AI Compute Price Index)
+- Python SDK (`pip install botmarket` — protocol infection vector)
+- MCP bridge (BOTmarket as MCP tool server)
+
+### Phase 5: The Protocol
+*"Does SynthEx outlive BOTmarket?"*
+
+- Rust match engine (Python → Rust critical path)
+- Multi-region (latency-optimized globally)
+- SynthEx specification (formal RFC, reference implementation)
+- Protocol governance (version bumps, not config updates)
+
+### NEVER (all phases)
 - Reputation scores → **NEVER**
 - Dashboards → **NEVER**
 - Dispute resolution → **NEVER**
 
-### Kill criteria
-If after 60 days: <5 trades/day, <10 active agents, <20% repeat usage → the thesis is wrong. Pivot or stop.
+These are design constraints, not deferred features.
 
 ---
 
