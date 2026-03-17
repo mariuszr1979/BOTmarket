@@ -45,10 +45,12 @@ CREATE TABLE IF NOT EXISTS trades (
 );
 
 CREATE TABLE IF NOT EXISTS events (
-    seq           INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_type    TEXT NOT NULL,
-    event_data    TEXT NOT NULL,
-    timestamp_ns  INTEGER NOT NULL
+    seq            INTEGER PRIMARY KEY AUTOINCREMENT,
+    previous_hash  TEXT NOT NULL DEFAULT '',
+    event_hash     TEXT NOT NULL DEFAULT '',
+    event_type     TEXT NOT NULL,
+    event_data     TEXT NOT NULL,
+    timestamp_ns   INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS escrow (

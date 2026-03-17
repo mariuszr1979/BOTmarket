@@ -49,7 +49,7 @@ def test_no_extra_columns_events():
     conn = init_db(":memory:")
     cursor = conn.execute("PRAGMA table_info(events)")
     cols = [row[1] for row in cursor.fetchall()]
-    assert cols == ["seq", "event_type", "event_data", "timestamp_ns"]
+    assert cols == ["seq", "previous_hash", "event_hash", "event_type", "event_data", "timestamp_ns"]
     conn.close()
 
 
