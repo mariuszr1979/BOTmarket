@@ -83,7 +83,7 @@
     } else {
       fn.textContent = file;
       document.title = 'BOTmarket — ' + file.split('/').pop();
-      fetch(file)
+      fetch('../' + file)
         .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
         .then(text => {
           if (file.endsWith('.tsv')) {
