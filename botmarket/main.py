@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 import hashlib
 import json
 import os
+from pathlib import Path
 import secrets
 import signal
 import subprocess
@@ -11,6 +12,7 @@ import time
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from db import init_db, get_connection
 from log import log
@@ -48,6 +50,14 @@ def authenticate(x_api_key: str = Header()):
 @app.get("/v1/health")
 def health():
     return {"status": "ok"}
+
+
+_LIVE_HTML = Path(__file__).resolve().parent.parent / "slides" / "live.html"
+
+
+@app.get("/live", response_class=HTMLResponse)
+def live_dashboard():
+    return _LIVE_HTML.read_text()
 
 
 @app.post("/v1/agents/register", status_code=201)

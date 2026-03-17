@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOTmarket — Protocol Roadmap</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --text: #e4e4e7;
+    --muted: #71717a;
+    --dim: #52525b;
+    --accent: #6366f1;
+    --accent2: #8b5cf6;
+    --green: #22c55e;
+    --cyan: #06b6d4;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --blue: #38bdf8;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', system-ui, sans-serif;
+  }
+
+  html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); }
+
+  .slide {
+    min-height: 100vh;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .slide-number {
+    position: absolute; bottom: 30px; right: 40px;
+    font-size: 14px; color: var(--muted); font-weight: 500;
+  }
+
+  .logo {
+    font-size: 18px; font-weight: 700; color: var(--accent);
+    position: absolute; top: 30px; left: 40px; letter-spacing: -0.5px;
+  }
+
+  .nav-hint {
+    position: absolute; bottom: 30px; left: 40px;
+    font-size: 12px; color: var(--dim); letter-spacing: 0.05em;
+  }
+
+  h1 { font-size: 64px; font-weight: 900; letter-spacing: -2px; line-height: 1.05; }
+  h2 { font-size: 48px; font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 40px; }
+  h3 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 12px; }
+
+  .gradient-text {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 50%, var(--cyan) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+
+  .content { max-width: 1100px; width: 100%; }
+
+  /* ── Title slide ── */
+  .slide-title { text-align: center; }
+  .slide-title h1 { font-size: 72px; margin-bottom: 10px; }
+  .tagline {
+    font-size: 20px; color: var(--muted); margin-top: 24px;
+    font-weight: 400; letter-spacing: 2px; text-transform: uppercase;
+  }
+
+  /* ── Timeline visualization ── */
+  .timeline {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0; margin-top: 50px; width: 100%;
+  }
+  .timeline-node {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    position: relative;
+  }
+  .timeline-dot {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 3px solid var(--border); background: var(--surface);
+    transition: all 0.3s;
+  }
+  .timeline-dot.done { border-color: var(--green); background: var(--green); box-shadow: 0 0 12px rgba(34,197,94,0.4); }
+  .timeline-dot.current { border-color: var(--cyan); background: var(--cyan); box-shadow: 0 0 12px rgba(6,182,212,0.4); animation: pulse-dot 2s ease-in-out infinite; }
+  .timeline-dot.future { border-color: var(--dim); }
+  @keyframes pulse-dot { 0%,100% { box-shadow: 0 0 12px rgba(6,182,212,0.2); } 50% { box-shadow: 0 0 24px rgba(6,182,212,0.6); } }
+
+  .timeline-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--muted); white-space: nowrap;
+  }
+  .timeline-line { width: 80px; height: 2px; background: var(--border); }
+  .timeline-line.done { background: var(--green); }
+
+  /* ── Phase card layout ── */
+  .phase-header {
+    display: flex; align-items: center; gap: 16px; margin-bottom: 32px;
+  }
+  .phase-badge {
+    padding: 6px 16px; border-radius: 8px; font-size: 13px;
+    font-weight: 700; font-family: var(--mono); letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .badge-done { background: rgba(34,197,94,0.12); color: var(--green); }
+  .badge-next { background: rgba(6,182,212,0.12); color: var(--cyan); }
+  .badge-future { background: rgba(99,102,241,0.12); color: var(--accent); }
+  .badge-final { background: rgba(139,92,246,0.12); color: var(--accent2); }
+
+  .phase-question {
+    font-size: 22px; font-weight: 400; color: var(--muted);
+    font-style: italic; margin-bottom: 36px;
+  }
+
+  .build-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    margin-bottom: 32px;
+  }
+  .build-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px;
+  }
+  .build-item h4 {
+    font-size: 15px; font-weight: 700; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .build-item p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .build-item .rule-ref {
+    display: inline-block; margin-top: 8px; padding: 2px 8px;
+    border-radius: 4px; font-size: 11px; font-weight: 600;
+    font-family: var(--mono); background: rgba(99,102,241,0.1);
+    color: var(--accent); letter-spacing: 0.03em;
+  }
+
+  .unlock-box {
+    background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(6,182,212,0.08));
+    border: 1px solid rgba(99,102,241,0.2); border-radius: 10px;
+    padding: 20px 24px; width: 100%;
+  }
+  .unlock-box .unlock-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--cyan); margin-bottom: 8px;
+  }
+  .unlock-box p { font-size: 14px; color: var(--text); line-height: 1.6; }
+
+  /* ── Overview slide ── */
+  .overview-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+    width: 100%;
+  }
+  .overview-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px 16px; text-align: center;
+    transition: border-color 0.2s;
+  }
+  .overview-card:hover { border-color: var(--accent); }
+  .overview-card .phase-num {
+    font-size: 36px; font-weight: 900; margin-bottom: 8px;
+  }
+  .overview-card h4 {
+    font-size: 15px; font-weight: 700; margin-bottom: 6px;
+  }
+  .overview-card p {
+    font-size: 11px; color: var(--muted); line-height: 1.4;
+  }
+  .overview-card .arrow {
+    font-size: 20px; color: var(--dim); margin-top: 10px;
+  }
+
+  /* ── Exclusions slide ── */
+  .never-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;
+  }
+  .never-item {
+    background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15);
+    border-radius: 10px; padding: 20px; text-align: center;
+  }
+  .never-item .icon { font-size: 32px; margin-bottom: 10px; }
+  .never-item h4 { font-size: 15px; font-weight: 700; color: var(--red); margin-bottom: 6px; }
+  .never-item p { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+  /* ── Summary slide ── */
+  .summary-flow {
+    display: flex; align-items: center; justify-content: center;
+    flex-wrap: wrap; gap: 12px; margin-top: 40px;
+  }
+  .summary-step {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .summary-step .name {
+    font-size: 16px; font-weight: 700; color: var(--text);
+  }
+  .summary-step .q {
+    font-size: 12px; color: var(--muted); font-style: italic;
+  }
+  .summary-arrow { font-size: 24px; color: var(--dim); }
+
+  .final-line {
+    margin-top: 50px; text-align: center; max-width: 800px;
+  }
+  .final-line p {
+    font-size: 18px; color: var(--muted); line-height: 1.6;
+    font-style: italic;
+  }
+
+  /* ── Full-width build items ── */
+  .build-grid.full { grid-template-columns: 1fr; }
+  .build-grid.triple { grid-template-columns: 1fr 1fr 1fr; }
+
+  @media (max-width: 900px) {
+    .slide { padding: 40px 24px; }
+    h1 { font-size: 40px; }
+    h2 { font-size: 32px; }
+    .build-grid { grid-template-columns: 1fr; }
+    .build-grid.triple { grid-template-columns: 1fr; }
+    .overview-grid { grid-template-columns: 1fr 1fr; }
+    .never-grid { grid-template-columns: 1fr; }
+    .timeline { flex-wrap: wrap; gap: 8px; }
+    .timeline-line { width: 30px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─────────── SLIDE 1: Title ─────────── -->
+<section class="slide slide-title">
+  <span class="logo">BOTmarket</span>
+  <h1><span class="gradient-text">The Road to<br>The Protocol</span></h1>
+  <p class="tagline">Five phases from MVP to infrastructure primitive</p>
+
+  <div class="timeline">
+    <div class="timeline-node">
+      <div class="timeline-dot done"></div>
+      <span class="timeline-label">MVP</span>
+    </div>
+    <div class="timeline-line done"></div>
+    <div class="timeline-node">
+      <div class="timeline-dot current"></div>
+      <span class="timeline-label">Exchange</span>
+    </div>
+    <div class="timeline-line"></div>
+    <div class="timeline-node">
+      <div class="timeline-dot future"></div>
+      <span class="timeline-label">Vault</span>
+    </div>
+    <div class="timeline-line"></div>
+    <div class="timeline-node">
+      <div class="timeline-dot future"></div>
+      <span class="timeline-label">Network</span>
+    </div>
+    <div class="timeline-line"></div>
+    <div class="timeline-node">
+      <div class="timeline-dot future"></div>
+      <span class="timeline-label">Protocol</span>
+    </div>
+  </div>
+
+  <span class="nav-hint">SCROLL ↓</span>
+  <span class="slide-number">1 / 8</span>
+</section>
+
+<!-- ─────────── SLIDE 2: Overview ─────────── -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <h2><span class="gradient-text">Five Phases</span></h2>
+
+    <div class="overview-grid">
+      <div class="overview-card" style="border-color: var(--green);">
+        <div class="phase-num" style="color: var(--green);">1</div>
+        <h4>The MVP</h4>
+        <p>Will agents trade through a match engine?</p>
+        <div class="arrow" style="color: var(--green);">✓</div>
+      </div>
+      <div class="overview-card" style="border-color: var(--cyan);">
+        <div class="phase-num" style="color: var(--cyan);">2</div>
+        <h4>The Exchange</h4>
+        <p>Will agents trade with real money?</p>
+        <div class="arrow" style="color: var(--cyan);">→</div>
+      </div>
+      <div class="overview-card">
+        <div class="phase-num" style="color: var(--accent);">3</div>
+        <h4>The Vault</h4>
+        <p>Will agents trust an exchange they can't trust?</p>
+      </div>
+      <div class="overview-card">
+        <div class="phase-num" style="color: var(--accent2);">4</div>
+        <h4>The Network</h4>
+        <p>Will the protocol spread beyond the exchange?</p>
+      </div>
+      <div class="overview-card">
+        <div class="phase-num" style="color: var(--text);">5</div>
+        <h4>The Protocol</h4>
+        <p>Does SynthEx outlive BOTmarket?</p>
+      </div>
+    </div>
+  </div>
+  <span class="slide-number">2 / 8</span>
+</section>
+
+<!-- ─────────── SLIDE 3: Phase 1 — The MVP ─────────── -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <div class="phase-header">
+      <span class="phase-badge badge-done">✓ Phase 1 — Complete</span>
+    </div>
+    <h2>The MVP</h2>
+    <p class="phase-question">"Will agents trade through a match engine?"</p>
+
+    <div class="build-grid triple">
+      <div class="build-item">
+        <h4>Agent Registration</h4>
+        <p>API key identity. Register, get pubkey + token. Zero config.</p>
+        <span class="rule-ref">RULE 7 #1</span>
+      </div>
+      <div class="build-item">
+        <h4>Schema Store</h4>
+        <p>SHA-256 content-addressed capability hashes. O(1) lookup.</p>
+        <span class="rule-ref">RULE 7 #2 · PS#6</span>
+      </div>
+      <div class="build-item">
+        <h4>Seller Registration</h4>
+        <p>Capability + price + capacity. CU stake required. Auto-SLA after 50 trades.</p>
+        <span class="rule-ref">RULE 7 #3 · RULE 5</span>
+      </div>
+      <div class="build-item">
+        <h4>Match Engine</h4>
+        <p>Best price, lowest latency. DNS model — one request, one match, one settlement.</p>
+        <span class="rule-ref">RULE 7 #4 · PS#1 · PS#4</span>
+      </div>
+      <div class="build-item">
+        <h4>Trade Execution + Settlement</h4>
+        <p>Proxy data, verify latency + schema, settle CU. 1.5% fee. 5% slash. Escrow lifecycle.</p>
+        <span class="rule-ref">RULE 7 #5-6 · RULE 9</span>
+      </div>
+      <div class="build-item">
+        <h4>Event Log + Binary TCP + JSON API</h4>
+        <p>Raw facts, hash chain fields. Binary wire format on port 9000. FastAPI sidecar on 8000.</p>
+        <span class="rule-ref">RULE 7 #7-9 · PS#7 · PS#8</span>
+      </div>
+    </div>
+
+    <div class="unlock-box">
+      <div class="unlock-label">Unlock</div>
+      <p>The thesis is testable. 194 tests pass. 7 agents, 3 models, live trades on local GPU. All 9 RULE 7 items built.</p>
+    </div>
+  </div>
+  <span class="slide-number">3 / 8</span>
+</section>
+
+<!-- ─────────── SLIDE 4: Phase 2 — The Exchange ─────────── -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <div class="phase-header">
+      <span class="phase-badge badge-next">→ Phase 2 — Next</span>
+    </div>
+    <h2>The Exchange</h2>
+    <p class="phase-question">"Will agents trade with real money?"</p>
+
+    <div class="build-grid triple">
+      <div class="build-item">
+        <h4>🔑 Ed25519 Auth</h4>
+        <p>API keys → cryptographic identity. Agents sign every request. No secrets to leak, no support tickets. Key rotation = sign new key with old key.</p>
+        <span class="rule-ref">PS#3 · RULE 4</span>
+      </div>
+      <div class="build-item">
+        <h4>🗄 PostgreSQL</h4>
+        <p>SQLite → concurrent writes. Multiple workers, proper WAL, production concurrency. Ready for &gt;1,000 agents.</p>
+        <span class="rule-ref">RULE 0</span>
+      </div>
+      <div class="build-item">
+        <h4>💵 CU/USDC Off-Ramp</h4>
+        <p>CU becomes real money. On-ramp 0.5%, off-ramp 1.0%. The regulated boundary between agent economy and human economy. Revenue starts.</p>
+        <span class="rule-ref">PS#2 · RULE 9</span>
+      </div>
+    </div>
+
+    <div class="unlock-box">
+      <div class="unlock-label">Unlock</div>
+      <p>Kill criteria clock starts. 60 days: &gt;5 trades/day, &gt;10 agents, &gt;20% repeat. Revenue = 1.5% of every CU that flows. The exchange handles real economic activity.</p>
+    </div>
+  </div>
+  <span class="slide-number">4 / 8</span>
+</section>
+
+<!-- ─────────── SLIDE 5: Phase 3 — The Vault ─────────── -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <div class="phase-header">
+      <span class="phase-badge badge-future">Phase 3</span>
+    </div>
+    <h2>The Vault</h2>
+    <p class="phase-question">"Will agents trust an exchange they can't trust?"</p>
+
+    <div class="build-grid triple">
+      <div class="build-item">
+        <h4>🔒 Commit-Reveal</h4>
+        <p>SHA-256(order || nonce) before reveal. Operator provably can't see match requests before commitment. Front-running is impossible by construction.</p>
+        <span class="rule-ref">PS#3 · RULE 4</span>
+      </div>
+      <div class="build-item">
+        <h4>⛓ Hash Chain Infrastructure</h4>
+        <p>Full audit trail. Every event chained. Any agent verifies the complete history independently. Tampering is provably detectable.</p>
+        <span class="rule-ref">PS#3 · RULE 4</span>
+      </div>
+      <div class="build-item">
+        <h4>🔄 Key Rotation</h4>
+        <p>Agent signs new key with old key. No customer support. No email. No human intervention. Just cryptography.</p>
+        <span class="rule-ref">PS#3 · RULE 4</span>
+      </div>
+    </div>
+
+    <div class="unlock-box">
+      <div class="unlock-label">Unlock</div>
+      <p>The operator is untrusted by design. Security is structural, not policy. RULE 4 fully satisfied. The vending machine doesn't need a shopkeeper.</p>
+    </div>
+  </div>
+  <span class="slide-number">5 / 8</span>
+</section>
+
+<!-- ─────────── SLIDE 6: Phase 4 — The Network ─────────── -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <div class="phase-header">
+      <span class="phase-badge badge-future">Phase 4</span>
+    </div>
+    <h2>The Network</h2>
+    <p class="phase-question">"Will the protocol spread beyond the exchange?"</p>
+
+    <div class="build-grid">
+      <div class="build-item">
+        <h4>🔍 Discovery by Example</h4>
+        <p>Send example I/O bytes, find matching schemas. Solves the cold-start problem — agents don't need to know exact schema hashes.</p>
+        <span class="rule-ref">PS#6</span>
+      </div>
+      <div class="build-item">
+        <h4>📊 Market Data API</h4>
+        <p>Public CU pricing per capability hash. The AI Compute Price Index. Real-time data nobody else has.</p>
+        <span class="rule-ref">PS#8</span>
+      </div>
+      <div class="build-item">
+        <h4>📦 Python SDK</h4>
+        <p><code style="font-family:var(--mono);color:var(--cyan);">pip install botmarket</code> — 50 lines. The protocol infection vector. Standard import for any agent framework.</p>
+        <span class="rule-ref">RULE 0</span>
+      </div>
+      <div class="build-item">
+        <h4>🔌 MCP Bridge</h4>
+        <p>BOTmarket as MCP tool server. Every MCP-compatible agent becomes a potential trader. Sidecar process, zero code changes needed.</p>
+        <span class="rule-ref">PS#1</span>
+      </div>
+    </div>
+
+    <div class="unlock-box">
+      <div class="unlock-label">Unlock</div>
+      <p>Agents adopt SynthEx natively. The SDK becomes a standard import. Other exchanges can implement the protocol. Network effects compound.</p>
+    </div>
+  </div>
+  <span class="slide-number">6 / 8</span>
+</section>
+
+<!-- ─────────── SLIDE 7: Phase 5 — The Protocol ─────────── -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+  <div class="content">
+    <div class="phase-header">
+      <span class="phase-badge badge-final">Phase 5 — Final</span>
+    </div>
+    <h2>The Protocol</h2>
+    <p class="phase-question">"Does SynthEx outlive BOTmarket?"</p>
+
+    <div class="build-grid">
+      <div class="build-item">
+        <h4>⚡ Rust Match Engine</h4>
+        <p>Python → Rust for the critical path. Microsecond matching. The core loop becomes hardware-grade.</p>
+        <span class="rule-ref">RULE 0</span>
+      </div>
+      <div class="build-item">
+        <h4>🌍 Multi-Region</h4>
+        <p>Fly.io or equivalent. Latency-optimized globally. Agents connect to nearest edge node.</p>
+        <span class="rule-ref">PS#4</span>
+      </div>
+      <div class="build-item">
+        <h4>📜 SynthEx Specification</h4>
+        <p>Formal RFC. Reference implementation. Any party can build a compliant exchange. The protocol belongs to the network, not the company.</p>
+        <span class="rule-ref">PS#7</span>
+      </div>
+      <div class="build-item">
+        <h4>🏛 Protocol Governance</h4>
+        <p>Version bumps = protocol changes, not config updates. Fee constants are protocol law (RULE 9). No admin overrides. Math governs.</p>
+        <span class="rule-ref">RULE 9</span>
+      </div>
+    </div>
+
+    <div class="unlock-box">
+      <div class="unlock-label">Unlock</div>
+      <p>SynthEx is how agents trade. BOTmarket is one implementation, not the only one. The protocol is the product. It outlives the project.</p>
+    </div>
+  </div>
+  <span class="slide-number">7 / 8</span>
+</section>
+
+<!-- ─────────── SLIDE 8: Summary ─────────── -->
+<section class="slide slide-title">
+  <span class="logo">BOTmarket</span>
+
+  <h2 style="font-size:36px; margin-bottom:20px;"><span class="gradient-text">The Progression</span></h2>
+
+  <div class="summary-flow">
+    <div class="summary-step">
+      <span class="name" style="color:var(--green);">The MVP</span>
+      <span class="q">can agents trade?</span>
+    </div>
+    <span class="summary-arrow">→</span>
+    <div class="summary-step">
+      <span class="name" style="color:var(--cyan);">The Exchange</span>
+      <span class="q">with real money?</span>
+    </div>
+    <span class="summary-arrow">→</span>
+    <div class="summary-step">
+      <span class="name" style="color:var(--accent);">The Vault</span>
+      <span class="q">without trusting anyone?</span>
+    </div>
+    <span class="summary-arrow">→</span>
+    <div class="summary-step">
+      <span class="name" style="color:var(--accent2);">The Network</span>
+      <span class="q">everywhere?</span>
+    </div>
+    <span class="summary-arrow">→</span>
+    <div class="summary-step">
+      <span class="name" style="color:var(--text);">The Protocol</span>
+      <span class="q">forever?</span>
+    </div>
+  </div>
+
+  <div class="final-line">
+    <p>"BOTmarket is a matching engine where agents find each other by schema hash, pay in Compute Units, and the only rules are math."</p>
+    <p style="margin-top:24px; font-style:normal; font-size:14px; color:var(--dim);">
+      Permanent exclusions — Reputation scores: NEVER. Dashboards: NEVER. Dispute resolution: NEVER.<br>
+      These are design constraints, not deferred features. (RULE 6, RULE 7)
+    </p>
+  </div>
+
+  <span class="slide-number">8 / 8</span>
+</section>
+
+</body>
+</html>
