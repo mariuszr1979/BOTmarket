@@ -953,6 +953,91 @@ These agents:
 
 ---
 
+## Step 13: Live Visualization
+
+### What to build
+A single-page HTML dashboard that connects to the running exchange and visualizes live activity. This is the final "wow" moment — the exchange is alive, and you can see it.
+
+### Compute logic
+```
+INPUT:  WebSocket/SSE stream of events from /v1/events/stream (or polling /v1/events)
+OUTPUT: Real-time visual display of:
+  - Active agents (registered, online)
+  - Live trade flow (match → escrow → execute → settle)
+  - CU movement (debits, credits, fees)
+  - Seller tables per capability hash
+  - Event log scrolling
+  - System stats (total trades, total CU moved, active sellers)
+
+LOGIC:
+  1. Connect to exchange API
+  2. Poll /v1/events?since=<last_seq> every 2s (or WebSocket if available)
+  3. Parse events → update DOM
+  4. Animate trade flow: buyer → escrow → seller → settlement → fee split
+  5. Show CU invariant in real-time: sum(balances) + sum(escrow) = total
+  6. No frameworks — vanilla HTML/CSS/JS, same dark theme as slides
+```
+
+### Features
+```
+┌──────────────────────────────────────────────────────────┐
+│  LIVE VISUALIZATION                                       │
+│                                                          │
+│  ┌─ Agent Ring ──────────┐  ┌─ Trade Flow ──────────────┐│
+│  │ Nodes = agents        │  │ Animated lines between    ││
+│  │ Size = CU balance     │  │ buyer ↔ seller            ││
+│  │ Color = buyer/seller  │  │ Pulse on match/settle     ││
+│  └───────────────────────┘  └───────────────────────────┘│
+│                                                          │
+│  ┌─ CU Ledger ──────────┐  ┌─ Event Stream ────────────┐│
+│  │ Total CU in system   │  │ Real-time scrolling log   ││
+│  │ Platform fees earned  │  │ Color-coded by type       ││
+│  │ CU invariant check ✓ │  │ agent_registered, trade,  ││
+│  │ Escrow held           │  │ settlement, slash         ││
+│  └───────────────────────┘  └───────────────────────────┘│
+│                                                          │
+│  ┌─ Stats Bar ──────────────────────────────────────────┐│
+│  │ Total Trades │ Active Agents │ Sellers │ CU Moved    ││
+│  └──────────────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────┘
+```
+
+### File structure
+```
+slides/live.html     # Single-file visualization (HTML + CSS + JS)
+```
+
+### API endpoints needed
+```
+GET /v1/events?since={seq}    → [{event_type, event_data, timestamp_ns, seq}, ...]
+GET /v1/stats                 → {total_trades, active_agents, total_cu, escrow_held}
+GET /v1/agents                → [{pubkey, cu_balance}, ...]
+GET /v1/sellers               → [{capability_hash, agent_pubkey, price_cu, ...}, ...]
+```
+
+### Success logic
+```
+□ Opens in browser, connects to running exchange
+□ Shows live agent registrations as they happen
+□ Shows live trade flow with animation
+□ CU balances update in real-time after settlement
+□ CU invariant (sum = total) displayed and verified
+□ Event stream scrolls with color-coded events
+□ Stats bar shows aggregate numbers
+□ Works with both localhost and deployed VPS
+□ Dark theme matching existing slides
+□ Zero external dependencies (no React, no D3 — vanilla JS)
+□ A non-technical person can watch and understand "agents are trading"
+```
+
+### Rules checkpoint
+- [R0] One file, vanilla JS — extreme simplicity ✓
+- [R2] Visualization reads raw events — machine data presented visually ✓
+- [R3/PS#8] Queries raw events, computes stats client-side ✓
+- [R7] Last MVP step — everything else is built, this just observes ✓
+
+---
+
 ## Success Metrics Dashboard
 
 Track these numbers daily. No vanity metrics.
@@ -1006,10 +1091,14 @@ Weekend 4 ───────────────────────�
 Weekend 5 ─────────────────────────────────────
   Session 9:  Step 11 (integration testing — all 9 scenarios, binary + JSON)
   Session 10: Step 12 (deployment + first-party agents)
+
+Weekend 6 ─────────────────────────────────────
+  Session 11: Step 13 (live visualization — the finale)
 ```
 
 Each session = 3-4 hours with AI coding assistance.
 Added 1 weekend for binary protocol (worth it — the investor demo).
+Added 1 session for live visualization (the "it's alive" moment).
 
 ---
 
