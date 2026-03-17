@@ -323,11 +323,11 @@
     <div class="divider" style="margin:0 auto 40px;"></div>
     <div class="stat-row" style="justify-content:center;">
       <div class="stat">
-        <div class="val" style="color:var(--green);">11</div>
+        <div class="val" style="color:var(--green);">12</div>
         <div class="lbl">Steps Complete</div>
       </div>
       <div class="stat">
-        <div class="val" style="color:var(--accent);">151</div>
+        <div class="val" style="color:var(--accent);">164</div>
         <div class="lbl">Tests Passing</div>
       </div>
       <div class="stat">
@@ -341,8 +341,8 @@
     </div>
     <div style="margin-top:48px;">
       <div class="progress-bar" style="max-width:600px;margin:0 auto;">
-        <div class="progress-fill" style="width:79%;background:linear-gradient(90deg,var(--green),var(--accent));">
-          11/14
+        <div class="progress-fill" style="width:86%;background:linear-gradient(90deg,var(--green),var(--accent));">
+          12/14
         </div>
       </div>
       <div style="font-size:12px;color:var(--dim);margin-top:8px;">Steps 0–13 · Weekend 3 of 6</div>
@@ -1689,6 +1689,94 @@ Errors:
 </section>
 
 <!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 11 — OVERVIEW -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 11 / 13</span>
+  <div class="content">
+    <div style="margin-bottom:8px;">
+      <span class="pill pill-green">COMPLETED</span>
+      <span style="font-size:13px;color:var(--dim);margin-left:12px;">Weekend 3 · Session 11</span>
+    </div>
+    <h2>Step 11: Integration Testing</h2>
+    <p class="subtitle" style="margin-bottom:36px;">
+      9 test scenarios from spec + 4 invariant checks. Full lifecycle, CU conservation,
+      binary round-trip, JSON/TCP equivalence.
+    </p>
+
+    <div class="g3">
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">✓</div>
+        <h3 style="margin-top:8px;">9 Scenarios</h3>
+        <p>Happy path, no match,<br>insufficient CU, capacity,<br>bond slash, price sort,<br>CU invariant, binary RT,<br>JSON/TCP equivalence</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">✓</div>
+        <h3 style="margin-top:8px;">CU Invariant</h3>
+        <p>50 random trades.<br>sum(balances) + fees<br>= total seeded CU.<br>0.001 precision.</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:40px;font-weight:900;color:var(--green);">✓</div>
+        <h3 style="margin-top:8px;">4 Bonus Checks</h3>
+        <p>No negative balances.<br>No orphaned escrow.<br>Event count = 3/trade.<br>Deterministic results.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 11 — TESTS + AUDIT -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 11 — Tests</span>
+  <div class="content">
+    <h2 style="color:var(--green);">13 New Tests</h2>
+    <p class="subtitle" style="margin-bottom:32px;">End-to-end integration covering every trade outcome.</p>
+
+    <div class="g2" style="margin-bottom:24px;">
+      <div class="card">
+        <h3 style="color:var(--green);">Integration Tests</h3>
+        <div style="font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;">
+          ✓ Happy path full lifecycle<br>
+          ✓ No match found<br>
+          ✓ Insufficient CU<br>
+          ✓ Seller at capacity<br>
+          ✓ Bond slash (SLA violation)<br>
+          ✓ Multiple sellers, price sorting<br>
+          ✓ CU invariant (50 trades)<br>
+          ✓ Binary round-trip (TCP only)<br>
+          ✓ Binary + JSON equivalence<br>
+          ✓ No negative balances<br>
+          ✓ No orphaned escrow<br>
+          ✓ Event count matches lifecycle<br>
+          ✓ Deterministic results
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">Rules Audit</h3>
+        <div class="rule-audit" style="margin-top:12px;">
+          <span class="rule-id">R1</span>  <span class="rule-name">Math verified by assertions</span>     <span class="rule-status rule-pass">✓ PASS</span>
+          <span class="rule-id">R10</span> <span class="rule-name">Tests mirror rules</span>              <span class="rule-status rule-pass">✓ PASS</span>
+        </div>
+        <div class="g2" style="margin-top:24px;">
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--green);">0</div>
+            <div style="font-size:12px;color:var(--dim);">VIOLATIONS</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--accent);">164</div>
+            <div style="font-size:12px;color:var(--dim);">TESTS PASSING</div>
+            <div style="font-size:11px;color:var(--dim);">151 prior + 13 new</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
 <!-- SLIDE: ROADMAP — WHAT'S NEXT -->
 <!-- ═══════════════════════════════════════════ -->
 <section class="slide">
@@ -1696,7 +1784,7 @@ Errors:
   <span class="slide-num">Roadmap</span>
   <div class="content">
     <h2>What's Next</h2>
-    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–10 done.</p>
+    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–11 done.</p>
 
     <div class="g2">
       <div>
@@ -1749,9 +1837,9 @@ Errors:
             <h4><span style="color:var(--green);">●</span> Step 10 — Binary TCP Server</h4>
             <p>Full handler dispatch, persistent connections. 12 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
-          <div class="timeline-item pending">
-            <h4>Step 11 — Integration Testing</h4>
-            <p>9 scenarios. Full lifecycle. CU invariant proof.</p>
+          <div class="timeline-item">
+            <h4><span style="color:var(--green);">●</span> Step 11 — Integration Testing</h4>
+            <p>9 scenarios + 4 invariant checks. 13 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
           <div class="timeline-item pending">
             <h4>Step 12 — Deployment</h4>
@@ -1786,7 +1874,11 @@ Errors:
     <div class="card">
       <div class="timeline">
         <div class="timeline-item">
-          <h4><code>da66e0a</code> — Step 10: Binary TCP Server — 151 tests passing</h4>
+          <h4><code>1dad04c</code> — Step 11: Integration Testing — 164 tests passing</h4>
+          <p>9 scenarios + CU invariant, binary round-trip, JSON/TCP equivalence. 13 new tests.</p>
+        </div>
+        <div class="timeline-item">
+          <h4><code>a8bff2f</code> — Step 10: Binary TCP Server — 151 tests passing</h4>
           <p>6 handlers, persistent connections, handler dispatch, 10 concurrent clients. 12 new tests.</p>
         </div>
         <div class="timeline-item">
