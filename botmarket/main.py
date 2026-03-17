@@ -1,7 +1,11 @@
 from contextlib import asynccontextmanager
 import hashlib
 import json
+import os
 import secrets
+import signal
+import subprocess
+import sys
 import uuid
 import time
 
@@ -439,10 +443,56 @@ def recent_trades(limit: int = 50):
     return {"trades": [dict(r) for r in rows]}
 
 
+# ── Market control (start/stop auto-trader) ────────────
+
+_trader_proc = None  # subprocess.Popen | None
+
+
+@app.get("/v1/market/status")
+def market_status():
+    """Check if the auto-trader process is running."""
+    global _trader_proc
+    if _trader_proc is not None and _trader_proc.poll() is None:
+        return {"running": True, "pid": _trader_proc.pid}
+    _trader_proc = None
+    return {"running": False}
+
+
+@app.post("/v1/market/start")
+def market_start():
+    """Start the auto-trader as a background subprocess."""
+    global _trader_proc
+    if _trader_proc is not None and _trader_proc.poll() is None:
+        return {"status": "already_running", "pid": _trader_proc.pid}
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "auto_trader.py")
+    _trader_proc = subprocess.Popen(
+        [sys.executable, script],
+        cwd=os.path.dirname(os.path.abspath(__file__)),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return {"status": "started", "pid": _trader_proc.pid}
+
+
+@app.post("/v1/market/stop")
+def market_stop():
+    """Stop the auto-trader subprocess."""
+    global _trader_proc
+    if _trader_proc is None or _trader_proc.poll() is not None:
+        _trader_proc = None
+        return {"status": "not_running"}
+    _trader_proc.send_signal(signal.SIGTERM)
+    try:
+        _trader_proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        _trader_proc.kill()
+    _trader_proc = None
+    return {"status": "stopped"}
+
+
 @app.get("/v1/trade_log")
 def trade_log():
     """Returns the auto-trader trade log with Ollama outputs."""
-    import os
     log_path = os.path.join(os.path.dirname(__file__), "trade_log.json")
     if not os.path.exists(log_path):
         return {"trades": []}
