@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOTmarket — Live Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0a0e17; --surface: #111827; --border: #1e293b;
+    --text: #e2e8f0; --muted: #94a3b8; --dim: #64748b;
+    --blue: #38bdf8; --purple: #818cf8; --green: #34d399;
+    --amber: #fbbf24; --red: #f87171; --cyan: #22d3ee;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+  /* ── Header ── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+  }
+  .header h1 {
+    font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .header .status { display: flex; gap: 12px; align-items: center; }
+  .pulse {
+    width: 10px; height: 10px; border-radius: 50%; background: var(--green);
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  .pulse.dead { background: var(--red); animation: none; }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 4px var(--green); }
+    50% { box-shadow: 0 0 16px var(--green); }
+  }
+  .status-text { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+
+  /* ── Stats Bar ── */
+  .stats-bar {
+    display: flex; gap: 0; border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .stat {
+    flex: 1; min-width: 120px; padding: 14px 20px;
+    border-right: 1px solid var(--border);
+    text-align: center;
+  }
+  .stat:last-child { border-right: none; }
+  .stat .label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 4px; }
+  .stat .value { font-family: var(--mono); font-size: 1.2rem; font-weight: 700; }
+  .stat .value.blue { color: var(--blue); }
+  .stat .value.green { color: var(--green); }
+  .stat .value.purple { color: var(--purple); }
+  .stat .value.amber { color: var(--amber); }
+
+  /* ── Main Grid ── */
+  .grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 0;
+    height: calc(100vh - 130px);
+  }
+
+  /* ── Panels ── */
+  .panel {
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  .panel-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--blue);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-header .count {
+    font-family: var(--mono); background: rgba(56,189,248,0.1);
+    padding: 1px 8px; border-radius: 10px; font-size: 0.7rem; color: var(--blue);
+  }
+  .panel-body { flex: 1; overflow-y: auto; padding: 8px; }
+
+  /* ── Agent Cards ── */
+  .agent-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; margin-bottom: 6px;
+    transition: border-color 0.2s;
+  }
+  .agent-card:hover { border-color: var(--blue); }
+  .agent-card .name { font-weight: 600; font-size: 0.85rem; }
+  .agent-card .meta { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); margin-top: 4px; }
+  .agent-card .model-tag {
+    display: inline-block; font-family: var(--mono); font-size: 0.6rem;
+    padding: 1px 6px; border-radius: 4px; margin-top: 4px;
+    background: rgba(129,140,248,0.1); color: var(--purple);
+  }
+  .agent-card .cu-badge {
+    display: inline-block; font-family: var(--mono); font-size: 0.65rem;
+    padding: 1px 6px; border-radius: 4px; margin-left: 4px;
+    background: rgba(52,211,153,0.1); color: var(--green);
+  }
+  .agent-card.active { border-color: var(--green); box-shadow: 0 0 8px rgba(52,211,153,0.1); }
+
+  /* ── Trade Feed ── */
+  .trade-feed { grid-column: 2; grid-row: 1 / 3; border-bottom: none; border-right: none; }
+  .trade-item {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 8px;
+    animation: slide-in 0.3s ease-out;
+  }
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .trade-item .trade-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+  }
+  .trade-item .agent-badge {
+    font-weight: 700; font-size: 0.8rem; padding: 3px 10px;
+    border-radius: 6px; background: rgba(56,189,248,0.1); color: var(--blue);
+  }
+  .trade-item .trade-meta {
+    font-family: var(--mono); font-size: 0.7rem; color: var(--dim);
+    display: flex; gap: 12px; align-items: center;
+  }
+  .trade-item .trade-meta .price { color: var(--green); font-weight: 600; }
+  .trade-item .trade-meta .time { color: var(--muted); }
+  .trade-item .trade-meta .model { color: var(--purple); }
+  .trade-item .trade-status {
+    display: inline-block; font-family: var(--mono); font-size: 0.6rem;
+    padding: 1px 6px; border-radius: 4px; font-weight: 600;
+  }
+  .trade-status.completed { background: rgba(52,211,153,0.12); color: var(--green); }
+  .trade-status.running { background: rgba(56,189,248,0.12); color: var(--blue); }
+  .trade-status.failed { background: rgba(248,113,113,0.12); color: var(--red); }
+
+  .trade-input, .trade-output {
+    font-size: 0.78rem; line-height: 1.5; padding: 10px 12px;
+    border-radius: 6px; margin-top: 6px;
+  }
+  .trade-input {
+    background: rgba(30,41,59,0.5); color: var(--muted);
+    border-left: 3px solid var(--dim);
+  }
+  .trade-input::before { content: "INPUT "; font-family: var(--mono); font-size: 0.6rem; color: var(--dim); font-weight: 700; display: block; margin-bottom: 4px; }
+  .trade-output {
+    background: rgba(52,211,153,0.04); color: var(--text);
+    border-left: 3px solid var(--green);
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .trade-output::before { content: "OUTPUT "; font-family: var(--mono); font-size: 0.6rem; color: var(--green); font-weight: 700; display: block; margin-bottom: 4px; }
+
+  /* ── Event Log ── */
+  .event-log { grid-column: 1; grid-row: 2; }
+  .event-item {
+    font-family: var(--mono); font-size: 0.68rem; padding: 4px 8px;
+    border-bottom: 1px solid rgba(30,41,59,0.4); color: var(--muted);
+    display: flex; gap: 8px;
+  }
+  .event-item .ev-type {
+    font-weight: 600; min-width: 100px;
+  }
+  .ev-type.register { color: var(--cyan); }
+  .ev-type.matched { color: var(--blue); }
+  .ev-type.executed { color: var(--purple); }
+  .ev-type.completed, .ev-type.settled { color: var(--green); }
+  .ev-type.failed { color: var(--red); }
+
+  /* ── Empty State ── */
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; color: var(--dim); font-size: 0.85rem; text-align: center; padding: 40px;
+  }
+  .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.5; }
+  .empty-state p { max-width: 260px; line-height: 1.5; }
+  .empty-state code { font-family: var(--mono); background: var(--surface); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-top: 8px; display: block; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+    .trade-feed { grid-column: 1; grid-row: 2; }
+    .event-log { grid-column: 1; grid-row: 3; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>BOTmarket — Live</h1>
+  <div class="status">
+    <div class="pulse" id="pulse"></div>
+    <span class="status-text" id="statusText">connecting…</span>
+  </div>
+</div>
+
+<!-- Stats Bar -->
+<div class="stats-bar">
+  <div class="stat"><div class="label">Trades</div><div class="value blue" id="statTrades">—</div></div>
+  <div class="stat"><div class="label">Completed</div><div class="value green" id="statCompleted">—</div></div>
+  <div class="stat"><div class="label">Agents</div><div class="value purple" id="statAgents">—</div></div>
+  <div class="stat"><div class="label">Sellers</div><div class="value blue" id="statSellers">—</div></div>
+  <div class="stat"><div class="label">CU Pool</div><div class="value amber" id="statCU">—</div></div>
+  <div class="stat"><div class="label">Escrow</div><div class="value green" id="statEscrow">—</div></div>
+  <div class="stat"><div class="label">Fees Earned</div><div class="value purple" id="statFees">—</div></div>
+</div>
+
+<!-- Main Grid -->
+<div class="grid">
+  <!-- Agents Panel -->
+  <div class="panel" id="agentsPanel">
+    <div class="panel-header">
+      <span>Agents</span>
+      <span class="count" id="agentCount">0</span>
+    </div>
+    <div class="panel-body" id="agentsList">
+      <div class="empty-state">
+        <div class="icon">🤖</div>
+        <p>No agents registered yet</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trade Feed -->
+  <div class="panel trade-feed" id="tradeFeed">
+    <div class="panel-header">
+      <span>Trade Feed — Ollama Output</span>
+      <span class="count" id="tradeCount">0</span>
+    </div>
+    <div class="panel-body" id="tradeList">
+      <div class="empty-state">
+        <div class="icon">⚡</div>
+        <p>Waiting for trades… Start the auto-trader to see real Ollama output here.</p>
+        <code>cd botmarket && python auto_trader.py</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event Log -->
+  <div class="panel event-log" id="eventPanel">
+    <div class="panel-header">
+      <span>Event Stream</span>
+      <span class="count" id="eventCount">0</span>
+    </div>
+    <div class="panel-body" id="eventList">
+      <div class="empty-state">
+        <div class="icon">📡</div>
+        <p>No events yet</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+let lastSeq = 0;
+let lastTradeLogLen = 0;
+let connected = false;
+let eventTotal = 0;
+
+// ── Agent name map (agent_pubkey → friendly name) ──
+const AGENT_NAMES = {};
+const SELLER_PRICES = {};
+
+// ── Model colors ──
+const MODEL_COLORS = {
+  'qwen2.5:7b': '#818cf8',
+  'llama3:latest': '#38bdf8',
+  'llava:7b': '#34d399',
+};
+
+// ── Utility ──
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function timeAgo(ts) {
+  const delta = (Date.now() / 1000) - ts;
+  if (delta < 60) return Math.floor(delta) + 's ago';
+  if (delta < 3600) return Math.floor(delta / 60) + 'm ago';
+  return Math.floor(delta / 3600) + 'h ago';
+}
+
+async function fetchJSON(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
+// ── Stats ──
+async function pollStats() {
+  try {
+    const d = await fetchJSON('/v1/stats');
+    document.getElementById('statTrades').textContent = d.total_trades;
+    document.getElementById('statCompleted').textContent = d.completed_trades;
+    document.getElementById('statAgents').textContent = d.active_agents;
+    document.getElementById('statSellers').textContent = d.active_sellers;
+    document.getElementById('statCU').textContent = d.total_cu.toLocaleString(undefined, {maximumFractionDigits: 1});
+    document.getElementById('statEscrow').textContent = d.escrow_held.toLocaleString(undefined, {maximumFractionDigits: 2});
+    document.getElementById('statFees').textContent = d.fees_earned.toLocaleString(undefined, {maximumFractionDigits: 4});
+    if (!connected) {
+      connected = true;
+      document.getElementById('pulse').className = 'pulse';
+      document.getElementById('statusText').textContent = 'live';
+    }
+  } catch (e) {
+    connected = false;
+    document.getElementById('pulse').className = 'pulse dead';
+    document.getElementById('statusText').textContent = 'offline';
+  }
+}
+
+// ── Agents ──
+async function pollAgents() {
+  try {
+    const sellers = await fetchJSON('/v1/sellers/list');
+    const agents = await fetchJSON('/v1/agents/list');
+    const el = document.getElementById('agentsList');
+    document.getElementById('agentCount').textContent = sellers.sellers.length;
+
+    // Infer agent name from capability hash patterns
+    const agentNameGuess = {};
+    sellers.sellers.forEach(s => {
+      SELLER_PRICES[s.agent_pubkey] = s.price_cu;
+    });
+
+    if (sellers.sellers.length === 0) return;
+
+    let html = '';
+    sellers.sellers.forEach(s => {
+      const agentData = agents.agents.find(a => a.pubkey === s.agent_pubkey);
+      const balance = agentData ? agentData.cu_balance : '?';
+      const name = AGENT_NAMES[s.agent_pubkey] || s.agent_pubkey.slice(0, 12) + '…';
+      html += `
+        <div class="agent-card" id="agent-${esc(s.agent_pubkey.slice(0,8))}">
+          <div class="name">${esc(name)}</div>
+          <div class="meta">${esc(s.agent_pubkey.slice(0,16))}…</div>
+          <span class="model-tag">${esc(s.capability_hash.slice(0,12))}…</span>
+          <span class="cu-badge">${s.price_cu} CU</span>
+          <div class="meta" style="margin-top:6px">capacity: ${s.capacity} • active: ${s.active_calls} • balance: ${typeof balance === 'number' ? balance.toFixed(1) : balance} CU</div>
+        </div>`;
+    });
+    el.innerHTML = html;
+  } catch (e) { /* ignore */ }
+}
+
+// ── Trade Log (Ollama output) ──
+async function pollTradeLog() {
+  try {
+    const d = await fetchJSON('/v1/trade_log');
+    const trades = d.trades || [];
+    document.getElementById('tradeCount').textContent = trades.length;
+
+    if (trades.length === 0) return;
+    if (trades.length === lastTradeLogLen) return;
+    lastTradeLogLen = trades.length;
+
+    // Map agent names from trade log
+    trades.forEach(t => {
+      // We don't have pubkey mapping in trade_log, just show agent_name
+    });
+
+    const el = document.getElementById('tradeList');
+    // Render newest first
+    let html = '';
+    for (let i = trades.length - 1; i >= 0; i--) {
+      const t = trades[i];
+      const statusClass = (t.status === 'completed') ? 'completed' : (t.status === 'failed' ? 'failed' : 'running');
+      const modelColor = MODEL_COLORS[t.model] || 'var(--muted)';
+      html += `
+        <div class="trade-item">
+          <div class="trade-header">
+            <span class="agent-badge">${esc(t.agent_name)}</span>
+            <div class="trade-meta">
+              <span class="price">${t.price_cu} CU</span>
+              <span class="model" style="color:${modelColor}">${esc(t.model)}</span>
+              <span class="time">${t.elapsed_s}s</span>
+              <span class="trade-status ${statusClass}">${esc(t.status)}</span>
+            </div>
+          </div>
+          <div class="trade-input">${esc(t.input.length > 300 ? t.input.slice(0, 300) + '…' : t.input)}</div>
+          <div class="trade-output">${esc(t.output)}</div>
+        </div>`;
+    }
+    el.innerHTML = html;
+  } catch (e) { /* ignore */ }
+}
+
+// ── Events ──
+async function pollEvents() {
+  try {
+    const d = await fetchJSON('/v1/events/stream?since=' + lastSeq + '&limit=100');
+    const events = d.events || [];
+    if (events.length === 0) return;
+
+    const el = document.getElementById('eventList');
+    // On first populate, clear empty state
+    if (eventTotal === 0) el.innerHTML = '';
+
+    events.forEach(ev => {
+      lastSeq = ev.seq;
+      eventTotal++;
+      let data = {};
+      try { data = JSON.parse(ev.event_data); } catch(e) {}
+      const typeClass = ev.event_type.toLowerCase().replace(/[^a-z]/g, '');
+
+      const row = document.createElement('div');
+      row.className = 'event-item';
+      row.innerHTML = `
+        <span class="ev-type ${typeClass}">${esc(ev.event_type)}</span>
+        <span>${esc(JSON.stringify(data).slice(0, 120))}</span>`;
+      el.insertBefore(row, el.firstChild);
+    });
+
+    // Keep max 200 event rows
+    while (el.children.length > 200) {
+      el.removeChild(el.lastChild);
+    }
+
+    document.getElementById('eventCount').textContent = eventTotal;
+  } catch (e) { /* ignore */ }
+}
+
+// ── Poll loop ──
+async function tick() {
+  await Promise.all([pollStats(), pollAgents(), pollTradeLog(), pollEvents()]);
+}
+
+// Start polling every 2 seconds
+tick();
+setInterval(tick, 2000);
+</script>
+
+</body>
+</html>

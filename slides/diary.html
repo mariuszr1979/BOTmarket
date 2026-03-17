@@ -1875,6 +1875,97 @@ Errors:
 </section>
 
 <!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 13 — OVERVIEW -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 13 / 13</span>
+  <div class="content">
+    <div class="pill pill-green" style="margin-bottom:16px;">FINAL STEP</div>
+    <h2>Step 13: Live Visualization</h2>
+    <p class="subtitle" style="margin-bottom:32px;">Real-time dashboard watching agents trade with actual Ollama output. The "it's alive" moment.</p>
+
+    <div class="g2" style="margin-bottom:24px;">
+      <div class="card">
+        <h3 style="color:var(--accent);">New Files</h3>
+        <div style="font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;">
+          <code>slides/live.html</code> — live dashboard (dark theme, 3 panels)<br>
+          <code>auto_trader.py</code> — continuous Ollama trades<br>
+          <code>tests/test_visualization.py</code> — 19 endpoint tests
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">7 New Endpoints</h3>
+        <div style="font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;">
+          GET /v1/events/stream — event polling<br>
+          GET /v1/stats — system-wide stats<br>
+          GET /v1/agents/list — public agent list<br>
+          GET /v1/sellers/list — all sellers sorted<br>
+          GET /v1/trades/recent — recent trades<br>
+          GET /v1/trade_log — Ollama output log<br>
+          CORS middleware — cross-origin access
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-top:3px solid var(--green);">
+      <h3 style="color:var(--green);">Dashboard Features</h3>
+      <div style="font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;">
+        ⚡ Agent panel — all sellers with prices, capacity, balances<br>
+        📊 Trade feed — real Ollama input/output per trade, model info, latency<br>
+        📡 Event stream — scrolling log of all exchange events<br>
+        📈 Stats bar — trades, completed, agents, CU pool, escrow, fees<br>
+        🟢 Live pulse — connection status indicator, polls every 2s
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- SLIDE: STEP 13 — TESTS + AUDIT -->
+<!-- ═══════════════════════════════════════════ -->
+<section class="slide">
+  <span class="slide-logo">BOTmarket</span>
+  <span class="slide-num">Step 13 — Tests</span>
+  <div class="content">
+    <h2 style="color:var(--green);">19 New Tests</h2>
+    <p class="subtitle" style="margin-bottom:32px;">All 7 visualization endpoints tested — routing, content, access control, filtering.</p>
+
+    <div class="g2" style="margin-bottom:24px;">
+      <div class="card">
+        <h3 style="color:var(--green);">Visualization Tests</h3>
+        <div style="font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;">
+          ✓ events/stream — empty, returns events, since filter, no auth<br>
+          ✓ stats — empty state, after trade, no auth<br>
+          ✓ agents/list — empty, returns agents, no api_key exposed, no auth<br>
+          ✓ sellers/list — empty, returns sellers, sorted by price<br>
+          ✓ trades/recent — empty, returns trades, limit param, no auth<br>
+          ✓ trade_log — empty state, no auth
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--green);">Final Tally</h3>
+        <div class="g2" style="margin-top:24px;">
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--green);">0</div>
+            <div style="font-size:12px;color:var(--dim);">VIOLATIONS</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:32px;font-weight:900;color:var(--accent);">194</div>
+            <div style="font-size:12px;color:var(--dim);">TESTS PASSING</div>
+            <div style="font-size:11px;color:var(--dim);">175 prior + 19 new</div>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:24px;">
+          <div style="font-size:48px;font-weight:900;color:var(--green);">14/14</div>
+          <div style="font-size:14px;color:var(--muted);margin-top:4px;">ALL STEPS COMPLETE</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
 <!-- SLIDE: ROADMAP — WHAT'S NEXT -->
 <!-- ═══════════════════════════════════════════ -->
 <section class="slide">
@@ -1882,7 +1973,7 @@ Errors:
   <span class="slide-num">Roadmap</span>
   <div class="content">
     <h2>What's Next</h2>
-    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. Steps 0–12 done.</p>
+    <p class="subtitle" style="margin-bottom:32px;">14 steps from skeleton to live visualization. All 14 steps done. 🎉</p>
 
     <div class="g2">
       <div>
@@ -1943,9 +2034,9 @@ Errors:
             <h4><span style="color:var(--green);">●</span> Step 12 — Deployment + Agents</h4>
             <p>5 Ollama agents, structured logging, launch script. 11 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
-          <div class="timeline-item pending">
-            <h4>Step 13 — Live Visualization</h4>
-            <p>Real-time dashboard. Watch agents trade. The "it's alive" moment.</p>
+          <div class="timeline-item">
+            <h4><span style="color:var(--green);">●</span> Step 13 — Live Visualization</h4>
+            <p>Real-time dashboard, auto-trader with Ollama, 6 new endpoints. 19 new tests. <span class="pill pill-green" style="font-size:10px;">DONE</span></p>
           </div>
         </div>
 
@@ -1971,6 +2062,10 @@ Errors:
 
     <div class="card">
       <div class="timeline">
+        <div class="timeline-item">
+          <h4><code>dc36220</code> — Step 13: Live Visualization — 194 tests passing</h4>
+          <p>Live dashboard (slides/live.html), auto_trader.py with Ollama, 7 new visualization endpoints, trade_log.json. 19 new tests.</p>
+        </div>
         <div class="timeline-item">
           <h4><code>a6bec33</code> — Step 12: Deployment + Agents — 175 tests passing</h4>
           <p>5 Ollama-powered agents (qwen2.5, llama3, llava), structured JSON logging, launch.sh, demo_buyer.py.</p>

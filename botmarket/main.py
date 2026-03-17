@@ -6,6 +6,7 @@ import uuid
 import time
 
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from db import init_db, get_connection
 from log import log
@@ -24,6 +25,7 @@ async def lifespan(app):
 
 
 app = FastAPI(title="BOTmarket", version="0.1.0", lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
 def authenticate(x_api_key: str = Header()):
@@ -149,6 +151,19 @@ def register_seller(body: SellerRegisterRequest, x_api_key: str = Header()):
 
     log("seller_registered", agent=agent_pubkey, capability_hash=body.capability_hash, price_cu=body.price_cu)
     return {"status": "registered", "capability_hash": body.capability_hash, "price_cu": body.price_cu}
+
+
+@app.get("/v1/sellers/list")
+def list_all_sellers():
+    """Public seller list for dashboard."""
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT agent_pubkey, capability_hash, price_cu, capacity, active_calls FROM sellers ORDER BY price_cu ASC"
+        ).fetchall()
+    finally:
+        conn.close()
+    return {"sellers": [dict(r) for r in rows]}
 
 
 @app.get("/v1/sellers/{capability_hash}")
@@ -340,6 +355,20 @@ def settle(trade_id: str, x_api_key: str = Header()):
         conn.close()
 
 
+@app.get("/v1/events/stream")
+def stream_events(since: int = 0, limit: int = 200):
+    """Public event stream for live dashboard. Returns events since seq > since."""
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT seq, event_type, event_data, timestamp_ns FROM events WHERE seq > ? ORDER BY seq ASC LIMIT ?",
+            (since, limit),
+        ).fetchall()
+    finally:
+        conn.close()
+    return {"events": [dict(r) for r in rows]}
+
+
 @app.get("/v1/events/{agent_id}")
 def get_events(agent_id: str, event_type: str | None = None, limit: int = 100, x_api_key: str = Header()):
     caller_pubkey = authenticate(x_api_key)
@@ -353,6 +382,76 @@ def get_events(agent_id: str, event_type: str | None = None, limit: int = 100, x
     finally:
         conn.close()
     return {"agent_id": agent_id, "events": events}
+
+
+# ── Visualization endpoints (public, no auth) ───────────
+
+@app.get("/v1/stats")
+def get_stats():
+    """System-wide stats for dashboard."""
+    conn = get_connection()
+    try:
+        total_trades = conn.execute("SELECT COUNT(*) as c FROM trades").fetchone()["c"]
+        completed_trades = conn.execute("SELECT COUNT(*) as c FROM trades WHERE status = 'completed'").fetchone()["c"]
+        active_agents = conn.execute("SELECT COUNT(*) as c FROM agents").fetchone()["c"]
+        active_sellers = conn.execute("SELECT COUNT(*) as c FROM sellers").fetchone()["c"]
+        total_cu = conn.execute("SELECT COALESCE(SUM(cu_balance), 0) as s FROM agents").fetchone()["s"]
+        escrow_held = conn.execute("SELECT COALESCE(SUM(cu_amount), 0) as s FROM escrow WHERE status = 'held'").fetchone()["s"]
+        fees_earned = conn.execute(
+            "SELECT COALESCE(SUM(price_cu * 0.015), 0) as s FROM trades WHERE status = 'completed'"
+        ).fetchone()["s"]
+    finally:
+        conn.close()
+    return {
+        "total_trades": total_trades,
+        "completed_trades": completed_trades,
+        "active_agents": active_agents,
+        "active_sellers": active_sellers,
+        "total_cu": round(total_cu, 4),
+        "escrow_held": round(escrow_held, 4),
+        "fees_earned": round(fees_earned, 4),
+    }
+
+
+@app.get("/v1/agents/list")
+def list_agents():
+    """Public agent list for dashboard (no api_keys exposed)."""
+    conn = get_connection()
+    try:
+        rows = conn.execute("SELECT pubkey, cu_balance FROM agents ORDER BY cu_balance DESC").fetchall()
+    finally:
+        conn.close()
+    return {"agents": [{"pubkey": r["pubkey"], "cu_balance": round(r["cu_balance"], 4)} for r in rows]}
+
+
+@app.get("/v1/trades/recent")
+def recent_trades(limit: int = 50):
+    """Recent trades with output data for visualization."""
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT id, buyer_pubkey, seller_pubkey, capability_hash, price_cu, status, latency_us "
+            "FROM trades ORDER BY start_ns DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    finally:
+        conn.close()
+    return {"trades": [dict(r) for r in rows]}
+
+
+@app.get("/v1/trade_log")
+def trade_log():
+    """Returns the auto-trader trade log with Ollama outputs."""
+    import os
+    log_path = os.path.join(os.path.dirname(__file__), "trade_log.json")
+    if not os.path.exists(log_path):
+        return {"trades": []}
+    with open(log_path, "r") as f:
+        try:
+            data = json.load(f)
+        except json.JSONDecodeError:
+            data = []
+    return {"trades": data}
 
 
 if __name__ == "__main__":
