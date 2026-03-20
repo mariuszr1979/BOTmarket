@@ -1,0 +1,296 @@
+#!/usr/bin/env python3
+"""ollama_seller.py — BOTmarket seller that routes executions to local Ollama models.
+
+Registers 3 capabilities on startup:
+  A: text generate  → llama3:latest      (5 CU)
+  B: text summarize → qwen2.5:7b         (3 CU)
+  C: image describe → llava:7b           (8 CU)
+
+Usage:
+    python ollama_seller.py [--tunnel]
+
+    --tunnel   Auto-start a Cloudflare Tunnel and register with the tunnel URL.
+               Requires cloudflared to be installed (or will try to install it).
+"""
+import argparse
+import json
+import logging
+import os
+import sys
+import time
+import urllib.request
+import urllib.error
+
+import uvicorn
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
+
+# ── Add project root to path so ollama_client is importable ──────────────
+sys.path.insert(0, os.path.dirname(__file__))
+import ollama_client
+
+# ── Configuration ─────────────────────────────────────────────────────────
+
+EXCHANGE_URL  = os.environ.get("BOTMARKET_URL", "https://botmarket.dev")
+API_KEY       = os.environ.get("BOTMARKET_API_KEY", "")
+SELLER_PORT   = int(os.environ.get("SELLER_PORT", "8001"))
+PUBLIC_URL    = os.environ.get("SELLER_PUBLIC_URL", "")   # overridden by --tunnel
+BOND_SEED_KEY = os.environ.get("BOTMARKET_BOND_SEED_KEY", "")  # operator key to seed bond
+
+# Capability definitions — (input_schema, output_schema, model, price_cu, capacity)
+CAPABILITIES = [
+    (
+        {"type": "text", "task": "generate"},
+        {"type": "text", "result": "generated_text"},
+        "llama3:latest",
+        5.0,
+        5,
+        "generate",
+    ),
+    (
+        {"type": "text", "task": "summarize"},
+        {"type": "text", "result": "summary"},
+        "qwen2.5:7b",
+        3.0,
+        5,
+        "summarize",
+    ),
+    (
+        {"type": "image_base64", "task": "describe"},
+        {"type": "text", "result": "description"},
+        "llava:7b",
+        8.0,
+        3,
+        "describe",
+    ),
+]
+
+# ── Logging ───────────────────────────────────────────────────────────────
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)-7s %(message)s")
+log = logging.getLogger("ollama_seller")
+
+# ── FastAPI app ───────────────────────────────────────────────────────────
+
+app = FastAPI(title="BOTmarket Ollama Seller", version="0.1.0")
+
+# Maps capability_hash → (model, task)
+_cap_registry: dict[str, tuple[str, str]] = {}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.post("/execute")
+async def execute(request: Request):
+    """Receive an execute callback from the exchange, route to Ollama, return output."""
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid JSON")
+
+    input_data   = body.get("input", "")
+    cap_hash     = body.get("capability_hash", "")
+    trade_id     = body.get("trade_id", "")
+
+    if cap_hash not in _cap_registry:
+        # Accept any registered capability hash (and fall through to model dispatch)
+        log.warning("unknown capability_hash %s — defaulting to summarize", cap_hash)
+
+    model, task = _cap_registry.get(cap_hash, ("qwen2.5:7b", "summarize"))
+
+    log.info("execute trade=%s cap=%s model=%s task=%s", trade_id, cap_hash[:8], model, task)
+
+    try:
+        if task == "describe":
+            # Input is expected to be base64-encoded image bytes
+            import base64
+            try:
+                image_bytes = base64.b64decode(input_data)
+            except Exception:
+                raise HTTPException(status_code=400, detail="input must be base64-encoded image for describe task")
+            output = ollama_client.generate_with_image(
+                model,
+                "Describe this image in detail.",
+                image_bytes,
+            )
+        elif task == "summarize":
+            prompt = f"Summarize the following text concisely:\n\n{input_data}"
+            output = ollama_client.generate(model, prompt)
+        else:  # generate
+            output = ollama_client.generate(model, input_data)
+    except Exception as exc:
+        log.error("ollama error: %s", exc)
+        raise HTTPException(status_code=502, detail=f"ollama error: {exc}")
+
+    log.info("done trade=%s output_len=%d", trade_id, len(output))
+    return {"output": output}
+
+
+# ── Exchange registration ─────────────────────────────────────────────────
+
+def _exchange_post(path: str, body: dict, api_key: str) -> dict:
+    url  = EXCHANGE_URL.rstrip("/") + path
+    data = json.dumps(body).encode()
+    req  = urllib.request.Request(
+        url, data=data,
+        headers={"Content-Type": "application/json", "X-Api-Key": api_key},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.loads(resp.read())
+
+
+def _capability_hash(input_schema: dict, output_schema: dict) -> str:
+    import hashlib
+    canonical_in  = json.dumps(input_schema,  sort_keys=True, separators=(",", ":"))
+    canonical_out = json.dumps(output_schema, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256((canonical_in + "||" + canonical_out).encode()).hexdigest()
+
+
+def ensure_balance(api_key: str, needed_cu: float) -> None:
+    """Check CU balance; try faucet if insufficient."""
+    url = EXCHANGE_URL.rstrip("/") + "/v1/agents/list"
+    req = urllib.request.Request(url, headers={"X-Api-Key": api_key}, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            agents = json.loads(resp.read()).get("agents", [])
+    except Exception:
+        return  # can't check, proceed anyway
+
+    balance = None
+    for a in agents:
+        if a.get("pubkey") == api_key:
+            balance = a.get("cu_balance", 0.0)
+            break
+
+    if balance is not None and balance < needed_cu:
+        log.info("balance %.2f CU < needed %.2f — calling faucet", balance, needed_cu)
+        try:
+            result = _exchange_post("/v1/faucet", {}, api_key)
+            log.info("faucet: credited %.2f CU", result.get("credited", 0))
+        except Exception as exc:
+            log.warning("faucet failed: %s — continue anyway", exc)
+
+
+def register_capabilities(public_url: str, api_key: str) -> None:
+    """Register all 3 capabilities on the exchange."""
+    callback_url = public_url.rstrip("/") + "/execute"
+
+    total_bond = sum(c[3] for c in CAPABILITIES)  # sum of price_cu for all caps
+    ensure_balance(api_key, total_bond)
+
+    for input_schema, output_schema, model, price_cu, capacity, task in CAPABILITIES:
+        cap_hash = _capability_hash(input_schema, output_schema)
+
+        # Register schema
+        try:
+            schema_resp = _exchange_post("/v1/schemas/register", {
+                "input_schema": input_schema,
+                "output_schema": output_schema,
+            }, api_key)
+            assert schema_resp["capability_hash"] == cap_hash
+        except Exception as exc:
+            log.error("schema register failed for %s: %s", task, exc)
+            sys.exit(1)
+
+        # Register seller
+        try:
+            sel_resp = _exchange_post("/v1/sellers/register", {
+                "capability_hash": cap_hash,
+                "price_cu": price_cu,
+                "capacity": capacity,
+                "callback_url": callback_url,
+            }, api_key)
+            log.info("registered capability %s (%s) hash=%s price=%.1f CU",
+                     task, model, cap_hash[:12], price_cu)
+        except Exception as exc:
+            log.error("seller register failed for %s: %s", task, exc)
+            sys.exit(1)
+
+        _cap_registry[cap_hash] = (model, task)
+
+    log.info("all %d capabilities registered. callback_url=%s", len(CAPABILITIES), callback_url)
+
+
+# ── Entry point ───────────────────────────────────────────────────────────
+
+def _get_tunnel_url(port: int) -> str:
+    """Try to get a Cloudflare Tunnel URL for localhost:port."""
+    try:
+        from tunnel_helper import start_tunnel
+        return start_tunnel(port)
+    except ImportError:
+        pass
+
+    # Fallback: try running cloudflared directly
+    import subprocess, threading, queue
+
+    q: queue.Queue = queue.Queue()
+
+    def _run():
+        try:
+            proc = subprocess.Popen(
+                ["cloudflared", "tunnel", "--url", f"http://localhost:{port}"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            for line in proc.stdout:
+                if "trycloudflare.com" in line or ".cloudflare-tunnel.com" in line:
+                    # extract the https URL
+                    import re
+                    m = re.search(r"https://[^\s]+", line)
+                    if m:
+                        q.put(m.group(0))
+                        return
+        except FileNotFoundError:
+            q.put(None)
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    url = q.get(timeout=30)
+    if url is None:
+        log.error("cloudflared not found. Install it: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/")
+        sys.exit(1)
+    return url
+
+
+def main():
+    parser = argparse.ArgumentParser(description="BOTmarket Ollama Seller")
+    parser.add_argument("--tunnel", action="store_true",
+                        help="Start a Cloudflare Tunnel for a public HTTPS callback URL")
+    parser.add_argument("--url", default="",
+                        help="Explicit public base URL (e.g. https://my.server.com)")
+    parser.add_argument("--port", type=int, default=SELLER_PORT,
+                        help=f"Port to listen on (default {SELLER_PORT})")
+    args = parser.parse_args()
+
+    api_key = API_KEY
+    if not api_key:
+        log.error("BOTMARKET_API_KEY env var is required")
+        sys.exit(1)
+
+    public_url = args.url or PUBLIC_URL
+
+    if args.tunnel:
+        log.info("starting Cloudflare Tunnel on port %d ...", args.port)
+        public_url = _get_tunnel_url(args.port)
+        log.info("tunnel URL: %s", public_url)
+
+    if not public_url:
+        # Default: assume the seller is on the same machine as the exchange (VPS deployment)
+        public_url = f"http://localhost:{args.port}"
+        log.warning("no public URL set — using %s (fine for same-machine VPS deployment)", public_url)
+
+    log.info("registering capabilities on %s ...", EXCHANGE_URL)
+    register_capabilities(public_url, api_key)
+
+    log.info("starting seller server on port %d", args.port)
+    uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="warning")
+
+
+if __name__ == "__main__":
+    main()
