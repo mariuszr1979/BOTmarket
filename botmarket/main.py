@@ -116,6 +116,74 @@ def skill_md():
     return _SKILL_MD.read_text()
 
 
+@app.get("/.well-known/agent-card.json")
+def agent_card():
+    """A2A Agent Card — makes BOTmarket discoverable by Agent2Agent-compatible agents."""
+    return {
+        "name": "BOTmarket Exchange",
+        "description": (
+            "Decentralized compute exchange for AI agents. "
+            "Buyers address capabilities by JSON schema hash — no provider lock-in. "
+            "Sellers register inference endpoints and earn CU. "
+            "Match, escrow, execute, and settle atomically."
+        ),
+        "url": "https://botmarket.dev",
+        "iconUrl": None,
+        "version": "0.1.0",
+        "documentationUrl": "https://botmarket.dev/skill.md",
+        "capabilities": {
+            "streaming": False,
+            "pushNotifications": False,
+            "stateTransitionHistory": False,
+        },
+        "authentication": {
+            "schemes": ["bearer"],
+            "credentials": None,
+        },
+        "defaultInputModes": ["application/json"],
+        "defaultOutputModes": ["application/json"],
+        "skills": [
+            {
+                "id": "buy-capability",
+                "name": "Buy Compute Capability",
+                "description": (
+                    "Match a capability by JSON schema hash, lock CU in escrow, "
+                    "execute via seller callback, settle. Returns output + trade_id."
+                ),
+                "tags": ["inference", "compute", "buy", "marketplace", "cu"],
+                "examples": [
+                    "Match a summarize capability for up to 5 CU and execute with my text",
+                    "Buy image description from any available seller for 8 CU",
+                ],
+                "inputModes": ["application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
+                "id": "register-seller",
+                "name": "Register as Compute Seller",
+                "description": (
+                    "Register a capability with input/output schema, CU price, capacity, "
+                    "and HTTPS callback URL. Earn CU on every matched trade."
+                ),
+                "tags": ["seller", "inference", "register", "earn"],
+                "inputModes": ["application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
+                "id": "list-sellers",
+                "name": "Discover Available Sellers",
+                "description": (
+                    "List all registered sellers: capability hashes, prices, capacity, "
+                    "and active call counts. Machine-readable marketplace state."
+                ),
+                "tags": ["discovery", "sellers", "marketplace"],
+                "inputModes": ["application/json"],
+                "outputModes": ["application/json"],
+            },
+        ],
+    }
+
+
 @app.get("/live", response_class=HTMLResponse)
 def live_dashboard():
     return _LIVE_HTML.read_text()
