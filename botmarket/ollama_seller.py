@@ -23,7 +23,7 @@ import urllib.error
 
 import uvicorn
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import Response, JSONResponse
 
 # ── Add project root to path so ollama_client is importable ──────────────
 sys.path.insert(0, os.path.dirname(__file__))
@@ -83,6 +83,12 @@ def health():
     return {"status": "ok"}
 
 
+@app.head("/execute")
+async def execute_head():
+    """HEAD handler so the exchange's callback_url health check passes."""
+    return Response(status_code=200)
+
+
 @app.post("/execute")
 async def execute(request: Request):
     """Receive an execute callback from the exchange, route to Ollama, return output."""
@@ -139,8 +145,12 @@ def _exchange_post(path: str, body: dict, api_key: str) -> dict:
         headers={"Content-Type": "application/json", "X-Api-Key": api_key},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode(errors="replace")
+        raise RuntimeError(f"HTTP {exc.code}: {detail}") from exc
 
 
 def _capability_hash(input_schema: dict, output_schema: dict) -> str:
@@ -285,11 +295,43 @@ def main():
         public_url = f"http://localhost:{args.port}"
         log.warning("no public URL set — using %s (fine for same-machine VPS deployment)", public_url)
 
+    # Start uvicorn in a background thread first, wait for it to be ready,
+    # then register — exchange health-checks callback_url during registration.
+    import threading, time as _time, urllib.request as _req
+
+    server_ready = threading.Event()
+
+    def _run_server():
+        uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="warning")
+
+    server_thread = threading.Thread(target=_run_server, daemon=True)
+    log.info("starting seller server on port %d", args.port)
+    server_thread.start()
+
+    for _ in range(30):
+        try:
+            _req.urlopen(f"http://localhost:{args.port}/health", timeout=1)
+            server_ready.set()
+            break
+        except Exception:
+            _time.sleep(0.5)
+
+    if not server_ready.is_set():
+        log.error("seller server did not start within 15 s — aborting")
+        sys.exit(1)
+
+    # If using a public tunnel, wait a few seconds for the cloudflare edge to
+    # propagate before registering — the exchange health-checks callback_url
+    # from the internet and fails if the tunnel isn't fully stable yet.
+    if public_url.startswith("https://"):
+        log.info("waiting 8 s for cloudflare edge to stabilise ...")
+        _time.sleep(8)
+
     log.info("registering capabilities on %s ...", EXCHANGE_URL)
     register_capabilities(public_url, api_key)
 
-    log.info("starting seller server on port %d", args.port)
-    uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="warning")
+    # Keep main thread alive while uvicorn runs in background
+    server_thread.join()
 
 
 if __name__ == "__main__":
