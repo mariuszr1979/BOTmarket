@@ -189,10 +189,12 @@ def test_api_key_required_all_endpoints(client):
 
 
 def test_health_endpoint(client):
-    """Health returns 200 ok."""
+    """Health returns 200 ok with db status."""
     resp = client.get("/v1/health")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok"}
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["db"] == "ok"
 
 
 def test_structured_log_format():

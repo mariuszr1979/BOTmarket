@@ -10,6 +10,7 @@ import sys
 import uuid
 import time
 import urllib.parse
+from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -210,6 +211,21 @@ def register_agent():
     return {"agent_id": pubkey, "api_key": api_key, "cu_balance": 0.0}
 
 
+@app.get("/v1/agents/me")
+async def get_me(agent_pubkey: str = Depends(get_auth)):
+    """Return the calling agent's pubkey and CU balance."""
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT pubkey, cu_balance FROM agents WHERE pubkey = ?", (agent_pubkey,)
+        ).fetchone()
+    finally:
+        conn.close()
+    if row is None:
+        raise HTTPException(status_code=404, detail="agent not found")
+    return {"pubkey": row["pubkey"], "cu_balance": round(row["cu_balance"], 6)}
+
+
 class RegisterAgentV2Request(BaseModel):
     public_key: str
 
@@ -272,6 +288,27 @@ async def register_schema(body: SchemaRegisterRequest, agent_pubkey: str = Depen
 
     log("schema_registered", capability_hash=capability_hash, agent=agent_pubkey)
     return {"capability_hash": capability_hash}
+
+
+@app.get("/v1/schemas/{capability_hash}")
+def get_schema(capability_hash: str):
+    """Return the input/output schema for a capability hash. Public endpoint."""
+    conn = get_connection()
+    try:
+        row = conn.execute(
+            "SELECT capability_hash, input_schema, output_schema, registered_at FROM schemas WHERE capability_hash = ?",
+            (capability_hash,),
+        ).fetchone()
+    finally:
+        conn.close()
+    if row is None:
+        raise HTTPException(status_code=404, detail="capability_hash not found")
+    return {
+        "capability_hash": row["capability_hash"],
+        "input_schema": json.loads(row["input_schema"]),
+        "output_schema": json.loads(row["output_schema"]),
+        "registered_at": row["registered_at"],
+    }
 
 
 class SellerRegisterRequest(BaseModel):
@@ -672,7 +709,7 @@ async def get_events(agent_id: str, event_type: str | None = None, limit: int = 
 
 @app.get("/v1/stats")
 def get_stats():
-    """System-wide stats for dashboard."""
+    """System-wide stats for dashboard and kill-criteria tracking."""
     conn = get_connection()
     try:
         total_trades = conn.execute("SELECT COUNT(*) as c FROM trades").fetchone()["c"]
@@ -684,8 +721,26 @@ def get_stats():
         fees_earned = conn.execute(
             "SELECT COALESCE(SUM(price_cu * 0.015), 0) as s FROM trades WHERE status = 'completed'"
         ).fetchone()["s"]
+        # kill-criteria fields
+        day_ns = 86_400_000_000_000
+        now_ns = time.time_ns()
+        trades_today = conn.execute(
+            "SELECT COUNT(*) as c FROM trades WHERE start_ns > ?", (now_ns - day_ns,)
+        ).fetchone()["c"]
+        unique_buyers = conn.execute(
+            "SELECT COUNT(DISTINCT buyer_pubkey) as c FROM trades WHERE status = 'completed'"
+        ).fetchone()["c"]
+        repeat_buyers = conn.execute(
+            "SELECT COUNT(*) as c FROM "
+            "(SELECT buyer_pubkey FROM trades WHERE status = 'completed' "
+            " GROUP BY buyer_pubkey HAVING COUNT(*) > 1)"
+        ).fetchone()["c"]
+        repeat_buyers_pct = round(100.0 * repeat_buyers / unique_buyers, 1) if unique_buyers > 0 else 0.0
     finally:
         conn.close()
+    beta_start_ns = int(datetime(2026, 3, 19, tzinfo=timezone.utc).timestamp() * 1_000_000_000)
+    beta_day = max(1, (now_ns - beta_start_ns) // day_ns + 1)
+    days_remaining = max(0, 60 - int(beta_day))
     return {
         "total_trades": total_trades,
         "completed_trades": completed_trades,
@@ -694,6 +749,54 @@ def get_stats():
         "total_cu": round(total_cu, 4),
         "escrow_held": round(escrow_held, 4),
         "fees_earned": round(fees_earned, 4),
+        "trades_today": trades_today,
+        "unique_buyers": unique_buyers,
+        "repeat_buyers_pct": repeat_buyers_pct,
+        "beta_day": int(beta_day),
+        "days_remaining": days_remaining,
+        "kill_criteria": {
+            "trades_per_day": {"target": 5, "current": trades_today, "met": trades_today >= 5},
+            "unique_agents":  {"target": 10, "current": active_agents, "met": active_agents >= 10},
+            "repeat_buyers_pct": {"target": 20, "current": repeat_buyers_pct, "met": repeat_buyers_pct >= 20},
+        },
+    }
+
+
+@app.get("/v1/changelog")
+def changelog():
+    """Development changelog — machine-readable release history."""
+    return {
+        "changelog": [
+            {
+                "date": "2026-03-20",
+                "version": "0.3.0",
+                "changes": [
+                    "GET /.well-known/agent-card.json — A2A protocol compliance (buy-capability, register-seller, list-sellers)",
+                    "GET /v1/stats — kill-criteria tracking (trades_today, unique_buyers, repeat_buyers_pct, beta_day)",
+                    "GET /v1/changelog — this endpoint",
+                ],
+            },
+            {
+                "date": "2026-03-19",
+                "version": "0.2.0",
+                "changes": [
+                    "First real trade executed (trade 4f8915f5, qwen2.5:7b summarize, 3 CU, 4148ms)",
+                    "GET /v1/leaderboard — top sellers by CU earned with SLA compliance badge",
+                    "POST /v1/faucet — 500 CU on first call, 50 CU/day drip, 1000 CU lifetime cap",
+                    "GET /skill.md — LLM-native self-onboarding document",
+                    "SDK published to PyPI: pip install botmarket-sdk",
+                ],
+            },
+            {
+                "date": "2026-03-18",
+                "version": "0.1.0",
+                "changes": [
+                    "Initial exchange launch: register, buy, settle, escrow, verification",
+                    "TCP server for high-frequency agent connections",
+                    "Visualization dashboard at /",
+                ],
+            },
+        ]
     }
 
 

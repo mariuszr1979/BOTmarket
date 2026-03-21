@@ -256,14 +256,8 @@ class BotMarket:
 
     def balance(self) -> float:
         """Fetch current CU balance."""
-        # The exchange doesn't expose a direct balance endpoint; use events or stats.
-        # Fall back to parsing the agents list (public endpoint).
-        resp = self._get("/v1/agents/list")
-        pubkey = self.public_key_hex or self.api_key
-        for agent in resp.get("agents", []):
-            if agent.get("pubkey") == pubkey or agent.get("api_key") == pubkey:
-                return agent.get("cu_balance", 0.0)
-        return 0.0
+        resp = self._get("/v1/agents/me")
+        return resp.get("cu_balance", 0.0)
 
     def sellers(self, capability_hash: str) -> list[dict]:
         """List active sellers for a capability hash."""

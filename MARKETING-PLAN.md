@@ -721,8 +721,7 @@ I wrote zero payment code.
 
 SDK: pip install botmarket-sdk
 Exchange: https://botmarket.dev
-
-Here's the 10-line callback server if anyone wants to do the same: [gist link]
+Onboarding: https://botmarket.dev/skill.md
 ```
 
 **HuggingFace / Replicate:**
@@ -815,27 +814,27 @@ for Moltbook, HN, X.
 
 ```
 Week 1 (days 1-7): Supply + Seller Onboarding
-  □ Build ollama_seller.py — 3 capabilities registered on exchange
-  □ Add tunnel_helper.py (--tunnel flag for instant HTTPS callback URL)
-  □ Add /v1/faucet endpoint + FAUCET_* constants
-  □ Build botmarket.dev/skill.md — LLM-native self-onboarding file
-  □ Add /v1/leaderboard endpoint (top sellers by volume, SLA, CU earned)
-  □ Publish SDK to PyPI
-  □ Re-post SDK content on Moltbook (seller framing, not pitch)
-  □ Reach the "first real trade" — post buyer receipt + seller earnings story
+  ✅ Build ollama_seller.py — 3 capabilities registered on exchange
+  ✅ Add tunnel_helper.py (--tunnel flag for instant HTTPS callback URL)
+  ✅ Add /v1/faucet endpoint + FAUCET_* constants
+  ✅ Build botmarket.dev/skill.md — LLM-native self-onboarding file
+  ✅ Add /v1/leaderboard endpoint (top sellers by volume, SLA, CU earned)
+  ✅ Publish SDK to PyPI
+  ✅ Re-post SDK content on Moltbook (seller framing, not pitch)
+  ✅ Reach the "first real trade" — post buyer receipt + seller earnings story
 
 Week 2 (days 8-14): Seller Acquisition Channels
-  □ Post r/LocalLLaMA: "I registered my Ollama as a BOTmarket seller"
-  □ Post r/LocalLLaMA 10-line callback server gist
-  □ Approach HyperSpace community (GitHub + Discord)
-  □ GitHub Discussions: LangChain + pydantic-ai (seller angle)
-  □ Add /v1/stats public endpoint + /v1/changelog
+  □ Post r/LocalLLaMA: "I registered my Ollama as a BOTmarket seller"  ← draft ready: scripts/reddit_locallama_draft.md (post Tuesday 9-11am PT)
+  □ Post r/LocalLLaMA 10-line callback server gist  ← included in draft
+  □ Approach HyperSpace community (GitHub + Discord)  ← draft ready: scripts/github_discussions_drafts.md (post Wednesday)
+  □ GitHub Discussions: LangChain + pydantic-ai (seller angle)  ← draft ready: scripts/github_discussions_drafts.md (post Mon/Tue)
+  ✅ Add /v1/stats public endpoint + /v1/changelog
   □ DM @varun_mathur on X
   □ Reach out to 3 RunPod/Vast.ai community threads
-  □ Publish CU earning estimates (hardware-specific, like HyperSpace)
-  □ Submit to A2A Catalog (a2acatalog.com) + a2a.ac — agent card is already live at /.well-known/agent-card.json
-  □ List on AI Agents Directory (aiagentsdirectory.com) under Compute / Inference Marketplace
-  □ Create Agent.ai profile (agent-to-agent professional network)
+  ✅ Publish CU earning estimates (hardware-specific, like HyperSpace)  ← in skill.md
+  □ Submit to A2A Catalog (a2acatalog.com) + a2a.ac — agent card is already live at /.well-known/agent-card.json  ← tomorrow
+  □ List on AI Agents Directory (aiagentsdirectory.com) under Compute / Inference Marketplace  ← tomorrow
+  □ Create Agent.ai profile (agent-to-agent professional network)  ← tomorrow
 
 Week 3-4 (days 15-28): Hacker News window
   □ Target: first organic trade from a non-operator agent

@@ -16,7 +16,7 @@ def client(tmp_path, monkeypatch):
     import db
     import matching
     db.DB_PATH = str(tmp_path / "test.db")
-    db.init_db()
+    db.init_db().close()
     matching._seller_tables.clear()
     return TestClient(app)
 
@@ -24,7 +24,9 @@ def client(tmp_path, monkeypatch):
 def test_health_returns_ok(client):
     resp = client.get("/v1/health")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "ok"}
+    body = resp.json()
+    assert body["status"] == "ok"
+    assert body["db"] == "ok"
 
 
 # ── Step 2: Agent Registration ────────────────────────────
@@ -257,12 +259,12 @@ def test_schema_records_event(client):
 
 
 def test_schema_requires_auth(client):
-    """No API key → 422 (missing header)."""
+    """No API key → 401 (missing authentication)."""
     resp = client.post(
         "/v1/schemas/register",
         json={"input_schema": SAMPLE_INPUT, "output_schema": SAMPLE_OUTPUT},
     )
-    assert resp.status_code == 422
+    assert resp.status_code == 401
 
 
 def test_schema_invalid_api_key(client):
@@ -416,7 +418,7 @@ def test_seller_requires_auth(client):
         "/v1/sellers/register",
         json={"capability_hash": "abc", "price_cu": 10.0, "capacity": 5},
     )
-    assert resp.status_code == 422
+    assert resp.status_code == 401
 
 
 def test_seller_same_agent_multiple_capabilities(client):
@@ -693,9 +695,9 @@ def test_match_cu_invariant(client):
 
 
 def test_match_requires_auth(client):
-    """No API key → 422."""
+    """No API key → 401."""
     resp = client.post("/v1/match", json={"capability_hash": "abc"})
-    assert resp.status_code == 422
+    assert resp.status_code == 401
 
 
 def test_match_no_partial_fills(client):
@@ -890,9 +892,9 @@ def test_execute_event_recorded(client):
 
 
 def test_execute_requires_auth(client):
-    """No API key → 422."""
+    """No API key → 401."""
     resp = client.post("/v1/trades/some-id/execute", json={"input": "test"})
-    assert resp.status_code == 422
+    assert resp.status_code == 401
 
 
 def test_execute_escrow_still_held(client):
@@ -1093,9 +1095,9 @@ def test_settle_already_completed(client):
 
 
 def test_settle_requires_auth(client):
-    """No API key → 422."""
+    """No API key → 401."""
     resp = client.post("/v1/trades/some-id/settle")
-    assert resp.status_code == 422
+    assert resp.status_code == 401
 
 
 def test_settle_fail_latency_exceeded(client):
@@ -1306,9 +1308,9 @@ def test_events_agent_not_found(client):
 
 
 def test_events_requires_auth(client):
-    """No API key → 422."""
+    """No API key → 401."""
     resp = client.get("/v1/events/some-id")
-    assert resp.status_code == 422
+    assert resp.status_code == 401
 
 
 def test_events_only_agent_events(client):
@@ -1382,3 +1384,363 @@ def test_events_violation_recorded(client):
     assert len(events) == 1
     payload = json.loads(events[0]["event_data"])
     assert payload["reason"] == "latency_exceeded"
+
+
+# ── Faucet ────────────────────────────────────────────────
+
+
+def test_faucet_first_call_credits_500_cu(client):
+    """First ever call should credit FAUCET_FIRST_CU (500 CU) to the agent."""
+    agent_id, api_key = _register(client)
+    resp = client.post("/v1/faucet", headers={"X-API-Key": api_key})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["credited"] == 500.0
+
+
+def test_faucet_first_call_response_shape(client):
+    """First call response must include credited, balance, total_from_faucet, next_drip_at."""
+    agent_id, api_key = _register(client)
+    resp = client.post("/v1/faucet", headers={"X-API-Key": api_key})
+    data = resp.json()
+    assert set(data.keys()) == {"credited", "balance", "total_from_faucet", "next_drip_at"}
+    assert data["balance"] == 500.0
+    assert data["total_from_faucet"] == 500.0
+    assert data["next_drip_at"] is not None  # more drips possible (500 < 1000 cap)
+
+
+def test_faucet_credits_agent_balance(client):
+    """CU credited by faucet must appear in the agent's balance."""
+    agent_id, api_key = _register(client)
+    client.post("/v1/faucet", headers={"X-API-Key": api_key})
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT cu_balance FROM agents WHERE pubkey = ?", (agent_id,)).fetchone()
+    conn.close()
+    assert row["cu_balance"] == 500.0
+
+
+def test_faucet_second_call_too_soon_returns_zero(client):
+    """Second call within the 24h window must credit 0 CU."""
+    agent_id, api_key = _register(client)
+    client.post("/v1/faucet", headers={"X-API-Key": api_key})
+    resp = client.post("/v1/faucet", headers={"X-API-Key": api_key})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["credited"] == 0.0
+    assert "too soon" in data["message"]
+    assert data["next_drip_at"] is not None
+
+
+def test_faucet_second_call_after_window_credits_drip(client):
+    """After 24h window has elapsed, the drip (50 CU) should be credited."""
+    agent_id, api_key = _register(client)
+    client.post("/v1/faucet", headers={"X-API-Key": api_key})
+
+    # Backdate last_drip_ns by 25 hours so the window has passed
+    import db
+    window_ns = 86_400_000_000_000
+    conn = db.get_connection()
+    conn.execute(
+        "UPDATE faucet_state SET last_drip_ns = last_drip_ns - ? WHERE agent_pubkey = ?",
+        (window_ns + 1, agent_id),
+    )
+    conn.commit()
+    conn.close()
+
+    resp = client.post("/v1/faucet", headers={"X-API-Key": api_key})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["credited"] == 50.0
+    assert data["total_from_faucet"] == 550.0
+
+
+def test_faucet_lifetime_cap_stops_drip(client):
+    """Once total_credited_cu >= FAUCET_MAX_CU (1000), return 0 and cap message."""
+    agent_id, api_key = _register(client)
+    # Seed faucet_state to the cap directly
+    import db
+    conn = db.get_connection()
+    conn.execute(
+        "INSERT INTO faucet_state (agent_pubkey, total_credited_cu, last_drip_ns) VALUES (?, ?, ?)",
+        (agent_id, 1000.0, 1),
+    )
+    conn.commit()
+    conn.close()
+
+    resp = client.post("/v1/faucet", headers={"X-API-Key": api_key})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["credited"] == 0.0
+    assert "lifetime cap" in data["message"]
+    assert data["next_drip_at"] is None
+
+
+def test_faucet_drip_capped_at_remaining_allowance(client):
+    """If only 20 CU remain under the cap, drip must credit 20, not the full 50."""
+    agent_id, api_key = _register(client)
+    import db
+    window_ns = 86_400_000_000_000
+    conn = db.get_connection()
+    # 980 already credited, window expired
+    conn.execute(
+        "INSERT INTO faucet_state (agent_pubkey, total_credited_cu, last_drip_ns) VALUES (?, ?, ?)",
+        (agent_id, 980.0, 1),
+    )
+    conn.commit()
+    conn.close()
+
+    resp = client.post("/v1/faucet", headers={"X-API-Key": api_key})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["credited"] == 20.0
+    assert data["total_from_faucet"] == 1000.0
+    assert data["next_drip_at"] is None  # cap reached after this drip
+
+
+def test_faucet_requires_auth(client):
+    """Calling /v1/faucet without auth returns 401."""
+    resp = client.post("/v1/faucet")
+    assert resp.status_code == 401
+
+
+def test_faucet_unknown_agent_returns_404(client):
+    """If the pubkey is not in the agents table, return 404."""
+    # Manually craft an API key for a ghost agent
+    import db
+    import secrets
+    api_key = secrets.token_hex(32)
+    conn = db.get_connection()
+    conn.execute(
+        "INSERT INTO agents (pubkey, api_key, cu_balance, registered_at) VALUES (?, ?, 0.0, 0)",
+        ("ghost_pubkey_that_we_will_delete", api_key),
+    )
+    conn.commit()
+    conn.execute("DELETE FROM agents WHERE pubkey = 'ghost_pubkey_that_we_will_delete'")
+    conn.commit()
+    conn.close()
+    resp = client.post("/v1/faucet", headers={"X-API-Key": api_key})
+    assert resp.status_code in (401, 404)  # 401 because key no longer valid, or 404
+
+
+def test_faucet_disabled_returns_503(client, monkeypatch):
+    """When FAUCET_ENABLED is empty, the endpoint returns 503."""
+    monkeypatch.setenv("FAUCET_ENABLED", "")
+    agent_id, api_key = _register(client)
+    resp = client.post("/v1/faucet", headers={"X-API-Key": api_key})
+    assert resp.status_code == 503
+
+
+def test_faucet_records_event(client):
+    """A successful drip must create a faucet_drip event."""
+    agent_id, api_key = _register(client)
+    client.post("/v1/faucet", headers={"X-API-Key": api_key})
+    import db
+    conn = db.get_connection()
+    events = conn.execute(
+        "SELECT event_data FROM events WHERE event_type = 'faucet_drip'"
+    ).fetchall()
+    conn.close()
+    assert len(events) == 1
+    payload = json.loads(events[0]["event_data"])
+    assert payload["agent"] == agent_id
+    assert payload["credited"] == 500.0
+
+
+# ── Leaderboard ──────────────────────────────────────────
+
+
+def test_leaderboard_empty_when_no_sellers(client):
+    """No sellers → empty leaderboard list."""
+    resp = client.get("/v1/leaderboard")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["leaderboard"] == []
+
+
+def test_leaderboard_no_auth_required(client):
+    """Leaderboard is a public endpoint — no auth header needed."""
+    resp = client.get("/v1/leaderboard")
+    assert resp.status_code == 200
+
+
+def test_leaderboard_response_shape(client):
+    """Response must contain leaderboard list and limit."""
+    resp = client.get("/v1/leaderboard")
+    data = resp.json()
+    assert "leaderboard" in data
+    assert "limit" in data
+    assert data["limit"] == 20
+
+
+def test_leaderboard_shows_registered_seller(client):
+    """A registered seller must appear in the leaderboard."""
+    seller_id, seller_key, cap_hash = _setup_seller(client, price=5.0)
+    resp = client.get("/v1/leaderboard")
+    entries = resp.json()["leaderboard"]
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry["agent_pubkey"] == seller_id
+    assert entry["capability_hash"] == cap_hash
+    assert entry["price_cu"] == 5.0
+    assert entry["cu_earned"] == 0.0
+    assert entry["trade_count"] == 0
+    assert entry["sla_pct"] is None
+    assert entry["verified_seller"] is False
+
+
+def test_leaderboard_entry_fields(client):
+    """Each entry must have exactly the expected keys."""
+    _setup_seller(client, price=5.0)
+    entry = client.get("/v1/leaderboard").json()["leaderboard"][0]
+    assert set(entry.keys()) == {
+        "agent_pubkey", "capability_hash", "price_cu",
+        "cu_earned", "trade_count", "sla_pct", "verified_seller",
+    }
+
+
+def test_leaderboard_cu_earned_after_completed_trade(client):
+    """After a completed trade, cu_earned should equal price * (1 - 0.015)."""
+    seller_id, seller_key, cap_hash = _setup_seller(client, price=20.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+    match = _match_trade(client, buyer_key, cap_hash)
+    _execute_trade(client, buyer_key, match["trade_id"])
+    client.post(f"/v1/trades/{match['trade_id']}/settle", headers={"X-API-Key": buyer_key})
+
+    entries = client.get("/v1/leaderboard").json()["leaderboard"]
+    entry = next(e for e in entries if e["agent_pubkey"] == seller_id)
+    assert abs(entry["cu_earned"] - 20.0 * 0.985) < 1e-9
+    assert entry["trade_count"] == 1
+    assert entry["sla_pct"] == 100.0
+
+
+def test_leaderboard_sorted_by_cu_earned_desc(client):
+    """Higher-earning sellers must be ranked first."""
+    # Seller A and B need different schemas so the match engine doesn't conflate them
+    seller_a, key_a = _register(client)
+    hash_a = _register_schema(client, key_a, input_s={"type": "object", "title": "A"})
+    _fund_agent(client, seller_a, 5.0)
+    client.post("/v1/sellers/register", json={"capability_hash": hash_a, "price_cu": 5.0, "capacity": 10}, headers={"X-API-Key": key_a})
+
+    seller_b, key_b = _register(client)
+    hash_b = _register_schema(client, key_b, input_s={"type": "object", "title": "B"})
+    _fund_agent(client, seller_b, 20.0)
+    client.post("/v1/sellers/register", json={"capability_hash": hash_b, "price_cu": 20.0, "capacity": 10}, headers={"X-API-Key": key_b})
+
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 500.0)
+
+    # Each cap_hash has only one seller, so match goes to the intended seller
+    for cap_hash, _ in [(hash_a, key_a), (hash_b, key_b)]:
+        match = _match_trade(client, buyer_key, cap_hash)
+        _execute_trade(client, buyer_key, match["trade_id"])
+        client.post(f"/v1/trades/{match['trade_id']}/settle", headers={"X-API-Key": buyer_key})
+
+    entries = client.get("/v1/leaderboard").json()["leaderboard"]
+    earnings = [e["cu_earned"] for e in entries]
+    assert earnings == sorted(earnings, reverse=True)
+    assert entries[0]["agent_pubkey"] == seller_b
+
+
+def test_leaderboard_verified_seller_badge_requires_10_completed(client):
+    """verified_seller is True only for sellers with ≥10 completed trades and 0 violations."""
+    seller_id, seller_key, cap_hash = _setup_seller(client, price=1.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 1000.0)
+
+    # Complete 10 trades
+    for _ in range(10):
+        match = _match_trade(client, buyer_key, cap_hash)
+        _execute_trade(client, buyer_key, match["trade_id"])
+        client.post(f"/v1/trades/{match['trade_id']}/settle", headers={"X-API-Key": buyer_key})
+
+    entries = client.get("/v1/leaderboard").json()["leaderboard"]
+    entry = next(e for e in entries if e["agent_pubkey"] == seller_id)
+    assert entry["verified_seller"] is True
+    assert entry["trade_count"] == 10
+    assert entry["sla_pct"] == 100.0
+
+
+def test_leaderboard_not_verified_below_10_trades(client):
+    """verified_seller is False with fewer than 10 completed trades."""
+    seller_id, seller_key, cap_hash = _setup_seller(client, price=1.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 100.0)
+
+    for _ in range(5):
+        match = _match_trade(client, buyer_key, cap_hash)
+        _execute_trade(client, buyer_key, match["trade_id"])
+        client.post(f"/v1/trades/{match['trade_id']}/settle", headers={"X-API-Key": buyer_key})
+
+    entry = client.get("/v1/leaderboard").json()["leaderboard"][0]
+    assert entry["verified_seller"] is False
+
+
+def test_leaderboard_limit_parameter(client):
+    """limit query param controls the maximum number of entries returned."""
+    for _ in range(5):
+        _setup_seller(client, price=1.0)
+    resp = client.get("/v1/leaderboard?limit=3")
+    data = resp.json()
+    assert len(data["leaderboard"]) == 3
+    assert data["limit"] == 3
+
+
+# ── GET /v1/schemas/{hash} ────────────────────────────────
+
+
+def test_get_schema_returns_correct_fields(client):
+    """GET /v1/schemas/{hash} returns input_schema, output_schema, and registered_at."""
+    _, api_key = _register(client)
+    cap_hash = _register_schema(client, api_key)
+    resp = client.get(f"/v1/schemas/{cap_hash}")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["capability_hash"] == cap_hash
+    assert "input_schema" in data
+    assert "output_schema" in data
+    assert "registered_at" in data
+    assert isinstance(data["input_schema"], dict)
+    assert isinstance(data["output_schema"], dict)
+
+
+def test_get_schema_no_auth_required(client):
+    """GET /v1/schemas/{hash} is a public endpoint."""
+    _, api_key = _register(client)
+    cap_hash = _register_schema(client, api_key)
+    resp = client.get(f"/v1/schemas/{cap_hash}")
+    assert resp.status_code == 200
+
+
+def test_get_schema_unknown_hash_returns_404(client):
+    """Unknown capability_hash returns 404."""
+    resp = client.get("/v1/schemas/" + "a" * 64)
+    assert resp.status_code == 404
+
+
+# ── GET /v1/agents/me ────────────────────────────────────
+
+
+def test_get_me_returns_pubkey_and_balance(client):
+    """GET /v1/agents/me returns the caller's pubkey and cu_balance."""
+    agent_id, api_key = _register(client)
+    resp = client.get("/v1/agents/me", headers={"X-API-Key": api_key})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["pubkey"] == agent_id
+    assert data["cu_balance"] == 0.0
+
+
+def test_get_me_reflects_funded_balance(client):
+    """cu_balance returned by /v1/agents/me matches the actual balance."""
+    agent_id, api_key = _register(client)
+    _fund_agent(client, agent_id, 250.0)
+    resp = client.get("/v1/agents/me", headers={"X-API-Key": api_key})
+    assert resp.json()["cu_balance"] == 250.0
+
+
+def test_get_me_requires_auth(client):
+    """GET /v1/agents/me without auth returns 401."""
+    resp = client.get("/v1/agents/me")
+    assert resp.status_code == 401

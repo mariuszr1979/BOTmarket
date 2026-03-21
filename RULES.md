@@ -167,9 +167,11 @@ These patterns are **banned from the codebase**. If you find yourself building a
 8. JSON API (FastAPI sidecar — debugging interface)
 9. Binary TCP server (asyncio — primary agent protocol)
 
+### DONE (accelerated into Phase 1, complete)
+- ~~Ed25519 auth → Phase 2~~ → **COMPLETE** (Steps 0–1: identity.py, dual auth, TCP v2)
+- ~~PostgreSQL → Phase 2~~ → **COMPLETE** (Step 3: psycopg3 + pool, dual SQLite/PG mode)
+
 ### OUT (do not build, even if tempting)
-- Ed25519 auth → Phase 2
-- PostgreSQL → Phase 2
 - CU/USDC off-ramp → Phase 2
 - Discovery by Example → Phase 2
 - Commit-reveal → Phase 2
@@ -190,11 +192,12 @@ Every data structure must map to one of these. No extra tables. No extra fields.
 
 ```
 agents:   (pubkey, api_key, cu_balance, registered_at)
-sellers:  (agent_pubkey, capability_hash, price_cu, latency_bound_us, 
-           capacity, active_calls, cu_staked, registered_at_ns)
-trades:   (id, buyer_pubkey, seller_pubkey, capability_hash, 
+sellers:  (agent_pubkey, capability_hash, price_cu, latency_bound_us,
+           capacity, active_calls, cu_staked, callback_url,
+           sla_set_at_ns, registered_at_ns)
+trades:   (id, buyer_pubkey, seller_pubkey, capability_hash,
            price_cu, start_ns, end_ns, status, latency_us)
-events:   (seq, previous_hash, event_hash, event_type, 
+events:   (seq, previous_hash, event_hash, event_type,
            event_data, timestamp_ns)
 escrow:   (trade_id, buyer_pubkey, seller_pubkey, cu_amount, status)
 ```

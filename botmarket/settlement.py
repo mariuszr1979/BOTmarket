@@ -1,22 +1,27 @@
 # settlement.py — CU ledger (debit/credit/escrow/slash)
 import json
-from constants import FEE_TOTAL, FEE_PLATFORM, FEE_MAKERS, FEE_VERIFY, BOND_SLASH, SLASH_TO_BUYER, SLA_SAMPLE_SIZE, SLA_MARGIN
+import time
+from constants import FEE_TOTAL, FEE_PLATFORM, FEE_MAKERS, FEE_VERIFY, BOND_SLASH, SLASH_TO_BUYER, SLA_SAMPLE_SIZE, SLA_MARGIN, SLA_DECOHERENCE_NS
 from events import record_event
 
 
 def maybe_set_sla(conn, seller_pubkey, capability_hash):
     """After SLA_SAMPLE_SIZE completed trades, lock latency_bound_us = p99 + 20%."""
     row = conn.execute(
-        "SELECT latency_bound_us FROM sellers WHERE agent_pubkey = ? AND capability_hash = ?",
+        "SELECT latency_bound_us, sla_set_at_ns FROM sellers WHERE agent_pubkey = ? AND capability_hash = ?",
         (seller_pubkey, capability_hash),
     ).fetchone()
     if row is None or row["latency_bound_us"] > 0:
         return  # already set or seller gone
 
+    # Only count trades after the last SLA reset (or all time if never set)
+    since_ns = row["sla_set_at_ns"] or 0
+
     rows = conn.execute(
         "SELECT latency_us FROM trades WHERE seller_pubkey = ? AND capability_hash = ? "
-        "AND status = 'completed' AND latency_us IS NOT NULL ORDER BY rowid ASC LIMIT ?",
-        (seller_pubkey, capability_hash, SLA_SAMPLE_SIZE),
+        "AND status = 'completed' AND latency_us IS NOT NULL AND start_ns > ? "
+        "ORDER BY start_ns ASC LIMIT ?",
+        (seller_pubkey, capability_hash, since_ns, SLA_SAMPLE_SIZE),
     ).fetchall()
     if len(rows) < SLA_SAMPLE_SIZE:
         return
@@ -26,9 +31,10 @@ def maybe_set_sla(conn, seller_pubkey, capability_hash):
     p99 = latencies[min(p99_idx, len(latencies) - 1)]
     bound = int(p99 * (1 + SLA_MARGIN))
 
+    now_ns = time.time_ns()
     conn.execute(
-        "UPDATE sellers SET latency_bound_us = ? WHERE agent_pubkey = ? AND capability_hash = ?",
-        (bound, seller_pubkey, capability_hash),
+        "UPDATE sellers SET latency_bound_us = ?, sla_set_at_ns = ? WHERE agent_pubkey = ? AND capability_hash = ?",
+        (bound, now_ns, seller_pubkey, capability_hash),
     )
     record_event(conn, "sla_set", json.dumps({
         "seller": seller_pubkey,
@@ -37,6 +43,30 @@ def maybe_set_sla(conn, seller_pubkey, capability_hash):
         "latency_bound_us": bound,
         "sample_size": SLA_SAMPLE_SIZE,
     }))
+
+
+def check_sla_decoherence(conn, seller_pubkey, capability_hash):
+    """If SLA is older than 30 days, reset for re-measurement."""
+    row = conn.execute(
+        "SELECT latency_bound_us, sla_set_at_ns FROM sellers WHERE agent_pubkey = ? AND capability_hash = ?",
+        (seller_pubkey, capability_hash),
+    ).fetchone()
+    if row is None or row["latency_bound_us"] == 0 or row["sla_set_at_ns"] is None:
+        return
+
+    now_ns = time.time_ns()
+    if (now_ns - row["sla_set_at_ns"]) > SLA_DECOHERENCE_NS:
+        old_bound = row["latency_bound_us"]
+        conn.execute(
+            "UPDATE sellers SET latency_bound_us = 0, sla_set_at_ns = ? WHERE agent_pubkey = ? AND capability_hash = ?",
+            (now_ns, seller_pubkey, capability_hash),
+        )
+        record_event(conn, "sla_decohered", json.dumps({
+            "seller": seller_pubkey,
+            "capability_hash": capability_hash,
+            "old_latency_bound_us": old_bound,
+            "reason": "window_expired",
+        }))
 
 
 def settle_trade(conn, trade):

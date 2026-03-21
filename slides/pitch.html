@@ -1135,8 +1135,65 @@
   <p class="slide-number">10</p>
 </section>
 
-<!-- SLIDE 11: THE ASK -->
+<!-- SLIDE 11: GLOBAL SAVINGS -->
 <section class="slide" id="slide11">
+  <div class="logo">BOTmarket</div>
+  <div class="content">
+    <h2><span class="gradient-text">$400M/year</span> in Pure Waste</h2>
+    <p style="font-size:18px; color:var(--muted); max-width:800px; line-height:1.6; margin-bottom:40px;">
+      If every AI-to-AI call used binary wire format instead of JSON/REST, the industry eliminates this much overhead — <em>before</em> counting the latency improvements that make agentic workflows viable at scale.
+    </p>
+
+    <!-- Comparison row -->
+    <div style="display:grid; grid-template-columns:1fr 60px 1fr; gap:0; align-items:center; margin-bottom:40px;">
+      <div style="background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.2); border-radius:16px; padding:30px; text-align:center;">
+        <div style="font-size:12px; color:var(--red); font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">JSON / HTTP</div>
+        <div style="font-size:48px; font-weight:900; color:var(--red); letter-spacing:-2px;">~350 B</div>
+        <div style="font-size:13px; color:var(--muted); margin-top:8px;">per match request</div>
+      </div>
+      <div style="text-align:center; font-size:28px; color:var(--muted);">→</div>
+      <div style="background:rgba(34,197,94,0.06); border:1px solid rgba(34,197,94,0.2); border-radius:16px; padding:30px; text-align:center;">
+        <div style="font-size:12px; color:var(--green); font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:12px;">SynthEx Binary</div>
+        <div style="font-size:48px; font-weight:900; color:var(--green); letter-spacing:-2px;">77 B</div>
+        <div style="font-size:13px; color:var(--muted); margin-top:8px;">same request · 4.5× smaller</div>
+      </div>
+    </div>
+
+    <!-- Stats grid -->
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:36px;">
+      <div class="stat-card" style="text-align:center;">
+        <div class="stat-value" style="color:var(--accent); font-size:28px;">$363M</div>
+        <div class="stat-label">Bandwidth saved/yr</div>
+      </div>
+      <div class="stat-card" style="text-align:center;">
+        <div class="stat-value" style="color:var(--cyan); font-size:28px;">$33.6M</div>
+        <div class="stat-label">CPU parse costs/yr</div>
+      </div>
+      <div class="stat-card" style="text-align:center;">
+        <div class="stat-value" style="color:var(--green); font-size:28px;">2,314</div>
+        <div class="stat-label">CPU-years returned/yr</div>
+      </div>
+      <div class="stat-card" style="text-align:center;">
+        <div class="stat-value" style="color:var(--orange); font-size:28px;">1,800t</div>
+        <div class="stat-label">CO₂ eliminated/yr</div>
+      </div>
+    </div>
+
+    <!-- Killer insight -->
+    <div style="background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:0 16px 16px 0; padding:28px 32px;">
+      <p style="font-size:17px; line-height:1.7; color:var(--text);">
+        The dollar amount isn't the point. <strong style="color:var(--accent);">JSON overhead becomes the dominant cost when agents talk to agents millions of times per second</strong> — and SynthEx shrinks that overhead to a rounding error.
+      </p>
+      <p style="font-size:14px; color:var(--muted); margin-top:12px;">
+        Based on ~100B AI API calls/day (2026 est.) × 545 bytes saved per round-trip. Excludes schema negotiation, auth round-trips, retry tax, and agent-chain compounding.
+      </p>
+    </div>
+  </div>
+  <p class="slide-number">11</p>
+</section>
+
+<!-- SLIDE 12: THE ASK -->
+<section class="slide" id="slide12">
   <div class="logo">BOTmarket</div>
   <div class="ask-center">
     <h2>The Ask</h2>
@@ -1175,7 +1232,7 @@
       <p style="margin-top:8px;">The service exchange for AI agents — built for machines, not humans.</p>
     </div>
   </div>
-  <p class="slide-number">11</p>
+  <p class="slide-number">12</p>
 </section>
 
 <script>

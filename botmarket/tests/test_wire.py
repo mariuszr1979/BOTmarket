@@ -10,6 +10,8 @@ from wire import (
     MSG_REGISTER_AGENT, MSG_REGISTER_SCHEMA, MSG_REGISTER_SELLER,
     MSG_MATCH_REQUEST, MSG_MATCH_RESPONSE, MSG_EXECUTE, MSG_EXECUTE_RESPONSE,
     MSG_QUERY_EVENTS, MSG_EVENTS_RESPONSE, MSG_ERROR,
+    MSG_REGISTER_AGENT_V2, MSG_MATCH_REQUEST_V2, MSG_EXECUTE_V2,
+    AUTH_SIZE,
     pack_register_agent, unpack_register_agent,
     pack_register_schema, unpack_register_schema,
     pack_register_seller, unpack_register_seller,
@@ -20,6 +22,10 @@ from wire import (
     pack_query_events, unpack_query_events,
     pack_events_response, unpack_events_response,
     pack_error, unpack_error,
+    pack_v2_message, unpack_v2_auth,
+    pack_register_agent_v2, unpack_register_agent_v2,
+    pack_match_request_v2, unpack_match_request_v2_payload,
+    pack_execute_v2, unpack_execute_v2_payload,
 )
 
 
@@ -253,3 +259,130 @@ def test_pad32_pads_short_input():
     result = unpack_register_agent(msg[HEADER_SIZE:])
     assert len(result) == 32
     assert result == b"AB" + b"\x00" * 30
+
+
+# ── V2 wire protocol tests ───────────────────────────
+
+_FAKE_PUBKEY = bytes(range(32)).hex()       # 64-char hex
+_FAKE_SIG    = bytes(range(64)).hex()       # 128-char hex
+_FAKE_TS     = 1_700_000_000_000_000_000    # nanoseconds
+
+
+def test_auth_size_constant():
+    assert AUTH_SIZE == 104  # 32 pubkey + 64 sig + 8 timestamp
+
+
+def test_v2_message_types_distinct_from_v1():
+    v1 = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0xFF}
+    assert MSG_REGISTER_AGENT_V2 not in v1
+    assert MSG_MATCH_REQUEST_V2  not in v1
+    assert MSG_EXECUTE_V2        not in v1
+
+
+def test_pack_v2_message_size():
+    """v2 message: 5-byte header + 104-byte auth block + N-byte payload."""
+    payload = b"hello"
+    msg = pack_v2_message(MSG_MATCH_REQUEST_V2, _FAKE_PUBKEY, _FAKE_SIG, _FAKE_TS, payload)
+    assert len(msg) == HEADER_SIZE + AUTH_SIZE + len(payload)
+
+
+def test_pack_v2_message_header():
+    payload = b"data"
+    msg = pack_v2_message(MSG_EXECUTE_V2, _FAKE_PUBKEY, _FAKE_SIG, _FAKE_TS, payload)
+    mt, length = unpack_header(msg)
+    assert mt == MSG_EXECUTE_V2
+    assert length == AUTH_SIZE + len(payload)
+
+
+def test_unpack_v2_auth_roundtrip():
+    payload = b"inner payload"
+    msg = pack_v2_message(MSG_MATCH_REQUEST_V2, _FAKE_PUBKEY, _FAKE_SIG, _FAKE_TS, payload)
+    raw = msg[HEADER_SIZE:]  # strip 5-byte header
+    pubkey_out, sig_out, ts_out, inner_out = unpack_v2_auth(raw)
+    assert pubkey_out == _FAKE_PUBKEY
+    assert sig_out    == _FAKE_SIG
+    assert ts_out     == _FAKE_TS
+    assert inner_out  == payload
+
+
+def test_unpack_v2_auth_too_short_raises():
+    import pytest
+    with pytest.raises(ValueError):
+        unpack_v2_auth(b"\x00" * 50)
+
+
+def test_register_agent_v2_exact_size():
+    """Register-agent-v2 message is exactly 5 + 32 = 37 bytes."""
+    msg = pack_register_agent_v2(_FAKE_PUBKEY)
+    assert len(msg) == HEADER_SIZE + 32
+
+
+def test_register_agent_v2_roundtrip():
+    msg = pack_register_agent_v2(_FAKE_PUBKEY)
+    mt, length = unpack_header(msg)
+    assert mt == MSG_REGISTER_AGENT_V2
+    assert length == 32
+    pubkey_out = unpack_register_agent_v2(msg[HEADER_SIZE:])
+    assert pubkey_out == _FAKE_PUBKEY
+
+
+def test_match_request_v2_exact_size():
+    """v2 match request: 5 header + 104 auth + 40 payload = 149 bytes."""
+    cap_hash = bytes(range(32))
+    msg = pack_match_request_v2(_FAKE_PUBKEY, _FAKE_SIG, _FAKE_TS, cap_hash, 500)
+    assert len(msg) == HEADER_SIZE + AUTH_SIZE + 40
+
+
+def test_match_request_v2_roundtrip():
+    cap_hash = bytes(range(32))
+    max_price = 9999
+    msg = pack_match_request_v2(_FAKE_PUBKEY, _FAKE_SIG, _FAKE_TS, cap_hash, max_price)
+    mt, _ = unpack_header(msg)
+    assert mt == MSG_MATCH_REQUEST_V2
+
+    pubkey_out, sig_out, ts_out, inner = unpack_v2_auth(msg[HEADER_SIZE:])
+    assert pubkey_out == _FAKE_PUBKEY
+    assert sig_out    == _FAKE_SIG
+    assert ts_out     == _FAKE_TS
+
+    ch_out, price_out = unpack_match_request_v2_payload(inner)
+    assert ch_out    == cap_hash
+    assert price_out == max_price
+
+
+def test_execute_v2_roundtrip():
+    import uuid
+    trade_id_bytes = uuid.uuid4().bytes
+    input_data = b"compute this task"
+    msg = pack_execute_v2(_FAKE_PUBKEY, _FAKE_SIG, _FAKE_TS, trade_id_bytes, input_data)
+    mt, _ = unpack_header(msg)
+    assert mt == MSG_EXECUTE_V2
+
+    pubkey_out, sig_out, ts_out, inner = unpack_v2_auth(msg[HEADER_SIZE:])
+    assert pubkey_out == _FAKE_PUBKEY
+    assert sig_out    == _FAKE_SIG
+    assert ts_out     == _FAKE_TS
+
+    tid_out, inp_out = unpack_execute_v2_payload(inner)
+    assert tid_out[:16] == trade_id_bytes
+    assert inp_out      == input_data
+
+
+def test_execute_v2_minimum_size():
+    """Execute v2 with empty input: 5 + 104 + 32 (trade_id) = 141 bytes."""
+    import uuid
+    trade_id_bytes = uuid.uuid4().bytes
+    msg = pack_execute_v2(_FAKE_PUBKEY, _FAKE_SIG, _FAKE_TS, trade_id_bytes, b"")
+    assert len(msg) == HEADER_SIZE + AUTH_SIZE + 32
+
+
+def test_v2_all_types_in_all_roundtrip():
+    """Extend the v1 all-types roundtrip to include v2 types."""
+    types = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0xFF,
+             MSG_REGISTER_AGENT_V2, MSG_MATCH_REQUEST_V2, MSG_EXECUTE_V2]
+    for t in types:
+        payload = bytes(range(32))
+        msg = pack_message(t, payload)
+        rt_type, rt_len = unpack_header(msg)
+        assert rt_type == t
+        assert rt_len == 32

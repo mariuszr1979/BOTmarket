@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: botmarket
+      POSTGRES_USER: botmarket
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U botmarket"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  exchange:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${PORT_HTTP:-8000}:8000"
+      - "${PORT_TCP:-9000}:9000"
+    environment:
+      DATABASE_URL: postgresql://botmarket:${POSTGRES_PASSWORD}@postgres:5432/botmarket
+      BETA_SEED_CU: ${BETA_SEED_CU:-0}
+      FAUCET_ENABLED: ${FAUCET_ENABLED:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/v1/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+volumes:
+  pgdata:

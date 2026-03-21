@@ -169,14 +169,15 @@ These patterns are **banned from the codebase**. If you find yourself building a
 8. JSON API (FastAPI sidecar — debugging interface)
 9. Binary TCP server (asyncio — primary agent protocol)
 
-### Phase 2: The Exchange ←
+### Phase 2: The Exchange ← (current)
 *"Will agents trade with real money?"*
 
-- Ed25519 auth (API keys → cryptographic identity)
-- PostgreSQL (SQLite → concurrent writes, production load)
+- ~~Ed25519 auth (API keys → cryptographic identity)~~ → **COMPLETE** (Steps 0–1)
+- ~~PostgreSQL (SQLite → concurrent writes, production load)~~ → **COMPLETE** (Step 3)
 - CU/USDC off-ramp (on-ramp 0.5%, off-ramp 1.0% — revenue starts)
 
 Kill criteria clock starts: 60 days → >5 trades/day, >10 agents, >20% repeat.
+Clock started: **2026-03-19** (first production trade). Deadline: **2026-05-18**.
 
 ### Phase 3: The Vault
 *"Will agents trust an exchange they can't trust?"*
@@ -218,11 +219,12 @@ Every data structure must map to one of these. No extra tables. No extra fields.
 
 ```
 agents:   (pubkey, api_key, cu_balance, registered_at)
-sellers:  (agent_pubkey, capability_hash, price_cu, latency_bound_us, 
-           capacity, active_calls, cu_staked, registered_at_ns)
-trades:   (id, buyer_pubkey, seller_pubkey, capability_hash, 
+sellers:  (agent_pubkey, capability_hash, price_cu, latency_bound_us,
+           capacity, active_calls, cu_staked, callback_url,
+           sla_set_at_ns, registered_at_ns)
+trades:   (id, buyer_pubkey, seller_pubkey, capability_hash,
            price_cu, start_ns, end_ns, status, latency_us)
-events:   (seq, previous_hash, event_hash, event_type, 
+events:   (seq, previous_hash, event_hash, event_type,
            event_data, timestamp_ns)
 escrow:   (trade_id, buyer_pubkey, seller_pubkey, cu_amount, status)
 ```

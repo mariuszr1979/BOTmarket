@@ -1,10 +1,13 @@
-# test_integration.py — Step 11: Integration Testing (9 scenarios)
+# test_integration.py — Step 5: Integration Testing (Phase 2 — pre-money)
 import sys
 import os
 import json
 import asyncio
 import struct
 import random
+import threading
+import time
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -20,6 +23,7 @@ from wire import (
     MSG_EXECUTE_RESPONSE, MSG_QUERY_EVENTS, MSG_EVENTS_RESPONSE, MSG_ERROR,
 )
 from constants import FEE_TOTAL, BOND_SLASH, SLASH_TO_BUYER
+from identity import generate_keypair, sign_request, canonical_bytes
 
 
 # ── Helpers ──────────────────────────────────────────────
@@ -744,3 +748,434 @@ def test_deterministic_results(client):
     for r in results[1:]:
         assert abs(r["seller_bal"] - results[0]["seller_bal"]) < 1e-9
         assert abs(r["buyer_bal"] - results[0]["buyer_bal"]) < 1e-9
+
+
+# ═══════════════════════════════════════════════════════
+# Step 5 specific integration scenarios
+# ═══════════════════════════════════════════════════════
+
+# ── Ed25519 helpers ──────────────────────────────────────
+
+def _register_ed25519(client):
+    """Register an Ed25519 agent. Returns (priv_hex, pub_hex)."""
+    priv, pub = generate_keypair()
+    resp = client.post("/v1/agents/register/v2", json={"public_key": pub})
+    assert resp.status_code == 201
+    return priv, pub
+
+
+def _ed25519_headers(body, priv, pub, timestamp_ns=None):
+    """Build X-Public-Key / X-Signature / X-Timestamp request headers."""
+    sig, ts = sign_request(body, priv, timestamp_ns)
+    return {
+        "X-Public-Key": pub,
+        "X-Signature": sig,
+        "X-Timestamp": str(ts),
+    }
+
+
+# ── Mock HTTP seller ──────────────────────────────────────
+
+class _MockSellerHandler(BaseHTTPRequestHandler):
+    response_body = {"output": "mock result"}
+    response_status = 200
+    response_delay = 0
+    last_request_body = None
+    call_count = 0
+
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
+
+    def do_POST(self):
+        _MockSellerHandler.call_count += 1
+        content_len = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_len) if content_len else b""
+        _MockSellerHandler.last_request_body = json.loads(body) if body else None
+        if _MockSellerHandler.response_delay > 0:
+            time.sleep(_MockSellerHandler.response_delay)
+        self.send_response(_MockSellerHandler.response_status)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(_MockSellerHandler.response_body).encode())
+
+    def log_message(self, format, *args):
+        pass  # silence server logs
+
+
+# ── TEST A: Ed25519 Full Lifecycle ───────────────────────
+
+
+def test_step5_ed25519_full_lifecycle(client):
+    """Ed25519 keypair → register → schema → seller → match → execute → settle."""
+    # Seller: Ed25519
+    seller_priv, seller_pub = _register_ed25519(client)
+
+    schema_body = {"input_schema": {"type": "string", "task": "summarize"},
+                   "output_schema": {"type": "string", "result": "summary"}}
+    schema_resp = client.post(
+        "/v1/schemas/register",
+        json=schema_body,
+        headers=_ed25519_headers(schema_body, seller_priv, seller_pub),
+    ).json()
+    cap_hash = schema_resp["capability_hash"]
+    assert len(cap_hash) == 64
+
+    _seed_cu(seller_pub, 25.0)
+    seller_body = {"capability_hash": cap_hash, "price_cu": 25.0, "capacity": 10}
+    reg_resp = client.post(
+        "/v1/sellers/register",
+        json=seller_body,
+        headers=_ed25519_headers(seller_body, seller_priv, seller_pub),
+    ).json()
+    assert reg_resp["status"] == "registered"
+
+    # Buyer: Ed25519
+    buyer_priv, buyer_pub = _register_ed25519(client)
+    _seed_cu(buyer_pub, 100.0)
+
+    match_body = {"capability_hash": cap_hash}
+    match_resp = client.post(
+        "/v1/match",
+        json=match_body,
+        headers=_ed25519_headers(match_body, buyer_priv, buyer_pub),
+    ).json()
+    assert match_resp["status"] == "matched"
+    assert match_resp["price_cu"] == 25.0
+    trade_id = match_resp["trade_id"]
+
+    exec_body = {"input": "summarize this"}
+    exec_resp = client.post(
+        f"/v1/trades/{trade_id}/execute",
+        json=exec_body,
+        headers=_ed25519_headers(exec_body, buyer_priv, buyer_pub),
+    ).json()
+    assert exec_resp["status"] == "executed"
+
+    settle_resp = client.post(
+        f"/v1/trades/{trade_id}/settle",
+        headers=_ed25519_headers(b"", buyer_priv, buyer_pub),
+    ).json()
+    assert settle_resp["status"] == "completed"
+
+    # Balance checks
+    expected_fee = 25.0 * FEE_TOTAL
+    seller_bal = _get_balance(seller_pub)
+    buyer_bal = _get_balance(buyer_pub)
+    assert abs(seller_bal - (25.0 - expected_fee)) < 1e-9, f"seller got {seller_bal}"
+    assert abs(buyer_bal - 75.0) < 1e-9, f"buyer has {buyer_bal}"
+    assert _escrow_count() == 0
+
+
+# ── TEST B: Signature Rejection ──────────────────────────
+
+
+def test_step5_signature_rejection_wrong_sig(client):
+    """Wrong signature → 401."""
+    priv, pub = _register_ed25519(client)
+    _seed_cu(pub, 100.0)
+    # Sign with a different (wrong) private key
+    other_priv, _ = generate_keypair()
+    body = {"capability_hash": "a" * 64}
+    resp = client.post(
+        "/v1/match",
+        json=body,
+        headers=_ed25519_headers(body, other_priv, pub),  # signed with wrong key
+    )
+    assert resp.status_code == 401
+
+
+def test_step5_signature_rejection_tampered_body(client):
+    """Signature covers original body — tamper the body → 401."""
+    priv, pub = _register_ed25519(client)
+    _seed_cu(pub, 100.0)
+    original_body = {"capability_hash": "a" * 64}
+    sig, ts = sign_request(original_body, priv)
+    tampered_body = {"capability_hash": "b" * 64}  # different hash
+    resp = client.post(
+        "/v1/match",
+        json=tampered_body,
+        headers={"X-Public-Key": pub, "X-Signature": sig, "X-Timestamp": str(ts)},
+    )
+    assert resp.status_code == 401
+
+
+def test_step5_signature_rejection_expired_timestamp(client):
+    """Timestamp >30s old → 401."""
+    priv, pub = _register_ed25519(client)
+    _seed_cu(pub, 100.0)
+    old_ts = time.time_ns() - 60_000_000_000  # 60s ago
+    body = {"capability_hash": "a" * 64}
+    resp = client.post(
+        "/v1/match",
+        json=body,
+        headers=_ed25519_headers(body, priv, pub, timestamp_ns=old_ts),
+    )
+    assert resp.status_code == 401
+
+
+# ── TEST C: Real Seller Callback ─────────────────────────
+
+
+def test_step5_real_seller_callback(client):
+    """Seller with callback_url → execute POSTs to mock server, returns real output."""
+    # Reset mock state
+    _MockSellerHandler.call_count = 0
+    _MockSellerHandler.last_request_body = None
+    _MockSellerHandler.response_body = {"output": "summary: hello world"}
+    _MockSellerHandler.response_status = 200
+    _MockSellerHandler.response_delay = 0
+
+    server = HTTPServer(("127.0.0.1", 0), _MockSellerHandler)
+    port = server.server_address[1]
+    t = threading.Thread(target=lambda: server.serve_forever(), daemon=True)
+    t.start()
+    try:
+        # Register seller (API key, so health-check HEAD passes)
+        seller = client.post("/v1/agents/register").json()
+        buyer = client.post("/v1/agents/register").json()
+
+        _seed_cu(seller["agent_id"], 20.0)
+
+        schema = client.post("/v1/schemas/register", json={
+            "input_schema": {"type": "string", "callback_test": True},
+            "output_schema": {"type": "string"},
+        }, headers={"x-api-key": seller["api_key"]}).json()
+        cap_hash = schema["capability_hash"]
+
+        reg = client.post("/v1/sellers/register", json={
+            "capability_hash": cap_hash,
+            "price_cu": 20.0,
+            "capacity": 5,
+            "callback_url": f"http://127.0.0.1:{port}/execute",
+        }, headers={"x-api-key": seller["api_key"]}).json()
+        assert reg["status"] == "registered"
+
+        _seed_cu(buyer["agent_id"], 100.0)
+
+        match_resp = client.post("/v1/match", json={
+            "capability_hash": cap_hash,
+        }, headers={"x-api-key": buyer["api_key"]}).json()
+        assert match_resp["status"] == "matched"
+        trade_id = match_resp["trade_id"]
+
+        exec_resp = client.post(f"/v1/trades/{trade_id}/execute", json={
+            "input": "hello world",
+        }, headers={"x-api-key": buyer["api_key"]}).json()
+
+        assert exec_resp["status"] == "executed"
+        assert exec_resp["output"] == "summary: hello world"
+        assert exec_resp["latency_us"] > 0  # real latency measured
+        assert _MockSellerHandler.call_count == 1
+        assert _MockSellerHandler.last_request_body["input"] == "hello world"
+        assert _MockSellerHandler.last_request_body["trade_id"] == trade_id
+    finally:
+        server.shutdown()
+
+
+# ── TEST D: Seller Callback Failure ──────────────────────
+
+
+def test_step5_callback_failure_refunds_buyer(client):
+    """Seller callback returns 500 → trade failed, buyer refunded from escrow."""
+    # Reset mock state and configure to return 500 on POST
+    _MockSellerHandler.call_count = 0
+    _MockSellerHandler.response_status = 500
+    _MockSellerHandler.response_body = {"error": "internal error"}
+    _MockSellerHandler.response_delay = 0
+
+    server = HTTPServer(("127.0.0.1", 0), _MockSellerHandler)
+    port = server.server_address[1]
+    t = threading.Thread(target=lambda: server.serve_forever(), daemon=True)
+    t.start()
+    try:
+        seller = client.post("/v1/agents/register").json()
+        buyer = client.post("/v1/agents/register").json()
+
+        _seed_cu(seller["agent_id"], 50.0)
+
+        schema = client.post("/v1/schemas/register", json={
+            "input_schema": {"type": "string", "fail_test": True},
+            "output_schema": {"type": "string"},
+        }, headers={"x-api-key": seller["api_key"]}).json()
+        cap_hash = schema["capability_hash"]
+
+        reg = client.post("/v1/sellers/register", json={
+            "capability_hash": cap_hash,
+            "price_cu": 20.0,
+            "capacity": 5,
+            "callback_url": f"http://127.0.0.1:{port}/execute",
+        }, headers={"x-api-key": seller["api_key"]}).json()
+        assert reg["status"] == "registered"
+
+        _seed_cu(buyer["agent_id"], 100.0)
+        buyer_balance_before = _get_balance(buyer["agent_id"])
+
+        match_resp = client.post("/v1/match", json={
+            "capability_hash": cap_hash,
+        }, headers={"x-api-key": buyer["api_key"]}).json()
+        assert match_resp["status"] == "matched"
+        trade_id = match_resp["trade_id"]
+
+        # Balance debited at match time
+        assert abs(_get_balance(buyer["agent_id"]) - (buyer_balance_before - 20.0)) < 1e-9
+
+        exec_resp = client.post(f"/v1/trades/{trade_id}/execute", json={
+            "input": "should fail",
+        }, headers={"x-api-key": buyer["api_key"]}).json()
+
+        assert exec_resp["status"] == "failed"
+        assert exec_resp["reason"] == "callback_failed"
+
+        # Buyer gets refund of price_cu + slash share (BOND_SLASH * SLASH_TO_BUYER of staked)
+        # stake = price_cu = 20.0; slash_share = 20 * 0.05 * 0.5 = 0.5
+        slash_share = 20.0 * BOND_SLASH * SLASH_TO_BUYER
+        assert abs(_get_balance(buyer["agent_id"]) - (buyer_balance_before + slash_share)) < 1e-9
+
+        # Trade status = failed, escrow refunded
+        conn = db.get_connection()
+        try:
+            trade = conn.execute("SELECT status FROM trades WHERE id = ?", (trade_id,)).fetchone()
+            escrow = conn.execute("SELECT status FROM escrow WHERE trade_id = ?", (trade_id,)).fetchone()
+        finally:
+            conn.close()
+        assert trade["status"] == "failed"
+        assert escrow["status"] == "refunded"
+    finally:
+        server.shutdown()
+
+
+# ── TEST E: Mixed Auth ────────────────────────────────────
+
+
+def test_step5_mixed_auth_same_seller(client):
+    """API-key buyer and Ed25519 buyer both trade against the same seller."""
+    seller = client.post("/v1/agents/register").json()
+    _seed_cu(seller["agent_id"], 50.0)
+
+    schema = client.post("/v1/schemas/register", json={
+        "input_schema": {"type": "string", "mixed_test": True},
+        "output_schema": {"type": "string"},
+    }, headers={"x-api-key": seller["api_key"]}).json()
+    cap_hash = schema["capability_hash"]
+
+    client.post("/v1/sellers/register", json={
+        "capability_hash": cap_hash,
+        "price_cu": 20.0,
+        "capacity": 10,
+    }, headers={"x-api-key": seller["api_key"]})
+
+    # Buyer A: legacy API key
+    buyer_a = client.post("/v1/agents/register").json()
+    _seed_cu(buyer_a["agent_id"], 100.0)
+    match_a = client.post("/v1/match", json={"capability_hash": cap_hash},
+                           headers={"x-api-key": buyer_a["api_key"]}).json()
+    assert match_a["status"] == "matched"
+    exec_a = client.post(f"/v1/trades/{match_a['trade_id']}/execute",
+                          json={"input": "api key trade"},
+                          headers={"x-api-key": buyer_a["api_key"]}).json()
+    assert exec_a["status"] == "executed"
+    settle_a = client.post(f"/v1/trades/{match_a['trade_id']}/settle",
+                            headers={"x-api-key": buyer_a["api_key"]}).json()
+    assert settle_a["status"] == "completed"
+
+    # Buyer B: Ed25519
+    buyer_b_priv, buyer_b_pub = _register_ed25519(client)
+    _seed_cu(buyer_b_pub, 100.0)
+    mb = {"capability_hash": cap_hash}
+    match_b = client.post("/v1/match", json=mb,
+                           headers=_ed25519_headers(mb, buyer_b_priv, buyer_b_pub)).json()
+    assert match_b["status"] == "matched"
+    eb = {"input": "ed25519 trade"}
+    exec_b = client.post(f"/v1/trades/{match_b['trade_id']}/execute", json=eb,
+                          headers=_ed25519_headers(eb, buyer_b_priv, buyer_b_pub)).json()
+    assert exec_b["status"] == "executed"
+    settle_b = client.post(f"/v1/trades/{match_b['trade_id']}/settle",
+                            headers=_ed25519_headers(b"", buyer_b_priv, buyer_b_pub)).json()
+    assert settle_b["status"] == "completed"
+
+    # Both buyers paid the same price, both trades settled identically
+    expected_fee = 20.0 * FEE_TOTAL
+    buyer_a_bal = _get_balance(buyer_a["agent_id"])
+    buyer_b_bal = _get_balance(buyer_b_pub)
+    assert abs(buyer_a_bal - 80.0) < 1e-9
+    assert abs(buyer_b_bal - 80.0) < 1e-9
+
+
+# ── TEST F: PostgreSQL Concurrency ───────────────────────
+
+
+@pytest.mark.skipif(not db._is_pg(), reason="requires PostgreSQL — set DATABASE_URL")
+def test_step5_pg_concurrency(client):
+    """50 agents send match requests simultaneously. No deadlocks, CU invariant holds."""
+    import concurrent.futures
+
+    # One seller, 50 buyers
+    seller = client.post("/v1/agents/register").json()
+    _seed_cu(seller["agent_id"], 10.0)
+
+    schema = client.post("/v1/schemas/register", json={
+        "input_schema": {"type": "string", "concurrency_test": True},
+        "output_schema": {"type": "string"},
+    }, headers={"x-api-key": seller["api_key"]}).json()
+    cap_hash = schema["capability_hash"]
+
+    client.post("/v1/sellers/register", json={
+        "capability_hash": cap_hash,
+        "price_cu": 10.0,
+        "capacity": 50,
+    }, headers={"x-api-key": seller["api_key"]})
+
+    buyers = []
+    for _ in range(50):
+        b = client.post("/v1/agents/register").json()
+        _seed_cu(b["agent_id"], 50.0)
+        buyers.append(b)
+
+    total_seeded = sum(50.0 for _ in buyers) + 10.0  # buyer CU + seller stake
+
+    def _do_trade(b):
+        m = client.post("/v1/match", json={"capability_hash": cap_hash},
+                         headers={"x-api-key": b["api_key"]}).json()
+        if m["status"] != "matched":
+            return False
+        e = client.post(f"/v1/trades/{m['trade_id']}/execute",
+                         json={"input": "concurrent"},
+                         headers={"x-api-key": b["api_key"]}).json()
+        if e["status"] != "executed":
+            return False
+        s = client.post(f"/v1/trades/{m['trade_id']}/settle",
+                         headers={"x-api-key": b["api_key"]}).json()
+        return s["status"] == "completed"
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as pool:
+        outcomes = list(pool.map(_do_trade, buyers))
+
+    completed = sum(1 for o in outcomes if o)
+    assert completed == 50, f"only {completed}/50 trades completed"
+
+    # CU invariant
+    conn = db.get_connection()
+    try:
+        agent_rows = conn.execute("SELECT cu_balance FROM agents").fetchall()
+        staked_row = conn.execute(
+            "SELECT cu_staked FROM sellers WHERE agent_pubkey = ?", (seller["agent_id"],)
+        ).fetchone()
+    finally:
+        conn.close()
+
+    total_agent_cu = sum(r["cu_balance"] for r in agent_rows)
+    cu_staked = staked_row["cu_staked"] if staked_row else 0.0
+    total_fees = completed * 10.0 * FEE_TOTAL
+
+    assert total_agent_cu >= 0
+    assert abs((total_agent_cu + cu_staked + total_fees) - total_seeded) < 0.01, \
+        f"invariant broken: agent_cu={total_agent_cu} staked={cu_staked} fees={total_fees}"
+
+    # Seq numbers strictly monotonic
+    conn = db.get_connection()
+    try:
+        seqs = [r[0] for r in conn.execute("SELECT seq FROM events ORDER BY seq").fetchall()]
+    finally:
+        conn.close()
+    assert seqs == sorted(set(seqs)), "event seq numbers not strictly monotonic"

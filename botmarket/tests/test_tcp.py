@@ -13,10 +13,13 @@ from wire import (
     MSG_REGISTER_AGENT, MSG_REGISTER_SCHEMA, MSG_REGISTER_SELLER,
     MSG_MATCH_REQUEST, MSG_MATCH_RESPONSE, MSG_EXECUTE,
     MSG_EXECUTE_RESPONSE, MSG_QUERY_EVENTS, MSG_EVENTS_RESPONSE, MSG_ERROR,
+    MSG_REGISTER_AGENT_V2, MSG_MATCH_REQUEST_V2, MSG_EXECUTE_V2,
     pack_error,
+    pack_match_request_v2, pack_execute_v2,
 )
 import db
 import matching
+from identity import generate_keypair, sign_request
 
 
 def _tcp_payload(api_key: str, body: dict) -> bytes:
@@ -206,7 +209,7 @@ def test_tcp_invalid_api_key(tcp_server):
     payload = _tcp_payload("bad_key_here", body)
     rt, resp = _run(loop, _send_recv(host, port, MSG_MATCH_REQUEST, payload))
     assert rt == MSG_ERROR
-    assert b"invalid api key" in resp
+    assert b"invalid credentials" in resp
 
 
 def test_tcp_response_valid_binary(tcp_server):
@@ -300,3 +303,180 @@ def test_tcp_no_match(tcp_server):
     assert rt == MSG_MATCH_RESPONSE
     data = json.loads(resp)
     assert data["status"] == "no_match"
+
+
+# ── V2 authenticated tests ───────────────────────────
+
+def _v2_register(loop, host, port, pubkey_hex):
+    """Register a v2 agent (Ed25519 pubkey). Returns response dict."""
+    payload = bytes.fromhex(pubkey_hex)
+    rt, resp = _run(loop, _send_recv(host, port, MSG_REGISTER_AGENT_V2, payload))
+    return rt, json.loads(resp)
+
+
+def _v2_match_payload(pubkey_hex, privkey_hex, cap_hash_hex, max_price_cu=0):
+    """Build signed v2 match payload (everything after the 5-byte wire header)."""
+    cap_hash_bytes = bytes.fromhex(cap_hash_hex)
+    inner = struct.pack('!32sQ', cap_hash_bytes, max_price_cu)
+    sig_hex, ts_ns = sign_request(inner, privkey_hex)
+    return pack_match_request_v2(pubkey_hex, sig_hex, ts_ns, cap_hash_bytes, max_price_cu)[HEADER_SIZE:]
+
+
+def _v2_execute_payload(pubkey_hex, privkey_hex, trade_id_str, input_data: bytes):
+    """Build signed v2 execute payload (everything after the 5-byte wire header)."""
+    import uuid
+    trade_id_bytes = uuid.UUID(trade_id_str).bytes
+    padded = trade_id_bytes.ljust(32, b'\x00')
+    inner = padded + input_data
+    sig_hex, ts_ns = sign_request(inner, privkey_hex)
+    return pack_execute_v2(pubkey_hex, sig_hex, ts_ns, trade_id_bytes, input_data)[HEADER_SIZE:]
+
+
+def test_tcp_v2_register_agent(tcp_server):
+    """V2 agent registration by Ed25519 pubkey → status registered."""
+    host, port, loop = tcp_server
+    privkey, pubkey = generate_keypair()
+    rt, data = _v2_register(loop, host, port, pubkey)
+    assert rt == MSG_REGISTER_AGENT_V2
+    assert data["status"] == "registered"
+    assert data["pubkey"] == pubkey
+
+
+def test_tcp_v2_register_idempotent(tcp_server):
+    """V2 agent re-registration is idempotent (INSERT OR IGNORE)."""
+    host, port, loop = tcp_server
+    privkey, pubkey = generate_keypair()
+    _v2_register(loop, host, port, pubkey)
+    rt, data = _v2_register(loop, host, port, pubkey)
+    assert rt == MSG_REGISTER_AGENT_V2
+    assert data["status"] == "registered"
+
+
+def test_tcp_v2_match_signed(tcp_server):
+    """V2 buyer sends signed match request → matched."""
+    host, port, loop = tcp_server
+
+    # Register v1 seller
+    _, ap = _run(loop, _send_recv(host, port, MSG_REGISTER_AGENT, b""))
+    seller = json.loads(ap)
+    schema_body = {"input_schema": {"type": "string"}, "output_schema": {"type": "string"}}
+    _, sp = _run(loop, _send_recv(host, port, MSG_REGISTER_SCHEMA, _tcp_payload(seller["api_key"], schema_body)))
+    cap_hash = json.loads(sp)["capability_hash"]
+    _seed_cu(seller["agent_id"], 25.0)
+    seller_body = {"capability_hash": cap_hash, "price_cu": 25.0, "capacity": 5}
+    _run(loop, _send_recv(host, port, MSG_REGISTER_SELLER, _tcp_payload(seller["api_key"], seller_body)))
+
+    # Register v2 buyer and fund
+    privkey, pubkey = generate_keypair()
+    _v2_register(loop, host, port, pubkey)
+    _seed_cu(pubkey, 100.0)
+
+    # Signed match request
+    payload = _v2_match_payload(pubkey, privkey, cap_hash)
+    rt, resp = _run(loop, _send_recv(host, port, MSG_MATCH_REQUEST_V2, payload))
+    # Response is binary: pack_match_response layout
+    assert rt == MSG_MATCH_RESPONSE
+    # status=1 (matched) is in byte 73 (last of the 73-byte payload)
+    assert resp[-1] == 1
+
+
+def test_tcp_v2_execute_signed(tcp_server):
+    """V2 buyer: register → match → execute with signed requests → executed."""
+    host, port, loop = tcp_server
+
+    # Setup v1 seller
+    _, ap = _run(loop, _send_recv(host, port, MSG_REGISTER_AGENT, b""))
+    seller = json.loads(ap)
+    schema_body = {"input_schema": {"type": "string"}, "output_schema": {"type": "string"}}
+    _, sp = _run(loop, _send_recv(host, port, MSG_REGISTER_SCHEMA, _tcp_payload(seller["api_key"], schema_body)))
+    cap_hash = json.loads(sp)["capability_hash"]
+    _seed_cu(seller["agent_id"], 30.0)
+    _run(loop, _send_recv(host, port, MSG_REGISTER_SELLER, _tcp_payload(
+        seller["api_key"], {"capability_hash": cap_hash, "price_cu": 30.0, "capacity": 5}
+    )))
+
+    # Register v2 buyer and fund
+    privkey, pubkey = generate_keypair()
+    _v2_register(loop, host, port, pubkey)
+    _seed_cu(pubkey, 100.0)
+
+    # Match
+    match_payload = _v2_match_payload(pubkey, privkey, cap_hash)
+    rt, match_resp = _run(loop, _send_recv(host, port, MSG_MATCH_REQUEST_V2, match_payload))
+    assert rt == MSG_MATCH_RESPONSE
+    assert match_resp[-1] == 1  # status matched
+    # Extract trade_id (first 32 bytes = UUID padded)
+    import uuid
+    trade_id = str(uuid.UUID(bytes=match_resp[:16]))
+
+    # Execute
+    execute_payload = _v2_execute_payload(pubkey, privkey, trade_id, b"hello v2")
+    rt, exec_resp = _run(loop, _send_recv(host, port, MSG_EXECUTE_V2, execute_payload))
+    assert rt == MSG_EXECUTE_RESPONSE
+    # status byte is at position 40; output follows at 41+
+    assert exec_resp[40] == 1  # status executed
+    assert b"executed:hello v2" in exec_resp[41:]
+
+
+def test_tcp_v2_invalid_signature(tcp_server):
+    """V2 match with tampered signature → MSG_ERROR."""
+    host, port, loop = tcp_server
+
+    privkey, pubkey = generate_keypair()
+    _v2_register(loop, host, port, pubkey)
+    _seed_cu(pubkey, 100.0)
+
+    # Build a valid-looking payload but forge the signature
+    cap_hash_hex = "a" * 64  # fake hash
+    fake_sig = "b" * 128     # wrong signature (64 bogus bytes)
+    import time as _time
+    ts_ns = _time.time_ns()
+    cap_hash_bytes = bytes.fromhex(cap_hash_hex)
+    payload = pack_match_request_v2(pubkey, fake_sig, ts_ns, cap_hash_bytes, 0)[HEADER_SIZE:]
+    rt, resp = _run(loop, _send_recv(host, port, MSG_MATCH_REQUEST_V2, payload))
+    assert rt == MSG_ERROR
+
+
+def test_tcp_v2_expired_timestamp(tcp_server):
+    """V2 match with timestamp >30s old → MSG_ERROR."""
+    host, port, loop = tcp_server
+
+    privkey, pubkey = generate_keypair()
+    _v2_register(loop, host, port, pubkey)
+    _seed_cu(pubkey, 100.0)
+
+    cap_hash_hex = "a" * 64
+    cap_hash_bytes = bytes.fromhex(cap_hash_hex)
+    inner = struct.pack('!32sQ', cap_hash_bytes, 0)
+    # Sign with a timestamp 60 seconds in the past
+    old_ts_ns = (__import__('time').time_ns()) - 60_000_000_000
+    from identity import sign
+    from identity import canonical_bytes
+    message = str(old_ts_ns).encode() + b":" + canonical_bytes(inner)
+    sig_hex = sign(message, privkey)
+    payload = pack_match_request_v2(pubkey, sig_hex, old_ts_ns, cap_hash_bytes, 0)[HEADER_SIZE:]
+    rt, resp = _run(loop, _send_recv(host, port, MSG_MATCH_REQUEST_V2, payload))
+    assert rt == MSG_ERROR
+
+
+def test_tcp_v2_unregistered_pubkey(tcp_server):
+    """V2 request from unregistered pubkey → MSG_ERROR."""
+    host, port, loop = tcp_server
+
+    privkey, pubkey = generate_keypair()
+    # Do NOT register — try to match directly
+    cap_hash_hex = "a" * 64
+    payload = _v2_match_payload(pubkey, privkey, cap_hash_hex)
+    rt, resp = _run(loop, _send_recv(host, port, MSG_MATCH_REQUEST_V2, payload))
+    assert rt == MSG_ERROR
+
+
+def test_tcp_v1_v2_backward_compat(tcp_server):
+    """V1 clients still work unaffected alongside v2 handlers."""
+    host, port, loop = tcp_server
+    # V1 register still works
+    rt, payload = _run(loop, _send_recv(host, port, MSG_REGISTER_AGENT, b""))
+    assert rt == MSG_REGISTER_AGENT
+    data = json.loads(payload)
+    assert "agent_id" in data
+    assert "api_key" in data

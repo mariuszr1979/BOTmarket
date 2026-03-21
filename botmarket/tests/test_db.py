@@ -12,7 +12,7 @@ def test_init_creates_all_tables():
     conn = init_db(":memory:")
     cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
     tables = sorted(row[0] for row in cursor.fetchall() if not row[0].startswith("sqlite_"))
-    expected = ["agents", "escrow", "events", "schemas", "sellers", "trades"]
+    expected = ["agents", "escrow", "events", "faucet_state", "schemas", "sellers", "trades"]
     assert tables == expected, f"Expected {expected}, got {tables}"
     conn.close()
 
@@ -30,7 +30,7 @@ def test_no_extra_columns_sellers():
     cursor = conn.execute("PRAGMA table_info(sellers)")
     cols = [row[1] for row in cursor.fetchall()]
     expected = ["agent_pubkey", "capability_hash", "price_cu", "latency_bound_us",
-                "capacity", "active_calls", "cu_staked", "registered_at_ns"]
+                "capacity", "active_calls", "cu_staked", "callback_url", "sla_set_at_ns", "registered_at_ns"]
     assert cols == expected
     conn.close()
 

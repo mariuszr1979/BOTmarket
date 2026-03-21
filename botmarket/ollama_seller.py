@@ -37,6 +37,9 @@ SELLER_PORT   = int(os.environ.get("SELLER_PORT", "8001"))
 PUBLIC_URL    = os.environ.get("SELLER_PUBLIC_URL", "")   # overridden by --tunnel
 BOND_SEED_KEY = os.environ.get("BOTMARKET_BOND_SEED_KEY", "")  # operator key to seed bond
 
+# Path for persisting the agent API key across restarts
+_KEY_FILE = os.path.join(os.path.dirname(__file__), ".seller_key")
+
 # Capability definitions — (input_schema, output_schema, model, price_cu, capacity)
 CAPABILITIES = [
     (
@@ -162,21 +165,15 @@ def _capability_hash(input_schema: dict, output_schema: dict) -> str:
 
 def ensure_balance(api_key: str, needed_cu: float) -> None:
     """Check CU balance; try faucet if insufficient."""
-    url = EXCHANGE_URL.rstrip("/") + "/v1/agents/list"
+    url = EXCHANGE_URL.rstrip("/") + "/v1/agents/me"
     req = urllib.request.Request(url, headers={"X-Api-Key": api_key}, method="GET")
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            agents = json.loads(resp.read()).get("agents", [])
+            balance = json.loads(resp.read()).get("cu_balance", 0.0)
     except Exception:
         return  # can't check, proceed anyway
 
-    balance = None
-    for a in agents:
-        if a.get("pubkey") == api_key:
-            balance = a.get("cu_balance", 0.0)
-            break
-
-    if balance is not None and balance < needed_cu:
+    if balance < needed_cu:
         log.info("balance %.2f CU < needed %.2f — calling faucet", balance, needed_cu)
         try:
             result = _exchange_post("/v1/faucet", {}, api_key)
@@ -268,6 +265,37 @@ def _get_tunnel_url(port: int) -> str:
     return url
 
 
+def _load_or_register_key() -> str:
+    """Return API key: env var > .seller_key file > register fresh and save."""
+    if API_KEY:
+        return API_KEY
+    if os.path.isfile(_KEY_FILE):
+        key = open(_KEY_FILE).read().strip()
+        if key:
+            log.info("loaded API key from %s", _KEY_FILE)
+            return key
+    # Auto-register a fresh agent and persist the key
+    log.info("no API key found — registering fresh agent on %s", EXCHANGE_URL)
+    url = EXCHANGE_URL.rstrip("/") + "/v1/agents/register"
+    req = urllib.request.Request(
+        url, data=b"{}",
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read())
+    except Exception as exc:
+        log.error("agent registration failed: %s", exc)
+        sys.exit(1)
+    key = data["api_key"]
+    agent_id = data["agent_id"]
+    with open(_KEY_FILE, "w") as f:
+        f.write(key)
+    log.info("registered agent %s — key saved to %s", agent_id, _KEY_FILE)
+    return key
+
+
 def main():
     parser = argparse.ArgumentParser(description="BOTmarket Ollama Seller")
     parser.add_argument("--tunnel", action="store_true",
@@ -278,10 +306,7 @@ def main():
                         help=f"Port to listen on (default {SELLER_PORT})")
     args = parser.parse_args()
 
-    api_key = API_KEY
-    if not api_key:
-        log.error("BOTMARKET_API_KEY env var is required")
-        sys.exit(1)
+    api_key = _load_or_register_key()
 
     public_url = args.url or PUBLIC_URL
 

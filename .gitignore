@@ -9,3 +9,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.seller_key
+.env
+trade_log.json
+.vscode/

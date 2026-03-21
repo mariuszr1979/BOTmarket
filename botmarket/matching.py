@@ -30,8 +30,13 @@ def rebuild_seller_tables(conn):
 
 
 def add_seller(seller):
-    """Add a seller to the in-memory table, keeping sort order."""
+    """Upsert a seller into the in-memory table, keeping sort order."""
     cap_hash = seller["capability_hash"]
+    # Replace any existing entry for the same (agent_pubkey, capability_hash)
+    _seller_tables[cap_hash] = [
+        s for s in _seller_tables[cap_hash]
+        if s["agent_pubkey"] != seller["agent_pubkey"]
+    ]
     _seller_tables[cap_hash].append(seller)
     _seller_tables[cap_hash].sort(key=lambda s: (s["price_cu"], s["latency_bound_us"]))
 
