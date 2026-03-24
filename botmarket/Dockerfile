@@ -16,6 +16,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY *.py ./
 COPY skill.md ./
 
+# Copy live dashboard HTML (lives in ../slides/ in repo, copied here by CI or manually)
+# Build context is botmarket/, so we need the file placed here before build.
+COPY live.html ./
+
 # Expose both interfaces
 EXPOSE 8000
 EXPOSE 9000

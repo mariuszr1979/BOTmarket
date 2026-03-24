@@ -76,6 +76,9 @@ if grep -q "^POSTGRES_PASSWORD=changeme" "$ENV_FILE"; then
 fi
 
 # ── 4. Build + start ─────────────────────────────────────────────────────────
+echo "▶ Copying live.html into build context…"
+cp "$REPO_DIR/slides/live.html" "$COMPOSE_DIR/live.html"
+
 echo "▶ Building and starting stack…"
 cd "$COMPOSE_DIR"
 docker compose pull postgres 2>/dev/null || true

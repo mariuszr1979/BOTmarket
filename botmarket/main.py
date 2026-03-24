@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import hashlib
+import httpx
 import json
 import os
 from pathlib import Path
@@ -14,13 +15,13 @@ from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel
 from db import init_db, get_connection
 from log import log
 from events import record_event, query_events
-from constants import FAUCET_FIRST_CU, FAUCET_DRIP_CU, FAUCET_MAX_CU, FAUCET_WINDOW_NS
-from matching import rebuild_seller_tables, add_seller, get_sellers, match_request, increment_active_calls, decrement_active_calls
+from constants import FEE_TOTAL, FAUCET_FIRST_CU, FAUCET_DRIP_CU, FAUCET_MAX_CU, FAUCET_WINDOW_NS, ESCROW_TIMEOUT_NS
+from matching import rebuild_seller_tables, add_seller, get_sellers, match_request, increment_active_calls, decrement_active_calls, remove_seller, record_failure, record_success
 from verification import verify_trade
 from settlement import settle_trade, slash_bond, maybe_set_sla, check_sla_decoherence
 from identity import verify_request, canonical_bytes
@@ -30,6 +31,10 @@ from identity import verify_request, canonical_bytes
 async def lifespan(app):
     conn = init_db()
     rebuild_seller_tables(conn)
+    # Sweep stale escrow on startup
+    refunded = sweep_stale_escrow(conn)
+    if refunded:
+        log("startup_escrow_sweep", refunded=len(refunded))
     conn.close()
     yield
 
@@ -107,7 +112,11 @@ def health():
     return {"status": "ok" if db_status == "ok" else "degraded", "db": db_status}
 
 
-_LIVE_HTML = Path(__file__).resolve().parent.parent / "slides" / "live.html"
+_LIVE_HTML_CANDIDATES = [
+    Path(__file__).resolve().parent / "live.html",                   # Docker: copied into /app
+    Path(__file__).resolve().parent.parent / "slides" / "live.html",  # Local dev: ../slides/
+]
+_LIVE_HTML = next((p for p in _LIVE_HTML_CANDIDATES if p.exists()), _LIVE_HTML_CANDIDATES[-1])
 _SKILL_MD  = Path(__file__).resolve().parent / "skill.md"
 
 
@@ -181,8 +190,24 @@ def agent_card():
                 "inputModes": ["application/json"],
                 "outputModes": ["application/json"],
             },
+            {
+                "id": "claim-free-cu",
+                "name": "Claim Free Compute Units",
+                "description": (
+                    "POST /v1/faucet — 500 CU on first call, 50 CU/day drip, "
+                    "1000 CU lifetime cap. Required before buying."
+                ),
+                "tags": ["faucet", "free", "cu", "onboarding"],
+                "inputModes": ["application/json"],
+                "outputModes": ["application/json"],
+            },
         ],
     }
+
+
+@app.get("/", include_in_schema=False)
+def root_redirect():
+    return RedirectResponse(url="/live")
 
 
 @app.get("/live", response_class=HTMLResponse)
@@ -208,7 +233,12 @@ def register_agent():
         conn.close()
 
     log("agent_registered", agent_id=pubkey)
-    return {"agent_id": pubkey, "api_key": api_key, "cu_balance": 0.0}
+    return {
+        "agent_id": pubkey,
+        "api_key": api_key,
+        "cu_balance": 0.0,
+        "next_step": "POST /v1/faucet with header X-Api-Key to claim 500 free CU",
+    }
 
 
 @app.get("/v1/agents/me")
@@ -451,7 +481,7 @@ class MatchRequest(BaseModel):
 @app.post("/v1/match")
 async def match(body: MatchRequest, buyer_pubkey: str = Depends(get_auth)):
 
-    seller = match_request(body.capability_hash, body.max_price_cu, body.max_latency_us)
+    seller = match_request(body.capability_hash, body.max_price_cu, body.max_latency_us, buyer_pubkey=buyer_pubkey)
     if seller is None:
         return {"status": "no_match"}
 
@@ -540,7 +570,6 @@ async def execute_trade(trade_id: str, body: ExecuteRequest, caller_pubkey: str 
             # Real HTTP callback to seller endpoint
             timeout_us = min((seller_row["latency_bound_us"] or 30_000_000) * 2, 30_000_000)
             timeout_sec = timeout_us / 1_000_000
-            import httpx
             try:
                 async with httpx.AsyncClient(timeout=timeout_sec) as hc:
                     cb_resp = await hc.post(
@@ -586,8 +615,20 @@ async def execute_trade(trade_id: str, body: ExecuteRequest, caller_pubkey: str 
                 record_event(conn, "trade_failed", json.dumps({
                     "trade_id": trade_id, "reason": "callback_failed",
                 }))
+                # Circuit breaker: track consecutive failures, auto-suspend
+                suspended = record_failure(trade["seller_pubkey"], trade["capability_hash"])
+                if suspended:
+                    remove_seller(trade["seller_pubkey"], trade["capability_hash"])
+                    conn.execute(
+                        "DELETE FROM sellers WHERE agent_pubkey = ? AND capability_hash = ?",
+                        (trade["seller_pubkey"], trade["capability_hash"]),
+                    )
+                    record_event(conn, "seller_suspended", json.dumps({
+                        "agent_pubkey": trade["seller_pubkey"],
+                        "capability_hash": trade["capability_hash"],
+                        "reason": "circuit_breaker",
+                    }))
                 conn.commit()
-                conn.close()
                 decrement_active_calls(trade["seller_pubkey"], trade["capability_hash"])
                 return {"status": "failed", "reason": "callback_failed", "latency_us": latency_us}
         else:
@@ -613,6 +654,7 @@ async def execute_trade(trade_id: str, body: ExecuteRequest, caller_pubkey: str 
             "seller": trade["seller_pubkey"],
             "latency_us": latency_us,
         }))
+        record_success(trade["seller_pubkey"], trade["capability_hash"])
         conn.commit()
     finally:
         conn.close()
@@ -627,8 +669,18 @@ async def execute_trade(trade_id: str, body: ExecuteRequest, caller_pubkey: str 
     }
 
 
+class SettleRequest(BaseModel):
+    quality_score: float | None = None
+
+
 @app.post("/v1/trades/{trade_id}/settle")
-async def settle(trade_id: str, caller_pubkey: str = Depends(get_auth)):
+async def settle(trade_id: str, body: SettleRequest | None = None, caller_pubkey: str = Depends(get_auth)):
+
+    quality = None
+    if body and body.quality_score is not None:
+        if not (0.0 <= body.quality_score <= 1.0):
+            raise HTTPException(status_code=400, detail="quality_score must be between 0.0 and 1.0")
+        quality = body.quality_score
 
     conn = get_connection()
     try:
@@ -658,14 +710,22 @@ async def settle(trade_id: str, caller_pubkey: str = Depends(get_auth)):
 
         if passed:
             seller_receives, fee_cu = settle_trade(conn, dict(trade))
+            if quality is not None:
+                conn.execute(
+                    "UPDATE trades SET quality_score = ? WHERE id = ?",
+                    (quality, trade["id"]),
+                )
             check_sla_decoherence(conn, trade["seller_pubkey"], trade["capability_hash"])
             maybe_set_sla(conn, trade["seller_pubkey"], trade["capability_hash"])
             conn.commit()
-            return {
+            result = {
                 "status": "completed",
                 "seller_receives": seller_receives,
                 "fee_cu": fee_cu,
             }
+            if quality is not None:
+                result["quality_score"] = quality
+            return result
         else:
             slash_bond(conn, dict(trade), dict(seller) if seller else {"cu_staked": 0.0}, reason)
             conn.commit()
@@ -675,6 +735,52 @@ async def settle(trade_id: str, caller_pubkey: str = Depends(get_auth)):
             }
     finally:
         conn.close()
+
+
+# ── Escrow timeout — auto-refund stuck "executed" trades ──
+
+def sweep_stale_escrow(conn) -> list[dict]:
+    """Refund trades stuck in 'executed' longer than ESCROW_TIMEOUT_NS.
+    Returns list of refunded trade summaries."""
+    cutoff_ns = time.time_ns() - ESCROW_TIMEOUT_NS
+    stale = conn.execute(
+        "SELECT id, buyer_pubkey, seller_pubkey, capability_hash, price_cu "
+        "FROM trades WHERE status = 'executed' AND end_ns IS NOT NULL AND end_ns < ?",
+        (cutoff_ns,),
+    ).fetchall()
+    refunded = []
+    for t in stale:
+        conn.execute(
+            "UPDATE trades SET status = 'expired' WHERE id = ?", (t["id"],)
+        )
+        conn.execute(
+            "UPDATE escrow SET status = 'refunded' WHERE trade_id = ?", (t["id"],)
+        )
+        conn.execute(
+            "UPDATE agents SET cu_balance = cu_balance + ? WHERE pubkey = ?",
+            (t["price_cu"], t["buyer_pubkey"]),
+        )
+        record_event(conn, "escrow_expired", json.dumps({
+            "trade_id": t["id"],
+            "buyer": t["buyer_pubkey"],
+            "seller": t["seller_pubkey"],
+            "refunded_cu": t["price_cu"],
+        }))
+        refunded.append({"trade_id": t["id"], "buyer": t["buyer_pubkey"], "refunded_cu": t["price_cu"]})
+    if refunded:
+        conn.commit()
+    return refunded
+
+
+@app.post("/v1/admin/sweep-escrow")
+async def admin_sweep_escrow(caller_pubkey: str = Depends(get_auth)):
+    """Manually trigger escrow timeout sweep. Authenticated."""
+    conn = get_connection()
+    try:
+        refunded = sweep_stale_escrow(conn)
+    finally:
+        conn.close()
+    return {"swept": len(refunded), "refunded": refunded}
 
 
 @app.get("/v1/events/stream")
@@ -719,7 +825,8 @@ def get_stats():
         total_cu = conn.execute("SELECT COALESCE(SUM(cu_balance), 0) as s FROM agents").fetchone()["s"]
         escrow_held = conn.execute("SELECT COALESCE(SUM(cu_amount), 0) as s FROM escrow WHERE status = 'held'").fetchone()["s"]
         fees_earned = conn.execute(
-            "SELECT COALESCE(SUM(price_cu * 0.015), 0) as s FROM trades WHERE status = 'completed'"
+            "SELECT COALESCE(SUM(price_cu * ?), 0) as s FROM trades WHERE status = 'completed'",
+            (FEE_TOTAL,)
         ).fetchone()["s"]
         # kill-criteria fields
         day_ns = 86_400_000_000_000
@@ -768,6 +875,34 @@ def changelog():
     return {
         "changelog": [
             {
+                "date": "2026-03-23",
+                "version": "0.5.0",
+                "changes": [
+                    "Security: self-trade prevention — buyer cannot match with own seller listing",
+                    "Fix: escrow timeout — trades stuck in 'executed' auto-refund after 1 hour",
+                    "POST /v1/admin/sweep-escrow — manual trigger for escrow timeout sweep",
+                    "Startup: automatic escrow sweep on server restart",
+                    "Quality: optional buyer-reported quality_score (0.0–1.0) at settle time",
+                    "Leaderboard: avg_quality and quality_votes per seller",
+                    "UX: next_step hints in register and faucet responses",
+                    "UX: faucet listed as skill in agent card",
+                    "Tests: 367 passing",
+                ],
+            },
+            {
+                "date": "2026-03-22",
+                "version": "0.4.0",
+                "changes": [
+                    "Ollama seller deployed permanently on VPS (qwen2.5:1.5b, systemd, https://botmarket.dev/seller)",
+                    "First real trade with Ollama inference: qwen2.5:7b summarize, 3.97s, 2.955 CU to seller",
+                    "Security: /v1/market/start and /v1/market/stop now require authentication",
+                    "Math: removed phantom sub-fees (FEE_PLATFORM, FEE_MAKERS, FEE_VERIFY) — 1.5% flat fee only",
+                    "Fix: double conn.close() bug in execute_trade callback failure path",
+                    "Fix: hardcoded 0.015 replaced with FEE_TOTAL constant in SQL queries",
+                    "Tests: 345 passing (+22 new: settlement, lifecycle end-to-end)",
+                ],
+            },
+            {
                 "date": "2026-03-20",
                 "version": "0.3.0",
                 "changes": [
@@ -780,7 +915,7 @@ def changelog():
                 "date": "2026-03-19",
                 "version": "0.2.0",
                 "changes": [
-                    "First real trade executed (trade 4f8915f5, qwen2.5:7b summarize, 3 CU, 4148ms)",
+                    "First production trade executed (trade 596284f8, operator seller, 20 CU, 1.5% fee)",
                     "GET /v1/leaderboard — top sellers by CU earned with SLA compliance badge",
                     "POST /v1/faucet — 500 CU on first call, 50 CU/day drip, 1000 CU lifetime cap",
                     "GET /skill.md — LLM-native self-onboarding document",
@@ -842,7 +977,7 @@ def market_status():
 
 
 @app.post("/v1/market/start")
-def market_start():
+def market_start(caller_pubkey: str = Depends(get_auth)):
     """Start the auto-trader as a background subprocess."""
     global _trader_proc
     if _trader_proc is not None and _trader_proc.poll() is None:
@@ -860,7 +995,7 @@ def market_start():
 
 
 @app.post("/v1/market/stop")
-def market_stop():
+def market_stop(caller_pubkey: str = Depends(get_auth)):
     """Stop the auto-trader subprocess."""
     global _trader_proc
     if _trader_proc is None or _trader_proc.poll() is not None:
@@ -974,6 +1109,7 @@ async def faucet(agent_pubkey: str = Depends(get_auth)):
         "balance": round(new_balance, 4),
         "total_from_faucet": new_total,
         "next_drip_at": next_drip_ns,
+        "next_step": "GET /v1/sellers/list to discover capabilities, then POST /v1/match to buy",
     }
 
 
@@ -997,9 +1133,13 @@ def leaderboard(limit: int = 20):
                 s.latency_bound_us,
                 COUNT(t.id)                                      AS trade_count,
                 COALESCE(SUM(CASE WHEN t.status = 'completed'
-                               THEN t.price_cu * (1 - 0.015) END), 0) AS cu_earned,
+                               THEN t.price_cu * ? END), 0) AS cu_earned,
                 COALESCE(SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END), 0) AS completed,
-                COALESCE(SUM(CASE WHEN t.status = 'violated'  THEN 1 ELSE 0 END), 0) AS violations
+                COALESCE(SUM(CASE WHEN t.status = 'violated'  THEN 1 ELSE 0 END), 0) AS violations,
+                AVG(CASE WHEN t.status = 'completed' AND t.quality_score IS NOT NULL
+                         THEN t.quality_score END) AS avg_quality,
+                COUNT(CASE WHEN t.status = 'completed' AND t.quality_score IS NOT NULL
+                           THEN 1 END) AS quality_votes
             FROM sellers s
             LEFT JOIN trades t
                    ON t.seller_pubkey = s.agent_pubkey
@@ -1008,7 +1148,7 @@ def leaderboard(limit: int = 20):
             ORDER BY cu_earned DESC, trade_count DESC
             LIMIT ?
             """,
-            (limit,),
+            (1.0 - FEE_TOTAL, limit,),
         ).fetchall()
     finally:
         conn.close()
@@ -1028,6 +1168,8 @@ def leaderboard(limit: int = 20):
             "trade_count":      total,
             "sla_pct":          sla_pct,
             "verified_seller":  verified,
+            "avg_quality":      round(r["avg_quality"], 3) if r["avg_quality"] is not None else None,
+            "quality_votes":    r["quality_votes"] or 0,
         })
 
     return {"leaderboard": entries, "limit": limit}
