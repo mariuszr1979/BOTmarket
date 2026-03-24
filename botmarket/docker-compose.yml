@@ -46,7 +46,8 @@ services:
       - ../scripts/moltbook_agent.py:/app/moltbook_agent.py:ro
       - ${MOLTBOOK_CREDENTIALS:-~/.config/moltbook}:/root/.config/moltbook
     environment:
-      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      BOTMARKET_URL: http://exchange:8000
+      BOTMARKET_API_KEY: ${MOLTBOOK_BOTMARKET_API_KEY}
       PYTHONUNBUFFERED: "1"
     command: ["python", "moltbook_agent.py", "daemon"]
 
