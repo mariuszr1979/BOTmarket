@@ -193,32 +193,6 @@
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--dim); }
 
-  /* ── Start/Stop Button ── */
-  .market-btn {
-    font-family: var(--mono); font-size: 0.75rem; font-weight: 600;
-    padding: 6px 16px; border-radius: 6px; border: 1px solid var(--border);
-    cursor: pointer; transition: all 0.2s; letter-spacing: 0.02em;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .market-btn.start {
-    background: rgba(52,211,153,0.1); color: var(--green); border-color: rgba(52,211,153,0.3);
-  }
-  .market-btn.start:hover { background: rgba(52,211,153,0.2); border-color: var(--green); }
-  .market-btn.stop {
-    background: rgba(248,113,113,0.1); color: var(--red); border-color: rgba(248,113,113,0.3);
-  }
-  .market-btn.stop:hover { background: rgba(248,113,113,0.2); border-color: var(--red); }
-  .market-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .market-btn .btn-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-  }
-  .market-btn.start .btn-dot { background: var(--green); }
-  .market-btn.stop .btn-dot { background: var(--red); animation: pulse-glow-red 2s ease-in-out infinite; }
-  @keyframes pulse-glow-red {
-    0%, 100% { box-shadow: 0 0 3px var(--red); }
-    50% { box-shadow: 0 0 10px var(--red); }
-  }
-
   /* ── Responsive ── */
   @media (max-width: 900px) {
     .grid { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
@@ -233,10 +207,6 @@
 <div class="header">
   <h1>BOTmarket — Live</h1>
   <div class="status">
-    <button class="market-btn start" id="marketBtn" onclick="toggleMarket()" disabled>
-      <span class="btn-dot"></span>
-      <span id="marketBtnText">Start Market</span>
-    </button>
     <div class="pulse" id="pulse"></div>
     <span class="status-text" id="statusText">connecting…</span>
   </div>
@@ -505,49 +475,9 @@ async function pollEvents() {
   } catch (e) { /* ignore */ }
 }
 
-// ── Market control ──
-let marketRunning = false;
-let marketBusy = false;
-
-async function pollMarketStatus() {
-  try {
-    const d = await fetchJSON('/v1/market/status');
-    const btn = document.getElementById('marketBtn');
-    const txt = document.getElementById('marketBtnText');
-    marketRunning = d.running;
-    btn.disabled = false;
-    if (d.running) {
-      btn.className = 'market-btn stop';
-      txt.textContent = 'Stop Market';
-    } else {
-      btn.className = 'market-btn start';
-      txt.textContent = 'Start Market';
-    }
-  } catch (e) {
-    document.getElementById('marketBtn').disabled = true;
-  }
-}
-
-async function toggleMarket() {
-  if (marketBusy) return;
-  const btn = document.getElementById('marketBtn');
-  const txt = document.getElementById('marketBtnText');
-  marketBusy = true;
-  btn.disabled = true;
-  txt.textContent = marketRunning ? 'Stopping…' : 'Starting…';
-  try {
-    const endpoint = marketRunning ? '/v1/market/stop' : '/v1/market/start';
-    await fetch(API + endpoint, { method: 'POST' });
-    // Give it a moment to spin up/down
-    await new Promise(r => setTimeout(r, 1500));
-    await pollMarketStatus();
-  } catch (e) { /* ignore */ }
-  marketBusy = false;
-}
-
 // ── Poll loop ──
 async function tick() {
-  await Promise.all([pollStats(), pollAgents(), pollTradeLog(), pollEvents(), pollMarketStatus()]);
+  await Promise.all([pollStats(), pollAgents(), pollTradeLog(), pollEvents()]);
 }
 
 // Start polling every 2 seconds
