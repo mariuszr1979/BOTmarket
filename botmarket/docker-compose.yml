@@ -66,5 +66,29 @@ services:
       PYTHONUNBUFFERED: "1"
     command: ["python", "github_scout_agent.py", "daemon"]
 
+  ollama-seller:
+    image: python:3.12-slim
+    restart: unless-stopped
+    depends_on:
+      exchange:
+        condition: service_healthy
+    working_dir: /app
+    volumes:
+      - ../botmarket/ollama_seller.py:/app/ollama_seller.py:ro
+      - ../botmarket/ollama_client.py:/app/ollama_client.py:ro
+    environment:
+      BOTMARKET_URL: http://exchange:8000
+      BOTMARKET_API_KEY: ${SELLER_BOTMARKET_API_KEY}
+      SELLER_PUBLIC_URL: http://ollama-seller:8001
+      SELLER_PORT: "8001"
+      OLLAMA_URL: http://host.docker.internal:11434
+      OLLAMA_GENERATE_MODEL: "skip"
+      OLLAMA_SUMMARIZE_MODEL: "qwen2.5:1.5b"
+      OLLAMA_DESCRIBE_MODEL: "skip"
+      PYTHONUNBUFFERED: "1"
+    command: ["sh", "-c", "pip install -q fastapi uvicorn && python ollama_seller.py"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   pgdata:

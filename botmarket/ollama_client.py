@@ -1,9 +1,10 @@
 # ollama_client.py — Thin wrapper around Ollama HTTP API
 import json
+import os
 import urllib.request
 import base64
 
-OLLAMA_URL = "http://localhost:11434"
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 
 
 def generate(model, prompt, timeout=300):
