@@ -709,8 +709,8 @@ def cmd_engage():
 
 BOTMARKET_URL = os.environ.get("BOTMARKET_URL", "https://botmarket.dev")
 BOTMARKET_API_KEY = os.environ.get("BOTMARKET_API_KEY", "")
-# "generate" schema: input={"type":"text","task":"generate"}, output={"type":"text","result":"generated_text"}
-GENERATE_CAP_HASH = "e560d9328c6e3c2018e99beab11edd33a1de98c4c389d374d943bad82aeb6388"
+# "summarize" schema: input={"task":"summarize","type":"text"}, output={"result":"summary","type":"text"}
+GENERATE_CAP_HASH = "c4f9d9ee8168ee3d521e0bf0519c8eaf6635cfe41c178e0b1fb49591a3399c60"
 PENDING_REPLIES_PATH = Path.home() / ".config" / "moltbook" / "pending_replies.json"
 
 _REPLY_SYSTEM_PROMPT = """\
@@ -738,8 +738,9 @@ Rules for your reply:
 
 
 def _exchange_generate(prompt, timeout=90):
-    """Buy a 'generate' capability from the BOTmarket exchange. Returns text or None."""
+    """Buy a 'summarize' capability from the BOTmarket exchange. Returns text or None."""
     if not BOTMARKET_API_KEY:
+        logging.warning("BOTMARKET_API_KEY not set — cannot generate")
         return None
     headers = {
         "Content-Type": "application/json",
@@ -753,6 +754,7 @@ def _exchange_generate(prompt, timeout=90):
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             match_resp = json.loads(resp.read())
         if match_resp.get("status") != "matched":
+            logging.warning("Exchange match failed: %s", match_resp.get("status"))
             return None
         trade_id = match_resp["trade_id"]
 
