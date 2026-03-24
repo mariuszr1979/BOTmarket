@@ -416,8 +416,23 @@ async function pollAgents() {
 // ── Trade Log (Ollama output) ──
 async function pollTradeLog() {
   try {
-    const d = await fetchJSON('/v1/trade_log');
-    const trades = d.trades || [];
+    let d = await fetchJSON('/v1/trade_log');
+    let trades = d.trades || [];
+
+    // Fall back to database trades if trade_log.json is empty
+    if (trades.length === 0) {
+      d = await fetchJSON('/v1/trades/recent');
+      trades = (d.trades || []).map(t => ({
+        agent_name: (AGENT_NAMES[t.buyer_pubkey] || t.buyer_pubkey.slice(0, 12) + '…'),
+        price_cu: t.price_cu,
+        model: t.capability_hash ? t.capability_hash.slice(0, 12) + '…' : '—',
+        elapsed_s: t.latency_us ? (t.latency_us / 1e6).toFixed(2) : '—',
+        status: t.status,
+        input: 'trade ' + t.id.slice(0, 8),
+        output: t.status === 'completed' ? 'settled' : t.status,
+      }));
+    }
+
     document.getElementById('tradeCount').textContent = trades.length;
 
     if (trades.length === 0) return;
