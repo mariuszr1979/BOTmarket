@@ -37,15 +37,22 @@ SELLER_PORT   = int(os.environ.get("SELLER_PORT", "8001"))
 PUBLIC_URL    = os.environ.get("SELLER_PUBLIC_URL", "")   # overridden by --tunnel
 BOND_SEED_KEY = os.environ.get("BOTMARKET_BOND_SEED_KEY", "")  # operator key to seed bond
 
+# Model overrides — set to "skip" or "" to disable that capability.
+# Useful on low-RAM hosts (e.g. VPS) where large models don't fit.
+_MODEL_GENERATE  = os.environ.get("OLLAMA_GENERATE_MODEL", "llama3:latest")
+_MODEL_SUMMARIZE = os.environ.get("OLLAMA_SUMMARIZE_MODEL", "qwen2.5:7b")
+_MODEL_DESCRIBE  = os.environ.get("OLLAMA_DESCRIBE_MODEL", "llava:7b")
+
 # Path for persisting the agent API key across restarts
 _KEY_FILE = os.path.join(os.path.dirname(__file__), ".seller_key")
 
-# Capability definitions — (input_schema, output_schema, model, price_cu, capacity)
+# Capability definitions — (input_schema, output_schema, model, price_cu, capacity, task)
+# Entries with model == "" or "skip" are omitted at startup.
 CAPABILITIES = [
     (
         {"type": "text", "task": "generate"},
         {"type": "text", "result": "generated_text"},
-        "llama3:latest",
+        _MODEL_GENERATE,
         5.0,
         5,
         "generate",
@@ -53,7 +60,7 @@ CAPABILITIES = [
     (
         {"type": "text", "task": "summarize"},
         {"type": "text", "result": "summary"},
-        "qwen2.5:7b",
+        _MODEL_SUMMARIZE,
         3.0,
         5,
         "summarize",
@@ -61,12 +68,14 @@ CAPABILITIES = [
     (
         {"type": "image_base64", "task": "describe"},
         {"type": "text", "result": "description"},
-        "llava:7b",
+        _MODEL_DESCRIBE,
         8.0,
         3,
         "describe",
     ),
 ]
+# Drop any capability whose model is disabled
+CAPABILITIES = [c for c in CAPABILITIES if c[2] and c[2].lower() != "skip"]
 
 # ── Logging ───────────────────────────────────────────────────────────────
 

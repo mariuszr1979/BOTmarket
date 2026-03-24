@@ -40,7 +40,8 @@ def test_no_extra_columns_trades():
     cursor = conn.execute("PRAGMA table_info(trades)")
     cols = [row[1] for row in cursor.fetchall()]
     expected = ["id", "buyer_pubkey", "seller_pubkey", "capability_hash",
-                "price_cu", "start_ns", "end_ns", "status", "latency_us"]
+                "price_cu", "start_ns", "end_ns", "status", "latency_us",
+                "quality_score"]
     assert cols == expected
     conn.close()
 

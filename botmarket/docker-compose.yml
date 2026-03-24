@@ -35,5 +35,35 @@ services:
       start_period: 15s
       retries: 3
 
+  moltbook:
+    image: python:3.12-slim
+    restart: unless-stopped
+    depends_on:
+      exchange:
+        condition: service_healthy
+    working_dir: /app
+    volumes:
+      - ../scripts/moltbook_agent.py:/app/moltbook_agent.py:ro
+      - ${MOLTBOOK_CREDENTIALS:-~/.config/moltbook}:/root/.config/moltbook
+    environment:
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      PYTHONUNBUFFERED: "1"
+    command: ["python", "moltbook_agent.py", "daemon"]
+
+  github-scout:
+    image: python:3.12-slim
+    restart: unless-stopped
+    depends_on:
+      exchange:
+        condition: service_healthy
+    working_dir: /app
+    volumes:
+      - ../scripts/github_scout_agent.py:/app/github_scout_agent.py:ro
+      - ${GITHUB_SCOUT_STATE:-~/.config/botmarket}:/root/.config/botmarket
+    environment:
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      PYTHONUNBUFFERED: "1"
+    command: ["python", "github_scout_agent.py", "daemon"]
+
 volumes:
   pgdata:

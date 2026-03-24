@@ -54,7 +54,8 @@ CREATE TABLE IF NOT EXISTS trades (
     start_ns        INTEGER,
     end_ns          INTEGER,
     status          TEXT NOT NULL DEFAULT 'matched',
-    latency_us      INTEGER
+    latency_us      INTEGER,
+    quality_score   REAL
 );
 
 CREATE TABLE IF NOT EXISTS events (
@@ -122,7 +123,8 @@ CREATE TABLE IF NOT EXISTS trades (
     start_ns        BIGINT,
     end_ns          BIGINT,
     status          TEXT NOT NULL DEFAULT 'matched',
-    latency_us      BIGINT
+    latency_us      BIGINT,
+    quality_score   DOUBLE PRECISION
 );
 
 CREATE TABLE IF NOT EXISTS events (

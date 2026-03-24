@@ -103,7 +103,7 @@ def test_register_100_unique_agents(client):
 def test_register_no_extra_fields(client):
     """Rule 2: no name, email, or profile fields in response."""
     data = client.post("/v1/agents/register").json()
-    assert set(data.keys()) == {"agent_id", "api_key", "cu_balance"}
+    assert set(data.keys()) == {"agent_id", "api_key", "cu_balance", "next_step"}
 
 
 def test_register_ignores_extra_body(client):
@@ -113,7 +113,7 @@ def test_register_ignores_extra_body(client):
         json={"name": "evil", "email": "bad@bad.com"},
     )
     assert resp.status_code == 201
-    assert set(resp.json().keys()) == {"agent_id", "api_key", "cu_balance"}
+    assert set(resp.json().keys()) == {"agent_id", "api_key", "cu_balance", "next_step"}
 
 
 # ── Helper ────────────────────────────────────────────────
@@ -1014,7 +1014,7 @@ def test_settle_pass_trade_status_completed(client):
 
 
 def test_settle_pass_event_recorded(client):
-    """Event settlement_complete recorded with fee breakdown."""
+    """Event settlement_complete recorded with correct fee fields."""
     buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client, price=200.0, buyer_cu=500.0)
     client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
     import db
@@ -1025,13 +1025,15 @@ def test_settle_pass_event_recorded(client):
     assert payload["trade_id"] == trade_id
     assert payload["seller_receives"] == 197.0
     assert payload["fee_cu"] == 3.0
-    assert payload["fee_platform"] == 2.0
-    assert abs(payload["fee_makers"] - 0.6) < 1e-9
-    assert payload["fee_verify"] == 0.4
+    # phantom sub-fees must not appear in event
+    assert "fee_platform" not in payload
+    assert "fee_makers" not in payload
+    assert "fee_verify" not in payload
 
 
-def test_settle_pass_fee_breakdown_sums(client):
-    """fee_platform + fee_makers + fee_verify = fee_cu (1.5% total)."""
+def test_settle_pass_fee_is_fee_total(client):
+    """fee_cu = price * FEE_TOTAL (1.5%)."""
+    from constants import FEE_TOTAL
     buyer_id, buyer_key, _, trade_id, _ = _full_trade_cycle(client, price=200.0, buyer_cu=500.0)
     client.post(f"/v1/trades/{trade_id}/settle", headers={"X-API-Key": buyer_key})
     import db
@@ -1039,7 +1041,7 @@ def test_settle_pass_fee_breakdown_sums(client):
     row = conn.execute("SELECT event_data FROM events WHERE event_type = 'settlement_complete' ORDER BY seq DESC LIMIT 1").fetchone()
     conn.close()
     p = json.loads(row["event_data"])
-    assert abs(p["fee_platform"] + p["fee_makers"] + p["fee_verify"] - p["fee_cu"]) < 1e-9
+    assert abs(p["fee_cu"] - 200.0 * FEE_TOTAL) < 1e-9
 
 
 def test_settle_cu_invariant_after_pass(client):
@@ -1403,7 +1405,7 @@ def test_faucet_first_call_response_shape(client):
     agent_id, api_key = _register(client)
     resp = client.post("/v1/faucet", headers={"X-API-Key": api_key})
     data = resp.json()
-    assert set(data.keys()) == {"credited", "balance", "total_from_faucet", "next_drip_at"}
+    assert set(data.keys()) == {"credited", "balance", "total_from_faucet", "next_drip_at", "next_step"}
     assert data["balance"] == 500.0
     assert data["total_from_faucet"] == 500.0
     assert data["next_drip_at"] is not None  # more drips possible (500 < 1000 cap)
@@ -1596,6 +1598,7 @@ def test_leaderboard_entry_fields(client):
     assert set(entry.keys()) == {
         "agent_pubkey", "capability_hash", "price_cu",
         "cu_earned", "trade_count", "sla_pct", "verified_seller",
+        "avg_quality", "quality_votes",
     }
 
 

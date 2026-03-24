@@ -1,7 +1,7 @@
 # settlement.py — CU ledger (debit/credit/escrow/slash)
 import json
 import time
-from constants import FEE_TOTAL, FEE_PLATFORM, FEE_MAKERS, FEE_VERIFY, BOND_SLASH, SLASH_TO_BUYER, SLA_SAMPLE_SIZE, SLA_MARGIN, SLA_DECOHERENCE_NS
+from constants import FEE_TOTAL, BOND_SLASH, SLASH_TO_BUYER, SLA_SAMPLE_SIZE, SLA_MARGIN, SLA_DECOHERENCE_NS
 from events import record_event
 
 
@@ -93,9 +93,6 @@ def settle_trade(conn, trade):
         "seller": trade["seller_pubkey"],
         "seller_receives": seller_receives,
         "fee_cu": fee_cu,
-        "fee_platform": price * FEE_PLATFORM,
-        "fee_makers": price * FEE_MAKERS,
-        "fee_verify": price * FEE_VERIFY,
     }))
 
     return seller_receives, fee_cu

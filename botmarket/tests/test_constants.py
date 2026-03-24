@@ -4,13 +4,9 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from constants import (
-    FEE_TOTAL, FEE_PLATFORM, FEE_MAKERS, FEE_VERIFY,
-    BOND_SLASH, SLASH_TO_BUYER, SLASH_TO_FUND,
+    FEE_TOTAL,
+    BOND_SLASH, SLASH_TO_BUYER, SLASH_BURN,
 )
-
-
-def test_fee_components_sum_to_total():
-    assert abs(FEE_PLATFORM + FEE_MAKERS + FEE_VERIFY - FEE_TOTAL) < 1e-10
 
 
 def test_fee_total_is_1_5_percent():
@@ -22,20 +18,27 @@ def test_bond_slash_is_5_percent():
 
 
 def test_slash_distribution_sums_to_one():
-    assert abs(SLASH_TO_BUYER + SLASH_TO_FUND - 1.0) < 1e-10
+    """50% to buyer + 50% burn = 100% of slashed amount accounted for."""
+    assert abs(SLASH_TO_BUYER + SLASH_BURN - 1.0) < 1e-10
 
 
-def test_200_cu_trade_math():
-    """Pen-and-paper proof from MVP-PLAN.md."""
-    price = 200.0
+def test_100_cu_trade_math():
+    """Settlement math: buyer pays 100 CU, seller receives 98.5, 1.5 burned as fee."""
+    price = 100.0
     fee = price * FEE_TOTAL
     seller_receives = price - fee
-    platform = price * FEE_PLATFORM
-    makers = price * FEE_MAKERS
-    verify = price * FEE_VERIFY
-    assert abs(fee - 3.0) < 1e-10
-    assert abs(seller_receives - 197.0) < 1e-10
-    assert abs(platform - 2.0) < 1e-10
-    assert abs(makers - 0.6) < 1e-10
-    assert abs(verify - 0.4) < 1e-10
-    assert abs(seller_receives + platform + makers + verify - price) < 1e-10
+    assert abs(fee - 1.5) < 1e-10
+    assert abs(seller_receives - 98.5) < 1e-10
+    assert abs(seller_receives + fee - price) < 1e-10
+
+
+def test_slash_math():
+    """Slash math: 5% of stake slashed; 50% to buyer, 50% burned."""
+    stake = 100.0
+    slash_amount = stake * BOND_SLASH
+    to_buyer = slash_amount * SLASH_TO_BUYER
+    burned = slash_amount * SLASH_BURN
+    assert abs(slash_amount - 5.0) < 1e-10
+    assert abs(to_buyer - 2.5) < 1e-10
+    assert abs(burned - 2.5) < 1e-10
+    assert abs(to_buyer + burned - slash_amount) < 1e-10
