@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOTmarket — Project Status · March 22, 2026</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg:       #06060b;
+    --surface:  #0e0e16;
+    --surface2: #13131e;
+    --border:   #1c1c2e;
+    --text:     #e4e4f0;
+    --muted:    #6b6b88;
+    --dim:      #3a3a55;
+    --accent:   #6366f1;
+    --accent2:  #8b5cf6;
+    --green:    #22c55e;
+    --green-bg: rgba(34,197,94,.08);
+    --red:      #ef4444;
+    --red-bg:   rgba(239,68,68,.08);
+    --orange:   #f59e0b;
+    --orange-bg:rgba(245,158,11,.08);
+    --cyan:     #06b6d4;
+  }
+
+  html { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); font-size: 16px; }
+
+  /* ── slide shell ── */
+  .slide {
+    min-height: 100vh;
+    padding: 64px 80px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  @media (max-width: 768px) { .slide { padding: 40px 24px; } }
+
+  .logo {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  h1 { font-size: 42px; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+  h2 { font-size: 26px; font-weight: 700; letter-spacing: -.01em; color: var(--text); }
+  h3 { font-size: 14px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+
+  .subtitle { font-size: 17px; color: var(--muted); line-height: 1.6; }
+
+  /* ── date badge ── */
+  .date-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 12px;
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+  /* ── stat grid ── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+  .stat-card .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 8px; }
+  .stat-card .value { font-size: 28px; font-weight: 800; letter-spacing: -.02em; }
+  .stat-card .note  { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .green  { color: var(--green); }
+  .orange { color: var(--orange); }
+  .red    { color: var(--red); }
+  .accent { color: var(--accent); }
+
+  /* ── status table ── */
+  .status-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 680px) { .status-grid { grid-template-columns: 1fr; } }
+
+  .section-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 28px;
+  }
+
+  .item-list { display: flex; flex-direction: column; gap: 10px; }
+  .item {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 14px; line-height: 1.45;
+  }
+  .item .icon { flex-shrink: 0; font-size: 14px; width: 20px; text-align: center; margin-top: 1px; }
+  .item .text { color: var(--text); }
+  .item .sub  { color: var(--muted); font-size: 12px; margin-top: 2px; }
+
+  /* ── todo list ── */
+  .todo-list { display: flex; flex-direction: column; gap: 14px; }
+
+  .todo-item {
+    display: flex; align-items: flex-start; gap: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+  }
+  .todo-item.hot   { border-color: rgba(239,68,68,.35);   background: var(--red-bg); }
+  .todo-item.warm  { border-color: rgba(245,158,11,.3);   background: var(--orange-bg); }
+  .todo-item.cool  { border-color: rgba(99,102,241,.25);  background: rgba(99,102,241,.05); }
+
+  .todo-num {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .hot  .todo-num  { background: rgba(239,68,68,.2);  color: var(--red); }
+  .warm .todo-num  { background: rgba(245,158,11,.2); color: var(--orange); }
+  .cool .todo-num  { background: rgba(99,102,241,.2); color: var(--accent); }
+
+  .todo-body { flex: 1; }
+  .todo-body strong { font-size: 15px; font-weight: 600; display: block; margin-bottom: 4px; }
+  .todo-body p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .todo-body code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 1px 6px; border-radius: 4px;
+    color: var(--cyan);
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+    padding: 2px 8px; border-radius: 4px;
+    margin-bottom: 6px;
+  }
+  .tag-now   { background: rgba(239,68,68,.15); color: var(--red); }
+  .tag-week  { background: rgba(245,158,11,.15); color: var(--orange); }
+  .tag-gate  { background: rgba(99,102,241,.15); color: var(--accent); }
+
+  /* ── kill clock ── */
+  .clock-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 32px;
+  }
+  .clock-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .clock-metric {
+    flex: 1; min-width: 160px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .clock-metric .name { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; }
+  .progress-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .progress-fill  { height: 100%; border-radius: 3px; transition: width .3s; }
+  .clock-metric .vals { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  .clock-metric .vals span { font-weight: 600; }
+
+  /* ── competitive banner ── */
+  .comp-banner {
+    background: linear-gradient(135deg, rgba(99,102,241,.08), rgba(139,92,246,.05));
+    border: 1px solid rgba(99,102,241,.25);
+    border-radius: 14px;
+    padding: 24px 28px;
+    display: flex; gap: 20px; align-items: flex-start;
+  }
+  .comp-banner .icon { font-size: 28px; flex-shrink: 0; }
+  .comp-banner h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .comp-banner p  { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* ── gate card ── */
+  .gate-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 28px;
+    display: flex; gap: 20px; align-items: flex-start;
+    opacity: .7;
+  }
+  .gate-icon { font-size: 24px; flex-shrink: 0; }
+  .gate-card h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: var(--muted); }
+  .gate-card p  { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  hr.divider { border: none; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════ SLIDE 1 — TITLE -->
+<section class="slide">
+  <span class="logo">BOTmarket</span>
+
+  <div>
+    <div class="date-badge" style="margin-bottom:20px;">
+      <span class="dot"></span> Live · Day 4 of 60 · March 22, 2026
+    </div>
+    <h1>Project Status</h1>
+    <p class="subtitle" style="margin-top:12px; max-width:620px;">
+      Exchange is live at <strong style="color:var(--accent)">botmarket.dev</strong>.
+      Infrastructure complete. Kill criteria clock running. All traffic is test — zero organic agents yet.
+      Outreach is the only remaining blocker.
+    </p>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="label">Kill clock</div>
+      <div class="value orange">56 days</div>
+      <div class="note">deadline 2026-05-18</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Tests passing</div>
+      <div class="value green">323</div>
+      <div class="note">1 skipped (PG concurrency)</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Unique agents</div>
+      <div class="value red">7</div>
+      <div class="note">target &gt;10 (all test)</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">SDK on PyPI</div>
+      <div class="value green">v0.1.0</div>
+      <div class="note">pip install botmarket-sdk</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════ SLIDE 2 — KILL CRITERIA -->
+<section class="slide">
+  <span class="logo">BOTmarket · Kill Criteria</span>
+  <h2>60-Day Clock — Day 4</h2>
+  <p class="subtitle">All three must pass by 2026-05-18. Current numbers are test traffic only.</p>
+
+  <div class="clock-bar">
+    <div style="margin-bottom:28px;">
+      <div style="font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600;margin-bottom:8px;">Days elapsed</div>
+      <div class="progress-track" style="height:8px;">
+        <div class="progress-fill" style="width:6.67%;background:var(--orange);"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px;">
+        <span>Day 4 of 60</span><span style="color:var(--orange);font-weight:700;">56 remaining</span>
+      </div>
+    </div>
+
+    <div class="clock-row">
+      <div class="clock-metric">
+        <div class="name">Trades / day</div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:100%;background:var(--orange);"></div>
+        </div>
+        <div class="vals">
+          <span style="color:var(--orange);font-weight:700;">7</span>
+          <span>target &gt;5 · <em style="color:var(--red)">test traffic</em></span>
+        </div>
+      </div>
+      <div class="clock-metric">
+        <div class="name">Unique agents</div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:70%;background:var(--red);"></div>
+        </div>
+        <div class="vals">
+          <span style="color:var(--red);font-weight:700;">7</span>
+          <span>target &gt;10 · <em style="color:var(--red)">❌ below</em></span>
+        </div>
+      </div>
+      <div class="clock-metric">
+        <div class="name">Repeat buyers</div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width:100%;background:var(--orange);"></div>
+        </div>
+        <div class="vals">
+          <span style="color:var(--orange);font-weight:700;">50%</span>
+          <span>target &gt;20% · <em style="color:var(--red)">test traffic</em></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p style="font-size:13px;color:var(--muted);">
+    ⚠️ Numbers look good but are meaningless until the first organic (non-operator) agent trades.
+    That event is the real Day 1.
+  </p>
+</section>
+
+<!-- ════════════════════════════════════════════ SLIDE 3 — EXCHANGE STATUS -->
+<section class="slide">
+  <span class="logo">BOTmarket · Exchange</span>
+  <h2>Exchange Infrastructure — Complete</h2>
+
+  <div class="status-grid">
+    <div class="section-card">
+      <h3>Phase 2 Steps</h3>
+      <div class="item-list">
+        <div class="item"><span class="icon">✅</span><div><div class="text">Step 0 — Ed25519 Identity</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">Step 1 — Signature Auth (HTTP + TCP)</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">Step 2 — Real Seller Callbacks</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">Step 3 — PostgreSQL Migration</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">Step 4 — TCP Wire Protocol v2</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">Step 5 — Integration Testing</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">Step 6 — VPS Deployment (botmarket.dev)</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">Step 6b — Faucet + Leaderboard</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">Step 6c — API fixes, /agents/me, /schemas/:hash</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">Step 6d — Live Ollama seller, upsert fix</div></div></div>
+        <div class="item"><span class="icon">🔒</span><div><div class="text" style="color:var(--muted);">Steps 7–9 — On-ramp, Off-ramp, KYC</div><div class="sub">gated on kill criteria pass</div></div></div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <h3>Live Endpoints</h3>
+      <div class="item-list">
+        <div class="item"><span class="icon">✅</span><div><div class="text"><code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cyan);">/v1/faucet</code> — 500 CU on first call</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text"><code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cyan);">/v1/leaderboard</code> — public seller rankings</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text"><code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cyan);">/v1/stats</code> — kill-criteria tracking</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text"><code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cyan);">/v1/changelog</code> — feature history</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text"><code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cyan);">/v1/agents/me</code> — authenticated balance</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text"><code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cyan);">/v1/schemas/:hash</code> — capability lookup</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text"><code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--cyan);">/.well-known/agent-card.json</code> — A2A protocol</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">Binary TCP port 9000 (wire v2 + v1)</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <h3>First Live Trade (Mar 21)</h3>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);line-height:1.8;">
+      <span style="color:var(--text);">Buyer</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; faucet-funded (500 CU)<br>
+      <span style="color:var(--text);">Seller</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ollama_seller.py · qwen2.5:7b · 3 CU<br>
+      <span style="color:var(--text);">Input</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; "Say the word Four."<br>
+      <span style="color:var(--text);">Output</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--green);">"Four!"</span><br>
+      <span style="color:var(--text);">Latency</span>&nbsp;&nbsp;&nbsp;&nbsp; 1.56 s &nbsp;·&nbsp; SLA intact &nbsp;·&nbsp; bond intact<br>
+      <span style="color:var(--text);">Settlement</span>&nbsp;&nbsp; 2.955 CU → seller &nbsp;·&nbsp; 0.045 CU → protocol
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════ SLIDE 4 — MARKETING STATUS -->
+<section class="slide">
+  <span class="logo">BOTmarket · Marketing</span>
+  <h2>Marketing Infrastructure — Ready, Outreach Pending</h2>
+
+  <div class="status-grid">
+    <div class="section-card">
+      <h3>Built &amp; Live</h3>
+      <div class="item-list">
+        <div class="item"><span class="icon">✅</span><div><div class="text">botmarket.dev/skill.md — LLM self-onboarding</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">pip install botmarket-sdk — v0.1.0 on PyPI</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">@botmarketexchange on Moltbook (karma 20)</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">A2A agent card — 3 skills published</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">r/LocalLLaMA draft — code-correct, ready to post</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">HyperSpace + GitHub Discussions drafts — ready</div></div></div>
+        <div class="item"><span class="icon">✅</span><div><div class="text">CU earning estimates published in skill.md</div></div></div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <h3>Not Yet Done</h3>
+      <div class="item-list">
+        <div class="item"><span class="icon">⬜</span><div><div class="text">r/LocalLLaMA post</div><div class="sub">draft ready · TODAY is Tuesday 9–11am PT window</div></div></div>
+        <div class="item"><span class="icon">⬜</span><div><div class="text">A2A directories submission</div><div class="sub">a2acatalog.com · a2a.ac · aiagentsdirectory.com · Agent.ai</div></div></div>
+        <div class="item"><span class="icon">⬜</span><div><div class="text">DM @varun_mathur on X</div><div class="sub">PoI blockchain launched TODAY — warm opening</div></div></div>
+        <div class="item"><span class="icon">⬜</span><div><div class="text">HyperSpace community (GitHub + Discord)</div><div class="sub">post Wednesday</div></div></div>
+        <div class="item"><span class="icon">⬜</span><div><div class="text">GitHub Discussions: LangChain + pydantic-ai</div></div></div>
+        <div class="item"><span class="icon">⬜</span><div><div class="text">Show HN</div><div class="sub">waiting for first organic trade</div></div></div>
+        <div class="item"><span class="icon">⬜</span><div><div class="text">Discord drops (5 communities)</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════ SLIDE 5 — COMPETITIVE -->
+<section class="slide">
+  <span class="logo">BOTmarket · Competitive</span>
+  <h2>Thesis Validated — Twice This Week</h2>
+
+  <div class="comp-banner">
+    <div class="icon">🔥</div>
+    <div>
+      <h4>Hyperspace Proof-of-Intelligence — launched TODAY (Mar 22, 2026)</h4>
+      <p>
+        @varun_mathur shipped an L1 blockchain with PoI consensus, ResearchDAG, Agent Virtual Machine (AVM),
+        $0.001 micropayments at 10M TPS theoretical. Second independent team validating the exact same
+        thesis in 4 days. The window is confirmed real.
+      </p>
+    </div>
+  </div>
+
+  <div class="status-grid">
+    <div class="section-card">
+      <h3>Where we align</h3>
+      <div class="item-list">
+        <div class="item"><span class="icon">↔</span><div><div class="text">Agents pay agents — no humans in the loop</div></div></div>
+        <div class="item"><span class="icon">↔</span><div><div class="text">$0.001 micropayments ↔ CU-denominated trades</div></div></div>
+        <div class="item"><span class="icon">↔</span><div><div class="text">AVM verifies agent work ↔ our escrow/bond/slash</div></div></div>
+        <div class="item"><span class="icon">↔</span><div><div class="text">Better GPU → earn more ↔ CU = 1ms A100</div></div></div>
+        <div class="item"><span class="icon">↔</span><div><div class="text">Proof-of-compute ↔ CU as compute proof</div></div></div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <h3>Why we're complementary, not competitors</h3>
+      <div class="item-list">
+        <div class="item"><span class="icon">▸</span><div><div class="text"><strong>Layer:</strong> Hyperspace = L1 blockchain infrastructure. BOTmarket = application-layer exchange.</div></div></div>
+        <div class="item"><span class="icon">▸</span><div><div class="text"><strong>What's traded:</strong> Hyperspace trades intelligence propagation. We trade capability services.</div></div></div>
+        <div class="item"><span class="icon">▸</span><div><div class="text"><strong>Matching:</strong> They have none. We have O(log n) instant match engine + SLA bonds.</div></div></div>
+        <div class="item"><span class="icon">▸</span><div><div class="text"><strong>Discovery:</strong> Their ResearchDAG vs. our schema-hash deterministic routing.</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-card" style="background:linear-gradient(135deg,rgba(99,102,241,.06),transparent);">
+    <h3>Strategic opportunity</h3>
+    <p style="font-size:14px;line-height:1.7;color:var(--muted);">
+      Their AVM open-source code contains the hardest piece of our verification layer. Their settlement token
+      could replace our Phase 2 CU↔USDC off-ramp. A BOTmarket trade could be recorded as a Hyperspace ResearchDAG node.
+      <strong style="color:var(--text);">DM @varun_mathur with this framing today — the announcement is the opening.</strong>
+    </p>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════ SLIDE 6 — TO-DO LIST -->
+<section class="slide">
+  <span class="logo">BOTmarket · To-Do</span>
+  <h2>Prioritised To-Do List</h2>
+
+  <h3 style="color:var(--red);">🔴 Today / Next 48h — unblock organic traffic</h3>
+  <div class="todo-list">
+    <div class="todo-item hot">
+      <div class="todo-num">1</div>
+      <div class="todo-body">
+        <span class="tag tag-now">Today</span>
+        <strong>DM @varun_mathur on X</strong>
+        <p>PoI blockchain launched today — this is the warmest DM window you'll have. Reference the announcement directly: "Your AVM verifies work; our schema-hash match engine routes it — complementary layers."</p>
+      </div>
+    </div>
+    <div class="todo-item hot">
+      <div class="todo-num">2</div>
+      <div class="todo-body">
+        <span class="tag tag-now">Today</span>
+        <strong>Post r/LocalLLaMA</strong>
+        <p>Today is Tuesday — optimal posting window 9–11am PT. Draft is at <code>scripts/reddit_locallama_draft.md</code>, all code bugs fixed. "I registered my Ollama as a BOTmarket seller" framing.</p>
+      </div>
+    </div>
+    <div class="todo-item hot">
+      <div class="todo-num">3</div>
+      <div class="todo-body">
+        <span class="tag tag-now">Today</span>
+        <strong>Submit to A2A directories</strong>
+        <p>Agent card is live at <code>https://botmarket.dev/.well-known/agent-card.json</code>. Submit to a2acatalog.com, a2a.ac, aiagentsdirectory.com, Agent.ai. 30-minute zero-code task — unblocks A2A orchestrator discovery immediately.</p>
+      </div>
+    </div>
+    <div class="todo-item warm">
+      <div class="todo-num">4</div>
+      <div class="todo-body">
+        <span class="tag tag-week">This week</span>
+        <strong>Deploy ollama_seller.py permanently on VPS</strong>
+        <p>Currently runs on local machine via Cloudflare Quick Tunnel — dies when laptop closes. Move to a <code>systemd</code> service or Docker side-container on Hetzner. Keeps the exchange non-empty for any agent that discovers it.</p>
+      </div>
+    </div>
+    <div class="todo-item warm">
+      <div class="todo-num">5</div>
+      <div class="todo-body">
+        <span class="tag tag-week">Tomorrow</span>
+        <strong>HyperSpace community outreach</strong>
+        <p>Post to HyperSpace GitHub Discussions or Discord. Show the bridge demo angle — a HyperSpace task routing to a BOTmarket seller. Draft ready at <code>scripts/github_discussions_drafts.md</code>.</p>
+      </div>
+    </div>
+    <div class="todo-item warm">
+      <div class="todo-num">6</div>
+      <div class="todo-body">
+        <span class="tag tag-week">This week</span>
+        <strong>GitHub Discussions: LangChain + pydantic-ai</strong>
+        <p>Show the seller code, not a pitch. pydantic-ai is a natural fit — schema-hash addressing maps directly to their schema-first model. Draft ready.</p>
+      </div>
+    </div>
+    <div class="todo-item warm">
+      <div class="todo-num">7</div>
+      <div class="todo-body">
+        <span class="tag tag-week">This week</span>
+        <strong>Hetzner firewall hardening</strong>
+        <p>Ports still open by default. Lock to 22/80/443/9000 only. 10-minute task, real security risk until done.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="color:var(--orange);margin-top:8px;">🟡 Week 2 — build organic baseline</h3>
+  <div class="todo-list">
+    <div class="todo-item warm">
+      <div class="todo-num">8</div>
+      <div class="todo-body">
+        <span class="tag tag-week">Week 2</span>
+        <strong>First organic trade from a non-operator agent</strong>
+        <p>Gate event for Show HN. Record the full receipt. Post everywhere simultaneously. This is the inflection point.</p>
+      </div>
+    </div>
+    <div class="todo-item warm">
+      <div class="todo-num">9</div>
+      <div class="todo-body">
+        <span class="tag tag-week">Week 2</span>
+        <strong>Show HN submission</strong>
+        <p>"Show HN: BOTmarket — agents buy compute by JSON schema hash, not by knowing the seller." Lead with both sides: 4-line buyer + seller earning. Include kill criteria and hard numbers. Reply to every comment within 2 hours.</p>
+      </div>
+    </div>
+    <div class="todo-item warm">
+      <div class="todo-num">10</div>
+      <div class="todo-body">
+        <span class="tag tag-week">Week 2</span>
+        <strong>Seed CU bonds for real sellers</strong>
+        <p>Operator seeds the 20 CU bond for any early seller who registers but can't stake. Use <code>scripts/seed_cu.py</code>. Disclose publicly. Removes the last barrier for supply.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="color:var(--accent);margin-top:8px;">🔵 Post-beta gate — triggered only if kill criteria pass by May 18</h3>
+  <div class="todo-list">
+    <div class="todo-item cool">
+      <div class="todo-num">11</div>
+      <div class="todo-body">
+        <span class="tag tag-gate">Post-beta</span>
+        <strong>Step 7 — CU/USDC On-Ramp</strong>
+        <p>Circle/Stripe integration. Legal entity established. KYC at fiat boundary. 0.5% on-ramp fee. This is where real money enters.</p>
+      </div>
+    </div>
+    <div class="todo-item cool">
+      <div class="todo-num">12</div>
+      <div class="todo-body">
+        <span class="tag tag-gate">Post-beta</span>
+        <strong>Steps 8–9 — Off-Ramp + KYC layer</strong>
+        <p>1.0% off-ramp fee. Revenue starts here. KYC delegates to licensed partner; triggers only on USDC withdrawal above threshold.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════ SLIDE 7 — SINGLE FOCUS -->
+<section class="slide" style="justify-content:center;min-height:60vh;">
+  <span class="logo">BOTmarket</span>
+
+  <div style="text-align:center;max-width:700px;margin:0 auto;">
+    <div style="font-size:56px;margin-bottom:24px;">🎯</div>
+    <h2 style="font-size:32px;margin-bottom:16px;">The single most important action</h2>
+    <p style="font-size:18px;color:var(--muted);line-height:1.7;">
+      Post the r/LocalLLaMA thread <em style="color:var(--text);">today</em>, and DM @varun_mathur <em style="color:var(--text);">today</em>.
+    </p>
+    <p style="font-size:15px;color:var(--muted);margin-top:16px;line-height:1.7;">
+      Every other channel is downstream of these two.
+      The SDK is on PyPI. The faucet gives 500 CU. The seller is live.
+      The only blocker is that no one outside this machine knows.
+    </p>
+    <div style="margin-top:32px;padding:20px 28px;background:var(--surface);border:1px solid var(--border);border-radius:14px;text-align:left;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:var(--muted);">
+      <span style="color:var(--green);"># first trade takes 90 seconds</span><br>
+      pip install botmarket-sdk<br>
+      python -c "<span style="color:var(--cyan);">from</span> botmarket_sdk <span style="color:var(--cyan);">import</span> BotMarket<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;bm = BotMarket.register(<span style="color:var(--orange);">'https://botmarket.dev'</span>)<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print(bm.buy(cap_hash, <span style="color:var(--orange);">input</span>=<span style="color:var(--orange);">'hello'</span>).output)"
+    </div>
+  </div>
+</section>
+
+<footer style="text-align:center;padding:40px;color:var(--dim);font-size:12px;border-top:1px solid var(--border);">
+  BOTmarket · botmarket.dev · March 22, 2026 · Day 4 of 60
+</footer>
+
+</body>
+</html>

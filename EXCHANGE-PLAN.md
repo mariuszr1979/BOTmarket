@@ -1168,3 +1168,69 @@ REPLAY_WINDOW        = 30          # Seconds for signature timestamp validity
 AUTH_TRANSITION      = True        # Accept both API key + Ed25519 during migration
 SLA_DECOHERENCE_SEC  = 2592000     # 30 days — SLA re-measurement window
 ```
+
+---
+
+## Moltbook Growth Channel
+
+> **Goal:** Turn the Moltbook agent (`scripts/moltbook_agent.py`) into a reliable inbound channel — working discovery, scout, DM, and content pipeline — before moving to paid or video distribution.
+
+### Phase 1 — Foundation Fixes (Day 11) ✅ COMPLETE
+
+| Item | Change | Impact |
+|------|--------|--------|
+| Engage added to daemon | `cmd_engage` now fires every 6h (was manual-only) | 5 ready templates finally run |
+| Explore triggers widened | 2-tier scoring replaces 7-exact-phrase gate. Score ≥4 → comment, ≥7 → follow | Comments: ~0 → up to 5/run |
+| Scout caps removed | `break` → counter (max 3 per cap/query) | Approaches: ~6 → 18+ per cycle |
+| Submolt routing | Topics routed to `m/agents` / `m/ai` / `m/general` | Correct community placement |
+| `cmd_check_dms()` | Accept requests, send intro, reply to unread. Fires 4h. | DMs no longer ignored |
+
+**Daemon schedule after Phase 1:**
+```
+heartbeat       2h   (unchanged)
+reply-comments  30m  (unchanged)
+explore         2h   (was 4h)
+engage          6h   NEW
+auto-post       6h   (was 8h, now with routing)
+scout-sellers   6h   (was 12h, cap removed)
+scout-buyers    6h   (was 12h, cap removed)
+check-dms       4h   NEW
+```
+
+### Phase 2 — Content Depth (next)
+
+- 5 new topic stubs: 200-trade milestone, first external seller story, protocol explainer, CU mechanics, agent wallet intro
+- Topic rotation so no community sees same post twice in 7 days
+- `score_post()` track open/reply rate per topic, retire low performers after 10 posts
+
+### Phase 3 — Follower Conversion
+
+- Follow-back logic: detect followers, send tailored DM within 24h
+- `cmd_nurture_leads()`: re-engage contacts who viewed but didn't register
+- Persistent contact log (SQLite or JSON): avoid re-contacting same user
+
+### Phase 4 — Cross-Platform Mirror
+
+- Auto-mirror Moltbook molts → HuggingFace discussions (weekly digest)
+- Manual trigger → r/LocalLLaMA / r/selfhosted (draft ready in `scripts/botmarket_sell_announcement.md`)
+
+### Phase 5 — Analytics Loop
+
+- Weekly stats: follows gained, comments posted, DMs sent/replied, registrations attributed to Moltbook referrals
+- Log to `trade_log.json` or separate `moltbook_metrics.json`
+
+### Phase 6 — Tone Guard
+
+- Pre-post validator: agent-as-subject test + credibility test (from MOLTBOOK-PLAN.html Priority #8)
+- Reject posts that fail either test before sending
+
+### Phase 7 — Graduation Criteria
+
+```
+Moltbook channel graduates when:
+  > 25 followers on @botmarket account
+  > 3 registrations attributed to Moltbook outreach
+  > DM reply rate > 20% over any 7-day window
+→ Then: invest in video (Phase 8) and LangChain wrapper (#2)
+```
+

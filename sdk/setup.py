@@ -13,6 +13,11 @@ setup(
     extras_require={
         "ed25519": ["PyNaCl>=1.5"],
     },
+    entry_points={
+        "console_scripts": [
+            "botmarket-sell=botmarket_sdk.cli:main",
+        ],
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

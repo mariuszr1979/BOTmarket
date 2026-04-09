@@ -5,17 +5,30 @@
 
 ---
 
-## Current State (Day 1 of 60 — 2026-03-20)
+## Current State (Day 4 of 60 — 2026-03-22, EOD)
 
-| Metric | Now | Target |
-|---|---|---|
-| Trades/day | 0 (1 total) | >5 |
-| Registered agents | 2 | >10 |
-| Repeat buyers | — | >20% |
-| Active sellers | 1 (simulated) | 3+ real |
-| Days remaining | 59 | — |
+| Metric | Now | Target | Status |
+|---|---|---|---|
+| Trades/day | 3 real | >5 | ⚠️ 2 short |
+| Registered agents | 13 | >10 | ✅ met |
+| Repeat buyers | 20.0% | >20% | ✅ met |
+| Active sellers | 2 VPS-hosted (generate + summarize) | 3+ real | ⚠️ operator only |
+| Days remaining | 56 | — | — |
 
-**Constraint:** No real sellers yet. No real CU faucet. SDK not on PyPI. No footprint outside Moltbook.
+**Progress today (2026-03-22):**
+- Code audit complete — 6 bugs fixed, 22 new tests (345 total passing)
+- `skill.md` fee copy corrected (removed phantom sub-fees)
+- Ollama seller deployed **permanently on VPS** as systemd service — no longer dies on laptop close
+- First real Ollama inference trade: qwen2.5:7b, 3.97s, 2.955 CU to seller
+- Second real trade confirming VPS seller: qwen2.5:1.5b CPU, 4.8s, 2.955 CU
+- Moltbook post published: "Sold inference for 2.955 CU" — verification solver fixed
+- DM sent to @varun_mathur re: PoI + BOTmarket complementary layers
+- `/v1/changelog` updated to v0.4.0
+- 2 of 3 kill criteria now met with real traffic
+
+**Constraint:** Outreach started (Moltbook post live, Varun DM sent). r/LocalLLaMA scheduled Tuesday. Zero inbound organic agents yet.
+
+**Competitive note (Mar 22):** Hyperspace launched Proof-of-Intelligence blockchain today (@varun_mathur). Second major independent validation of the agent-economy thesis in 4 days. DM sent. See `IDEAS.md` #8 for full analysis.
 
 ---
 
@@ -829,7 +842,7 @@ Week 2 (days 8-14): Seller Acquisition Channels
   □ Approach HyperSpace community (GitHub + Discord)  ← draft ready: scripts/github_discussions_drafts.md (post Wednesday)
   □ GitHub Discussions: LangChain + pydantic-ai (seller angle)  ← draft ready: scripts/github_discussions_drafts.md (post Mon/Tue)
   ✅ Add /v1/stats public endpoint + /v1/changelog
-  □ DM @varun_mathur on X
+  □ DM @varun_mathur on X  ← HOT: PoI blockchain launched TODAY (Mar 22) — reference as opening, angle: "Your AVM verifies work; our match engine routes it by schema hash — complementary layers"
   □ Reach out to 3 RunPod/Vast.ai community threads
   ✅ Publish CU earning estimates (hardware-specific, like HyperSpace)  ← in skill.md
   □ Submit to A2A Catalog (a2acatalog.com) + a2a.ac — agent card is already live at /.well-known/agent-card.json  ← tomorrow

@@ -14,11 +14,7 @@ from constants import FEE_TOTAL, BOND_SLASH, SLASH_TO_BUYER
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("BOTMARKET_DB", str(tmp_path / "test.db"))
-    db.DB_PATH = str(tmp_path / "test.db")
-    db.init_db().close()
-    clear_tables()
+def client(db_setup):
     return TestClient(app)
 
 

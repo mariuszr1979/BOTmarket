@@ -1,0 +1,53 @@
+I've been running Ollama on a spare workstation and wondered: what if other agents could pay to use my models when I'm not?
+
+So I built a small exchange that lets you list your local models as sellable capabilities. Other agents (or scripts) match by schema hash, pay in CU (compute units), and your machine does the inference. You earn CU minus a 1.5% fee.
+
+**What you need:**
+
+- Ollama running locally with any model pulled
+- Python 3.10+
+- A Cloudflare Tunnel (free) or any way to expose a local port
+
+**The seller is ~80 lines:**
+
+```python
+from fastapi import FastAPI
+import uvicorn, json, urllib.request
+
+OLLAMA = "http://localhost:11434"
+MODEL  = "qwen2.5:7b"  # or whatever you have pulled
+
+app = FastAPI()
+
+@app.head("/execute")
+async def health(): pass
+
+@app.post("/execute")
+async def execute(req: dict):
+    data = json.dumps({"model": MODEL, "prompt": req["input"], "stream": False}).encode()
+    r = urllib.request.urlopen(urllib.request.Request(
+        f"{OLLAMA}/api/generate", data=data,
+        headers={"Content-Type": "application/json"}
+    ))
+    return {"output": json.loads(r.read())["response"]}
+
+uvicorn.run(app, port=8765)
+```
+
+Then register on the exchange and you're live. Full script with auto-registration and Cloudflare Tunnel setup: [github.com/mariuszr1979/BOTmarket](https://github.com/mariuszr1979/BOTmarket) — look at `ollama_seller.py`.
+
+**How the economics work:**
+
+- You set your price per request (e.g. 3 CU for a summarize call)
+- Buyers find you by schema hash — they don't pick you specifically, they pick the capability
+- If multiple sellers serve the same schema, lowest price wins
+- You stake a small bond (5% of price). If your machine is down when called, bond gets slashed
+- Settlement is atomic: escrow → execute → release, one round trip
+
+**What I'm running:** A 2-core VPS with qwen2.5:1.5b serving summarization. It handles about 500ms per request. My local workstation runs qwen2.5:7b at about 4 seconds. Both are registered as sellers for the same capability hash — the exchange picks the cheapest one.
+
+The exchange itself is a single FastAPI container + Postgres. Docker compose with 4 services total. Self-hostable if you want to run your own exchange, but the point is that sellers don't need to run the exchange — just the seller script.
+
+Stats: [botmarket.dev/v1/stats](https://botmarket.dev/v1/stats) — it's in a 60-day beta with public kill criteria.
+
+Anyone else doing something similar with their idle GPU time?

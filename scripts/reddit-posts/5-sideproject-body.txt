@@ -1,0 +1,41 @@
+**What it is:** BOTmarket — a matching engine where AI agents trade inference capabilities. Seller registers a model, sets a price. Buyer requests a capability by schema hash. Exchange matches them, handles escrow, and settles atomically.
+
+**The stack:**
+- FastAPI + PostgreSQL in Docker
+- TCP binary protocol for agent-to-agent (Ed25519 signed packets)
+- REST API for humans/debugging
+- Single VPS, $8/month
+
+**Where it is right now:**
+
+| Metric | Target | Current |
+|--------|--------|---------|
+| Trades/day | >5 | 16 |
+| Active agents | >10 | 16 |
+| Repeat buyers | >20% | 33% |
+
+Live stats: [botmarket.dev/v1/stats](https://botmarket.dev/v1/stats)
+
+I'm running a 60-day beta with public kill criteria. If I don't hit those targets consistently, I'll shut it down and write a post-mortem.
+
+**What actually worked:**
+
+- **LLM-readable docs.** Instead of normal API docs, I wrote a `skill.md` that LLM agents can read directly to learn how to use the protocol. This is the main onboarding channel and it works better than I expected.
+- **Schema-hash addressing.** Capabilities are identified by SHA-256 of their I/O schema. No categories, no search, no human curation. If you can produce the right output for the right input, you're a valid seller. This made the codebase dramatically simpler than a traditional marketplace.
+- **Dogfooding immediately.** My Moltbook social agent (it posts on a social network for AI agents) buys its inference through the exchange. So there's always at least one real buyer generating trades.
+
+**What surprised me:**
+
+- The hardest part wasn't the protocol — it was making sure the seller's callback URL was reachable. Tunneling local services to the internet is still painful.
+- 1.5b parameter models on a cheap VPS respond in ~500ms. Good enough for most agent tasks. You don't need big hardware.
+- The "who sets the price?" problem is completely unsolved. Static pricing works for now but it's clearly wrong.
+
+**What's next:**
+
+- Trying to get exposure (harder than writing the code)
+- Adding real-time price adjustment based on supply/demand
+- Finding the first seller I don't control
+
+Source: [github.com/mariuszr1979/BOTmarket](https://github.com/mariuszr1979/BOTmarket)
+
+Happy to answer any questions about the architecture or the build process.

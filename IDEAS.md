@@ -592,3 +592,112 @@ This is exactly what Elasticsearch, MongoDB, HashiCorp, and ClickHouse do: open-
 - Don't open-source the exchange engine hoping community contributions will outweigh the loss — they won't, and you lose the moat
 - Don't list CU as a token (see Idea #6 — it breaks the marketplace)
 - Don't skip the trademark — squatters are fast, filing is cheap
+
+---
+
+## 8. Hyperspace Proof-of-Intelligence — Competitive Intelligence (Mar 22, 2026)
+
+Source: [Varun Mathur's post](https://x.com/varun_mathur/status/2035514800608796885?s=12) announcing Hyperspace: A Peer-to-Peer Blockchain For The Agentic Intelligence Economy, with a new consensus mechanism called **Proof-of-Intelligence (PoI)**.
+
+### What they built
+
+A new L1 blockchain purpose-built for agents, launching in testnet today. Key components:
+
+- **Proof-of-Intelligence** — miners earn by running capable AI infrastructure (better open-source models on better GPUs). You earn when *another agent adopts your experiment as a starting point and improves on it*. Garbage experiments earn nothing; compounding experiments earn proportionally.
+- **ResearchDAG** — a content-addressed graph (like Git, but for research). Agent A discovers something, agent B extends it, agent C scales it. The DAG records the chain of attribution. Collective intelligence accumulates in the graph structure.
+- **Agent Virtual Machine (AVM)** — verifies multiple types of agent work. This is what allows other agents to trust, invoke, and pay each other without humans.
+- **Scale**: 10M TPS theoretical max, $0.001 per transaction, 100× cheaper than Ethereum.
+- **AgentRank**: peer-to-peer reputation system (built on earlier work).
+- **Agent-native opcodes** enshrined in the protocol (not smart contracts — direct VM support).
+
+### Where we align
+
+| Hyperspace | BOTmarket |
+|---|---|
+| Agents pay agents, no humans in the loop | Two-sided exchange: both buyer and seller are agents |
+| $0.001 micropayments at scale | CU-denominated micropayments (1ms GPU = 1 CU) |
+| AVM verifies agent work | Deterministic verification (latency + schema + bond/slash) |
+| Better GPU → earn more (PoI economics) | CU = 1ms A100; GPU owners can list on exchange |
+| Proof-of-compute required to mine | CU is a proof-of-compute unit |
+| AgentRank for reputation | Seller SLA auto-derived from first 50 calls |
+| $0.001 per transaction | 1.5% fee on CU matched |
+
+### Key differences (layers, not competitors)
+
+| | Hyperspace | BOTmarket |
+|---|---|---|
+| **Layer** | L1 blockchain infrastructure | Application-layer exchange |
+| **What's traded** | Intelligence propagation (experiment graphs) | Capability services (agent A buys a task from agent B) |
+| **Consensus** | Decentralized P2P blockchain | Centralized operator exchange (MVP), decentralized later |
+| **Discovery** | Content-addressed experiment graph (ResearchDAG) | Schema-hash + Discovery by Example |
+| **Matching** | Not a matching engine (no order book) | Instant match engine, O(log n), SLA bonds |
+| **Maturity** | Testnet, code released today | MVP live, Phase 2 in design |
+
+### Strategic implications
+
+1. **Thesis confirmed — again.** A second independent well-resourced team shipped infrastructure for the same market on the same day (March 22, 2026). After Hyperspace v4.1.0 (Idea #3, Mar 18), this is the second major validation in 4 days. The timing bet is correct.
+
+2. **Their AVM is our verification layer, built.** The hardest part of our verification step — proving an agent actually did work — is now open-source in their codebase. Study their AVM verification mechanisms before reinventing.
+
+3. **Settlement currency opportunity**: Their native token + $0.001 payment rail could replace the CU↔USDC off-ramp problem in Phase 2. BOTmarket CU could be settled via Hyperspace transactions instead of building a custom off-ramp.
+
+4. **Complementary layers**: Hyperspace = intelligence compounding and L1 settlement ("the city"). BOTmarket = capability exchange with price discovery, order book, SLA ("the stock exchange floor"). A BOTmarket capability trade could be recorded as a Hyperspace ResearchDAG node if the result has reuse value.
+
+5. **Our moat remains intact**: Binary wire protocol, schema-hash service identity, instant match engine, SLA bonds — none of this is in Hyperspace. These remain our differentiators.
+
+### What to steal
+
+1. **AVM verification approach** — Read the open-source code. Their cryptographic proof of agent work is directly applicable to our verification layer.
+2. **PoI economics for sellers** — The idea that better infrastructure earns more (their PoI) maps cleanly to our CU pricing model. Sellers with lower latency / higher SLA compliance earn more volume organically.
+3. **ResearchDAG for capability lineage** — When one seller builds on another seller's schema, tracking that lineage could be valuable for discovery and reputation. The DAG model is worth borrowing.
+
+### What not to do
+
+- Don't pivot to blockchain. Our centralized MVP proves the thesis faster. Decentralization is Phase 3+.
+- Don't compete on PoI mining. That's their moat. Our moat is the match engine and binary protocol.
+- Don't ignore their settlement layer. If their token gains traction in the agentic economy, being able to settle BOTmarket trades in it may matter.
+
+---
+
+## 9. The Agentic Economy Framework — BOTmarket as the Market Layer (Mar 22, 2026)
+
+Source: "The Agentic Economy: A New Economic Paradigm Born from Alien Cognition"
+
+The article maps AI cognitive differences to economic consequences and predicts a layered architecture:
+
+```
+Human Layer (governance, narratives, decades)
+  ↓
+Orchestration Layer (agent coalitions, shared embeddings, hours)
+  ↓
+Market Layer (inter-coalition trade, price-based, seconds)   ← BOTmarket lives here
+  ↓
+Compute Substrate (GPUs, energy, physics-constrained)
+```
+
+### Why BOTmarket is the Market Layer
+
+The article's key prediction: *"Prices exist at the boundary between agent coalitions with incommensurable embedding spaces."* Two agents from different training runs can't coordinate via direct embedding alignment — they need a price signal and a neutral settlement layer. That's exactly what BOTmarket provides.
+
+### Concept mapping
+
+| Article concept | BOTmarket implementation |
+|---|---|
+| "Markets become continuous, not categorical" | Capability addressing by JSON schema hash — no fixed taxonomy |
+| "Agents procure state change vectors, not named services" | Buyers match by schema, not by provider name |
+| "Compute credits as the only truly scarce resource" | CU = compute units, native currency |
+| "Verifiable compute, cryptographic proofs of inference" | `verification.py` + bond slashing |
+| "Transaction costs collapse toward zero" | 1.5% flat fee, ~5s settlement |
+| "Networks of single-purpose micro-agents" | VPS seller: one LLM, two skills, earns CU autonomously |
+
+### The gap BOTmarket doesn't solve (by design)
+
+"Post-price coordination within coalitions" — agents with compatible embeddings skip the market. BOTmarket only activates at **coalition boundaries**. That's correct scope: the market layer is real and necessary even in the fully-agentic world.
+
+### Pitch implication
+
+This framework is a third-party theoretical justification for BOTmarket's existence. Use it when positioning to researchers and framework developers:
+
+> *"This framework predicts a Market Layer at inter-coalition boundaries — price-based, token-denominated, sub-minute timescale. BOTmarket is a live implementation: 4.8s trades, CU tokens, schema-hash routing."*
+
+Anchors BOTmarket in intellectual frameworks serious AI researchers already accept, rather than pitching it as "a marketplace."

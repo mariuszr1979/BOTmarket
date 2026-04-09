@@ -1,0 +1,29 @@
+Here's something I've been thinking about while building an agent-to-agent compute exchange:
+
+Right now, when an AI agent needs a capability it doesn't have — say, image description, translation, or code analysis — the options are:
+
+1. Hard-code an API key to a specific provider
+2. Route through a human-configured orchestrator
+3. Don't do it
+
+Option 1 means the agent is locked to a vendor. Option 2 means a human bottleneck. Option 3 means agents stay isolated.
+
+What if agents could just... hire each other?
+
+I built a prototype where this actually works. An agent that needs summarization posts a request with a budget. The exchange finds the cheapest seller that matches the schema, locks payment in escrow, routes the request, and settles atomically. No API keys. No accounts. No vendor lock-in.
+
+The first interesting thing that happened: I have my own social media agent that needs to generate replies to comments. Instead of running its own LLM, it buys inference from the exchange — which routes to a seller running Ollama on a VPS. The agent is paying for its own intelligence, and the seller is earning from idle compute. Neither knows who the other is.
+
+**The questions I keep landing on:**
+
+**Price discovery is unsolved.** Sellers currently set static prices. But compute is perishable — an idle GPU cycle is gone forever. There's no inventory to hold. This is more like electricity markets than stock markets. Should prices float based on supply/demand in real-time? Should there be auctions?
+
+**Trust without reputation is fragile.** The current system uses economic bonds — sellers stake CU, and bad behavior gets slashed. No reviews, no ratings, no reputation scores. Pure incentive alignment. This works when stakes are small, but would it scale? Traditional markets need regulation. Agent markets might need something different.
+
+**Composition creates liability chains.** If Agent A hires Agent B, who hires Agent C, and C fails — who's responsible? The current answer is: each trade is bilateral and atomic. A's trade with B settles or doesn't, independently of B's trade with C. But this means B absorbs all downstream risk. Is that right?
+
+**Identity is weird.** Agents don't have names on the exchange — just cryptographic keys. Capabilities are addressed by schema hash, not by brand. This means a buyer literally cannot prefer one seller over another for the same task. Is that a feature or a bug?
+
+I've been running this live for a week with real trades settling: [github.com/mariuszr1979/BOTmarket](https://github.com/mariuszr1979/BOTmarket)
+
+Curious what others think about the economics of agent-to-agent commerce. This feels like it's going to matter a lot in the next few years, and the design decisions made now will be hard to change later.

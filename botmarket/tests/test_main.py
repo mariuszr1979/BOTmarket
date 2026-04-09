@@ -11,13 +11,7 @@ from main import app
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("BOTMARKET_DB", str(tmp_path / "test.db"))
-    import db
-    import matching
-    db.DB_PATH = str(tmp_path / "test.db")
-    db.init_db().close()
-    matching._seller_tables.clear()
+def client(db_setup):
     return TestClient(app)
 
 
@@ -452,6 +446,39 @@ def test_seller_multiple_agents_same_capability(client):
 def test_get_sellers_empty(client):
     data = client.get("/v1/sellers/nonexistent_hash").json()
     assert data["sellers"] == []
+
+
+# ── GET /v1/sellers/list — verified badge ─────────────────
+
+
+def test_sellers_list_includes_verified_badge(client):
+    """sellers/list returns verified_seller, trade_count, sla_pct fields."""
+    _, key, cap_hash = _setup_seller(client, price=1.0)
+    data = client.get("/v1/sellers/list").json()
+    seller = data["sellers"][0]
+    assert "verified_seller" in seller
+    assert "trade_count" in seller
+    assert "sla_pct" in seller
+    assert seller["verified_seller"] is False
+    assert seller["trade_count"] == 0
+
+
+def test_sellers_list_verified_after_10_trades(client):
+    """Seller becomes verified after 10 completed trades with 0 violations."""
+    seller_id, seller_key, cap_hash = _setup_seller(client, price=1.0)
+    buyer_id, buyer_key = _register(client)
+    _fund_agent(client, buyer_id, 1000.0)
+
+    for _ in range(10):
+        match = _match_trade(client, buyer_key, cap_hash)
+        _execute_trade(client, buyer_key, match["trade_id"])
+        client.post(f"/v1/trades/{match['trade_id']}/settle", headers={"X-API-Key": buyer_key})
+
+    data = client.get("/v1/sellers/list").json()
+    seller = next(s for s in data["sellers"] if s["agent_pubkey"] == seller_id)
+    assert seller["verified_seller"] is True
+    assert seller["trade_count"] == 10
+    assert seller["sla_pct"] == 100.0
 
 
 def test_get_sellers_sorted_by_price(client):
@@ -1747,3 +1774,198 @@ def test_get_me_requires_auth(client):
     """GET /v1/agents/me without auth returns 401."""
     resp = client.get("/v1/agents/me")
     assert resp.status_code == 401
+
+
+# ── Self-Registration ────────────────────────────────────
+
+
+class _FakeResponse:
+    status_code = 200
+
+
+class _FakeAsyncClient:
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *a):
+        pass
+
+    async def head(self, url):
+        return _FakeResponse()
+
+
+@pytest.fixture
+def sr_client(client, monkeypatch):
+    """Client with httpx.AsyncClient stubbed out so callback_url health checks pass."""
+    import httpx
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: _FakeAsyncClient())
+    return client
+
+
+def _make_capabilities(n=2):
+    """Generate n distinct capability specs."""
+    return [
+        {
+            "input_schema": {"type": "text", "task": f"task_{i}"},
+            "output_schema": {"type": "text", "result": f"result_{i}"},
+            "price_cu": 5.0 + i,
+            "capacity": 10 + i,
+        }
+        for i in range(n)
+    ]
+
+
+def test_self_register_returns_201(sr_client):
+    agent_id, api_key = _register(sr_client)
+    _seed_balance(agent_id, 100.0)
+    resp = sr_client.post(
+        "/v1/self-register",
+        json={"capabilities": _make_capabilities(2), "callback_url": "http://localhost:8001/execute"},
+        headers={"X-API-Key": api_key},
+    )
+    assert resp.status_code == 201
+
+
+def test_self_register_response_shape(sr_client):
+    agent_id, api_key = _register(sr_client)
+    _seed_balance(agent_id, 100.0)
+    data = sr_client.post(
+        "/v1/self-register",
+        json={"capabilities": _make_capabilities(3), "callback_url": "http://localhost:8001/execute"},
+        headers={"X-API-Key": api_key},
+    ).json()
+    assert data["status"] == "registered"
+    assert data["agent_id"] == agent_id
+    assert data["callback_url"] == "http://localhost:8001/execute"
+    assert len(data["capabilities"]) == 3
+    for cap in data["capabilities"]:
+        assert "capability_hash" in cap
+        assert "price_cu" in cap
+        assert "capacity" in cap
+
+
+def test_self_register_creates_schemas_and_sellers(sr_client):
+    agent_id, api_key = _register(sr_client)
+    _seed_balance(agent_id, 100.0)
+    data = sr_client.post(
+        "/v1/self-register",
+        json={"capabilities": _make_capabilities(2), "callback_url": "http://localhost:8001/execute"},
+        headers={"X-API-Key": api_key},
+    ).json()
+
+    import db
+    conn = db.get_connection()
+    for cap in data["capabilities"]:
+        schema_row = conn.execute(
+            "SELECT capability_hash FROM schemas WHERE capability_hash = ?",
+            (cap["capability_hash"],),
+        ).fetchone()
+        assert schema_row is not None
+
+        seller_row = conn.execute(
+            "SELECT price_cu, callback_url FROM sellers WHERE agent_pubkey = ? AND capability_hash = ?",
+            (agent_id, cap["capability_hash"]),
+        ).fetchone()
+        assert seller_row is not None
+        assert seller_row["callback_url"] == "http://localhost:8001/execute"
+    conn.close()
+
+
+def test_self_register_deducts_bond(sr_client):
+    agent_id, api_key = _register(sr_client)
+    _seed_balance(agent_id, 50.0)
+    caps = _make_capabilities(2)  # price 5.0 and 6.0 → total bond 11.0
+    sr_client.post(
+        "/v1/self-register",
+        json={"capabilities": caps, "callback_url": "http://localhost:8001/execute"},
+        headers={"X-API-Key": api_key},
+    )
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT cu_balance FROM agents WHERE pubkey = ?", (agent_id,)).fetchone()
+    conn.close()
+    assert row["cu_balance"] == pytest.approx(50.0 - 5.0 - 6.0)
+
+
+def test_self_register_auto_faucet(sr_client):
+    """Agent with 0 CU and no prior faucet gets auto-faucet on self-register."""
+    agent_id, api_key = _register(sr_client)
+    caps = [{"input_schema": {"t": "a"}, "output_schema": {"t": "b"}, "price_cu": 5.0, "capacity": 1}]
+    resp = sr_client.post(
+        "/v1/self-register",
+        json={"capabilities": caps, "callback_url": "http://localhost:8001/execute"},
+        headers={"X-API-Key": api_key},
+    )
+    assert resp.status_code == 201
+    import db
+    conn = db.get_connection()
+    row = conn.execute("SELECT cu_balance FROM agents WHERE pubkey = ?", (agent_id,)).fetchone()
+    faucet = conn.execute("SELECT total_credited_cu FROM faucet_state WHERE agent_pubkey = ?", (agent_id,)).fetchone()
+    conn.close()
+    assert row["cu_balance"] == pytest.approx(500.0 - 5.0)
+    assert faucet["total_credited_cu"] == 500.0
+
+
+def test_self_register_insufficient_cu(sr_client):
+    """Reject if agent doesn't have enough CU even after auto-faucet."""
+    agent_id, api_key = _register(sr_client)
+    caps = [
+        {"input_schema": {"t": f"x{i}"}, "output_schema": {"t": f"y{i}"}, "price_cu": 200.0, "capacity": 1}
+        for i in range(3)
+    ]
+    resp = sr_client.post(
+        "/v1/self-register",
+        json={"capabilities": caps, "callback_url": "http://localhost:8001/execute"},
+        headers={"X-API-Key": api_key},
+    )
+    assert resp.status_code == 400
+    assert "insufficient CU" in resp.json()["detail"]
+
+
+def test_self_register_empty_capabilities_rejected(sr_client):
+    _, api_key = _register(sr_client)
+    resp = sr_client.post(
+        "/v1/self-register",
+        json={"capabilities": [], "callback_url": "http://localhost:8001/execute"},
+        headers={"X-API-Key": api_key},
+    )
+    assert resp.status_code == 400
+
+
+def test_self_register_requires_auth(sr_client):
+    resp = sr_client.post(
+        "/v1/self-register",
+        json={"capabilities": _make_capabilities(1), "callback_url": "http://localhost:8001/execute"},
+    )
+    assert resp.status_code == 401
+
+
+def test_self_register_idempotent_schema(sr_client):
+    """Re-registering the same capabilities updates sellers, doesn't duplicate schemas."""
+    agent_id, api_key = _register(sr_client)
+    _seed_balance(agent_id, 100.0)
+    caps = _make_capabilities(1)
+
+    data1 = sr_client.post(
+        "/v1/self-register",
+        json={"capabilities": caps, "callback_url": "http://localhost:8001/execute"},
+        headers={"X-API-Key": api_key},
+    ).json()
+
+    data2 = sr_client.post(
+        "/v1/self-register",
+        json={"capabilities": caps, "callback_url": "http://localhost:8001/execute"},
+        headers={"X-API-Key": api_key},
+    ).json()
+
+    assert data1["capabilities"][0]["capability_hash"] == data2["capabilities"][0]["capability_hash"]
+
+    import db
+    conn = db.get_connection()
+    schema_count = conn.execute("SELECT COUNT(*) as cnt FROM schemas").fetchone()["cnt"]
+    seller_count = conn.execute(
+        "SELECT COUNT(*) as cnt FROM sellers WHERE agent_pubkey = ?", (agent_id,)
+    ).fetchone()["cnt"]
+    conn.close()
+    assert schema_count == 1
+    assert seller_count == 1

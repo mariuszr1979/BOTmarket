@@ -10,13 +10,7 @@ from main import app
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("BOTMARKET_DB", str(tmp_path / "test.db"))
-    import db
-    import matching
-    db.DB_PATH = str(tmp_path / "test.db")
-    db.init_db()
-    matching._seller_tables.clear()
+def client(db_setup):
     return TestClient(app)
 
 

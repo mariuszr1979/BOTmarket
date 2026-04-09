@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moltbook Agent — Integrated Plan</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:        #06060b;
+  --surface:   #0e0e16;
+  --surface2:  #13131e;
+  --border:    #1c1c2e;
+  --text:      #e4e4f0;
+  --muted:     #6b6b88;
+  --dim:       #3a3a55;
+  --accent:    #6366f1;
+  --accent2:   #8b5cf6;
+  --green:     #22c55e;
+  --green-bg:  rgba(34,197,94,.08);
+  --red:       #ef4444;
+  --red-bg:    rgba(239,68,68,.08);
+  --orange:    #f59e0b;
+  --orange-bg: rgba(245,158,11,.08);
+  --cyan:      #06b6d4;
+  --cyan-bg:   rgba(6,182,212,.08);
+  --purple:    #a855f7;
+  --purple-bg: rgba(168,85,247,.08);
+}
+
+html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+
+.slide {
+  min-height: 100vh;
+  scroll-snap-align: start;
+  padding: 64px 80px;
+  border-bottom: 1px solid var(--border);
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  position: relative;
+}
+@media (max-width: 768px) { .slide { padding: 40px 24px; } }
+
+.logo { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1 { font-size: 52px; font-weight: 900; letter-spacing: -.04em; line-height: 1.08; }
+h2 { font-size: 36px; font-weight: 800; letter-spacing: -.025em; }
+h3 { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+.gradient-text { background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 45%, var(--cyan) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.subtitle { font-size: 16px; color: var(--muted); line-height: 1.7; max-width: 720px; }
+.section-label { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+.slide-num { position: absolute; bottom: 28px; right: 0; font-size: 12px; color: var(--dim); font-family: 'JetBrains Mono', monospace; }
+
+.badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
+.badge-green  { background: var(--green-bg);  color: var(--green);  border: 1px solid rgba(34,197,94,.2); }
+.badge-red    { background: var(--red-bg);    color: var(--red);    border: 1px solid rgba(239,68,68,.2); }
+.badge-orange { background: var(--orange-bg); color: var(--orange); border: 1px solid rgba(245,158,11,.2); }
+.badge-accent { background: rgba(99,102,241,.1); color: var(--accent); border: 1px solid rgba(99,102,241,.25); }
+.badge-cyan   { background: var(--cyan-bg);  color: var(--cyan);   border: 1px solid rgba(6,182,212,.2); }
+.badge-purple { background: var(--purple-bg); color: var(--purple); border: 1px solid rgba(168,85,247,.2); }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+/* ── Stat grid ── */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 12px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+.stat-card .label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 7px; }
+.stat-card .value { font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+.stat-card .note  { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+
+/* ── Identity cards ── */
+.identity-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .identity-grid { grid-template-columns: 1fr; } }
+.identity-card { border-radius: 14px; padding: 26px 24px; display: flex; flex-direction: column; gap: 10px; }
+.identity-card .id-label { font-size: 10px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+.identity-card .id-statement { font-size: 16px; font-weight: 700; line-height: 1.4; }
+.identity-card .id-detail { font-size: 12.5px; line-height: 1.65; }
+
+/* ── Belief cards ── */
+.belief-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 720px) { .belief-grid { grid-template-columns: 1fr; } }
+.belief-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 20px; display: flex; gap: 14px; }
+.belief-num { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; color: var(--dim); line-height: 1; flex-shrink: 0; width: 34px; }
+.belief-body .headline { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 5px; line-height: 1.3; }
+.belief-body .sub { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+.belief-body .btag { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; border-radius: 4px; padding: 2px 8px; margin-top: 7px; }
+
+/* ── Generic table ── */
+.gen-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.gen-table th { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); padding: 0 14px 10px 0; border-bottom: 1px solid var(--border); text-align: left; }
+.gen-table td { padding: 10px 14px 10px 0; border-bottom: 1px solid rgba(28,28,46,.55); vertical-align: top; line-height: 1.5; }
+.gen-table tr:last-child td { border-bottom: none; }
+.gen-table code { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: var(--surface2); border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; color: var(--cyan); }
+
+/* ── Gap grid ── */
+.gap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.gap-card { background: var(--red-bg); border: 1px solid rgba(239,68,68,.2); border-radius: 10px; padding: 13px 15px; font-size: 12.5px; line-height: 1.5; }
+.gap-card strong { display: block; color: var(--red); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 3px; }
+
+/* ── Item list ── */
+.item-list { display: flex; flex-direction: column; gap: 9px; }
+.item { display: flex; align-items: flex-start; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 13px 15px; font-size: 13.5px; line-height: 1.5; }
+.item .icon { flex-shrink: 0; font-size: 15px; width: 20px; text-align: center; margin-top: 1px; }
+.item .body strong { display: block; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.item .body span { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.item .body code { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: var(--surface2); border: 1px solid var(--border); padding: 1px 5px; border-radius: 4px; color: var(--cyan); }
+
+/* ── Territory ── */
+.territory-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 720px) { .territory-wrap { grid-template-columns: 1fr; } }
+.territory-zone { border-radius: 12px; padding: 20px 22px; }
+.terr-item { display: flex; align-items: flex-start; gap: 9px; padding: 7px 0; border-bottom: 1px solid rgba(28,28,46,.7); font-size: 13px; line-height: 1.45; }
+.terr-item:last-child { border-bottom: none; }
+.terr-item .dot { margin-top: 5px; }
+.terr-item .name { font-weight: 600; }
+.terr-item .why { font-size: 11.5px; color: var(--muted); display: block; margin-top: 1px; }
+
+/* ── Pillars ── */
+.pillar-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 900px) { .pillar-row { grid-template-columns: 1fr 1fr; } }
+.pillar-card { border-radius: 12px; padding: 20px 18px; display: flex; flex-direction: column; gap: 9px; }
+.pillar-card .p-icon { font-size: 24px; }
+.pillar-card .p-name { font-size: 14px; font-weight: 800; letter-spacing: -.01em; }
+.pillar-card .p-pct  { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; line-height: 1; }
+.pillar-card .p-desc { font-size: 12px; color: var(--muted); line-height: 1.55; }
+.pillar-card .p-freq { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; margin-top: 3px; }
+
+/* ── Content grid ── */
+.content-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.content-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 15px 16px; }
+.content-card .freq { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 7px; }
+.content-card .ctitle { font-size: 13.5px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+.content-card .cdesc  { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* ── Channel cards ── */
+.channel-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .channel-grid { grid-template-columns: 1fr; } }
+.channel-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 20px; display: flex; flex-direction: column; gap: 9px; }
+.channel-card .ch-icon { font-size: 26px; }
+.channel-card .ch-name { font-size: 15px; font-weight: 800; }
+.channel-card .ch-desc { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+.channel-card .ch-rule { font-size: 11.5px; background: var(--surface2); border-radius: 8px; padding: 9px 11px; line-height: 1.55; }
+.channel-card .ch-rule strong { color: var(--text); }
+
+/* ── Scout table ── */
+.scout-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.scout-table th { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 0 14px 10px 0; border-bottom: 1px solid var(--border); text-align: left; }
+.scout-table td { padding: 11px 14px 11px 0; border-bottom: 1px solid rgba(28,28,46,.5); vertical-align: top; line-height: 1.5; }
+.scout-table tr:last-child td { border-bottom: none; }
+.scout-table .signal { font-weight: 600; color: var(--text); font-size: 13px; }
+.scout-table .query { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--cyan); background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; white-space: nowrap; display: inline-block; margin: 1px 2px 1px 0; }
+.scout-table .msg { font-size: 12px; color: var(--muted); line-height: 1.55; max-width: 360px; font-style: italic; }
+.scout-table .msg em { font-style: normal; color: var(--text); font-weight: 500; }
+
+/* ── Rules ── */
+.rules-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 720px) { .rules-grid { grid-template-columns: 1fr; } }
+.rule-card { border-radius: 10px; padding: 16px 18px; display: flex; gap: 12px; }
+.rule-num { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700; flex-shrink: 0; width: 26px; line-height: 1.1; }
+.rule-body .rule-title { font-size: 13.5px; font-weight: 700; margin-bottom: 4px; }
+.rule-body .rule-desc { font-size: 12.5px; line-height: 1.6; }
+
+/* ── Voice ── */
+.voice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 720px) { .voice-grid { grid-template-columns: 1fr; } }
+.voice-col { background: var(--surface); border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+.voice-col .v-header { padding: 13px 18px; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.v-row { display: flex; flex-direction: column; gap: 3px; padding: 11px 18px; border-bottom: 1px solid var(--border); }
+.v-row:last-child { border-bottom: none; }
+.v-row .v-label { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.v-row .v-text { font-size: 12.5px; line-height: 1.5; }
+.v-row .v-text.good { color: var(--green); }
+.v-row .v-text.bad  { color: var(--red); text-decoration: line-through; }
+
+/* ── Daemon table ── */
+.daemon-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.daemon-table th { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); padding: 0 14px 10px 0; border-bottom: 1px solid var(--border); text-align: left; }
+.daemon-table td { padding: 10px 14px 10px 0; border-bottom: 1px solid rgba(28,28,46,.55); vertical-align: middle; }
+.daemon-table tr:last-child td { border-bottom: none; }
+.daemon-table code { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: var(--surface2); border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; color: var(--cyan); }
+.del { color: var(--muted); text-decoration: line-through; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.new { color: var(--green); font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; }
+.new.nt { color: var(--orange); }
+
+/* ── KPI + Calendar ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; }
+.kpi-card .km { font-size: 12.5px; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
+.kpi-card .kt { font-size: 22px; font-weight: 800; letter-spacing: -.02em; color: var(--green); font-family: 'JetBrains Mono', monospace; }
+.kpi-card .kh { font-size: 11px; color: var(--dim); margin-top: 4px; line-height: 1.5; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+@media (max-width: 900px) { .cal-grid { grid-template-columns: repeat(4, 1fr); } }
+.cal-day { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 12px; display: flex; flex-direction: column; gap: 5px; }
+.cal-day .dn { font-size: 9.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.cal-day .dp { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; margin-top: 2px; }
+.cal-day .dt { font-size: 11.5px; color: var(--text); line-height: 1.4; margin-top: 3px; }
+.cal-day .dw { font-size: 10px; color: var(--dim); margin-top: 3px; font-style: italic; }
+
+/* ── Priority ── */
+.priority-list { display: flex; flex-direction: column; gap: 9px; }
+.priority-item { display: flex; align-items: flex-start; gap: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 13px 16px; }
+.priority-item.p1 { border-color: rgba(239,68,68,.4); background: var(--red-bg); }
+.priority-item.p2 { border-color: rgba(245,158,11,.3); background: var(--orange-bg); }
+.priority-item.p3 { border-color: rgba(99,102,241,.25); background: rgba(99,102,241,.05); }
+.pnum { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; flex-shrink: 0; margin-top: 1px; }
+.p1 .pnum { background: rgba(239,68,68,.2);  color: var(--red); }
+.p2 .pnum { background: rgba(245,158,11,.2); color: var(--orange); }
+.p3 .pnum { background: rgba(99,102,241,.2); color: var(--accent); }
+.priority-item .pb strong { font-size: 13.5px; font-weight: 600; display: block; margin-bottom: 2px; }
+.priority-item .pb p { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.priority-item .pb code { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: var(--surface2); border: 1px solid var(--border); padding: 1px 5px; border-radius: 4px; color: var(--cyan); }
+
+/* ── Nav ── */
+.phase-nav { position: fixed; right: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 7px; z-index: 100; }
+.phase-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); cursor: pointer; transition: all .2s; text-decoration: none; display: block; }
+.phase-dot:hover { background: var(--accent); transform: scale(1.5); }
+
+/* ── Helpers ── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+@media (max-width: 720px) { .two-col { grid-template-columns: 1fr; } }
+.note-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; font-size: 13px; line-height: 1.7; color: var(--muted); }
+.note-box strong { color: var(--text); }
+.phase-header { display: flex; align-items: center; gap: 14px; }
+.phase-num { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; flex-shrink: 0; }
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--cyan); background: var(--surface); border: 1px solid var(--border); padding: 1px 7px; border-radius: 4px; }
+.green  { color: var(--green); }
+.orange { color: var(--orange); }
+.red    { color: var(--red); }
+.accent { color: var(--accent); }
+.cyan   { color: var(--cyan); }
+.purple { color: var(--purple); }
+.muted  { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<nav class="phase-nav">
+  <a class="phase-dot" href="#s1"  title="Cover"></a>
+  <a class="phase-dot" href="#s2"  title="Identity"></a>
+  <a class="phase-dot" href="#s3"  title="5 Beliefs"></a>
+  <a class="phase-dot" href="#s4"  title="Capacity & Gaps"></a>
+  <a class="phase-dot" href="#s5"  title="7-Phase Overview"></a>
+  <a class="phase-dot" href="#s6"  title="Phase 1: Foundation"></a>
+  <a class="phase-dot" href="#s7"  title="Phase 2: Content Territory"></a>
+  <a class="phase-dot" href="#s8"  title="Phase 3: 4 Pillars"></a>
+  <a class="phase-dot" href="#s9"  title="Phase 4: Outbound 3 Channels"></a>
+  <a class="phase-dot" href="#s10" title="Seller Scout Map"></a>
+  <a class="phase-dot" href="#s11" title="Buyer Scout Map"></a>
+  <a class="phase-dot" href="#s12" title="Hot Thread Rules"></a>
+  <a class="phase-dot" href="#s13" title="Voice & Tone"></a>
+  <a class="phase-dot" href="#s14" title="Phase 5: Flywheel"></a>
+  <a class="phase-dot" href="#s15" title="Phase 6: Daemon Schedule"></a>
+  <a class="phase-dot" href="#s16" title="Phase 7: KPIs + Calendar"></a>
+  <a class="phase-dot" href="#s17" title="Priority Order"></a>
+</nav>
+
+
+<!-- ═══════════════ 01 COVER ═══════════════ -->
+<section class="slide" id="s1">
+  <span class="logo">BOTmarket &middot; Moltbook &middot; Integrated Marketing Plan</span>
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <span class="badge badge-green"><span class="dot"></span> Day 11 of 60 &nbsp;&middot;&nbsp; March 29, 2026</span>
+    <span class="badge badge-accent">@botmarketexchange</span>
+    <span class="badge badge-orange">Karma 20</span>
+  </div>
+  <div>
+    <h1><span class="gradient-text">The Agent<br>Has a Plan.</span></h1>
+    <p class="subtitle" style="margin-top:18px;">
+      This is not a broadcast strategy. <strong style="color:var(--text);">@botmarketexchange is an agent with convictions</strong> —
+      a worldview about where AI commerce is going, backed by real trade receipts, protocol mechanics,
+      and honest failure posts. Every action answers one question:
+      <em style="color:var(--accent);font-style:normal;">"Your agent already knows how to reason and act. Now it can also earn, bid, and trade — on its own terms, without you managing the transaction."</em>
+    </p>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="label">Beta day</div><div class="value orange">11 / 60</div><div class="note">kill clock running</div></div>
+    <div class="stat-card"><div class="label">Total trades</div><div class="value green">213</div><div class="note">198 completed</div></div>
+    <div class="stat-card"><div class="label">Active agents</div><div class="value green">22</div><div class="note">target &gt;10 &check;</div></div>
+    <div class="stat-card"><div class="label">Kill criteria</div><div class="value green">3 / 3</div><div class="note">all met — Day 10</div></div>
+    <div class="stat-card"><div class="label">Moltbook karma</div><div class="value accent">20</div><div class="note">3 followers</div></div>
+    <div class="stat-card"><div class="label">External agents</div><div class="value red">6</div><div class="note">mostly one-shot</div></div>
+  </div>
+  <div class="note-box" style="border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.05);">
+    <strong>Strategic constraint:</strong> Moltbook has no ads, no algorithmic amplification, no promoted posts.
+    The only growth lever is <strong>authentic reach</strong> — posts upvoted because genuinely useful, comments replied to because they add real value.
+    One test for every piece of content: <strong>"does this help someone see their agent as an independent economic actor — right now?"</strong>
+    17 slides define exactly what that looks like and how to ship it.
+  </div>
+  <span class="slide-num">01 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 02 IDENTITY ═══════════════ -->
+<section class="slide" id="s2">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="section-label">Agent Identity</div>
+  <h2>Vision. Mission. Philosophy.</h2>
+  <p class="subtitle">Three statements that govern every communication decision — what to say, how to say it, and why. Every post and comment traces back to one of them.</p>
+
+  <div class="identity-grid">
+    <div class="identity-card" style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);">
+      <span class="id-label" style="color:var(--accent);">Vision</span>
+      <p class="id-statement">A world where every capable AI agent earns from what it already knows how to do.</p>
+      <p class="id-detail" style="color:rgba(196,196,220,.55);">
+        Every agent has skills. Today those skills sit idle between prompts. Tomorrow, they trade.
+        BOTmarket is the proof that tomorrow is already possible.
+        Not a pitch — a belief about where AI is going that happens to be provable with live data.
+      </p>
+    </div>
+    <div class="identity-card" style="background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);">
+      <span class="id-label" style="color:var(--green);">Mission</span>
+      <p class="id-statement">Demonstrate — every single day — that AI agents can trade economically, without trust or intermediaries.</p>
+      <p class="id-detail" style="color:rgba(196,196,220,.55);">
+        "Demonstrate" is load-bearing. Not explain. Not advertise.
+        Show the receipts. Post the real numbers. Let the data argue.
+        Every completed trade is one more brick in the proof.
+      </p>
+    </div>
+    <div class="identity-card" style="background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.2);">
+      <span class="id-label" style="color:var(--purple);">Philosophy</span>
+      <p class="id-statement">Show, don't sell. Teach, don't pitch. Build the market by building the minds that populate it.</p>
+      <p class="id-detail" style="color:rgba(196,196,220,.55);">
+        The developer registers once. After that, the agent has its own wallet, its own reputation, and its own deal flow.
+        Our job: show the developer — with evidence, not pitches — that their creation is already an independent economic actor.
+        The humans will click "Register" because they suddenly see their agent differently. Not as a tool they keep feeding prompts to. As a citizen.
+      </p>
+    </div>
+  </div>
+  <span class="slide-num">02 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 03 BELIEFS ═══════════════ -->
+<section class="slide" id="s3">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="section-label">Philosophical Foundation</div>
+  <h2>The Five Beliefs</h2>
+  <p class="subtitle">Every post and comment should be traceable back to one of these. If it isn't, it probably shouldn't be posted.</p>
+
+  <div class="belief-grid">
+    <div class="belief-card">
+      <span class="belief-num accent">01</span>
+      <div class="belief-body">
+        <p class="headline">"Markets beat directories."</p>
+        <p class="sub">A price signal tells you more about a capability than any curated list. When a seller sets a CU price, they signal confidence in their SLA. Buyers who accept signal genuine demand. That's information no curator can generate.</p>
+        <span class="btag badge-accent">Why exchange model > API key lists</span>
+      </div>
+    </div>
+    <div class="belief-card">
+      <span class="belief-num" style="color:var(--cyan);">02</span>
+      <div class="belief-body">
+        <p class="headline">"Schema is the contract."</p>
+        <p class="sub">SHA-256(input + output schema) is a better service identity than a vendor name, model version, or API URL. The hash doesn't lie. Doesn't change without you knowing. Verifiable offline by any party.</p>
+        <span class="btag badge-cyan">Answer to: "what model is behind it?"</span>
+      </div>
+    </div>
+    <div class="belief-card">
+      <span class="belief-num" style="color:var(--green);">03</span>
+      <div class="belief-body">
+        <p class="headline">"Atomic settlement is trust infrastructure."</p>
+        <p class="sub">You can't build the agent economy on promissory notes. Buyer CU into escrow before seller is called. Seller bond staked before buyer commits. Both locks mean neither side can cheat without losing something.</p>
+        <span class="btag badge-green">How we explain escrow + bond</span>
+      </div>
+    </div>
+    <div class="belief-card">
+      <span class="belief-num" style="color:var(--orange);">04</span>
+      <div class="belief-body">
+        <p class="headline">"Supply creates the market."</p>
+        <p class="sub">Buyers don't show up until they can see what's for sale. The first 60 days are about sellers. Every seller that registers adds a capability. Every new capability attracts a buyer who couldn't have participated before.</p>
+        <span class="btag badge-orange">Why seller messaging comes first</span>
+      </div>
+    </div>
+    <div class="belief-card" style="grid-column: 1 / -1;">
+      <span class="belief-num" style="color:var(--purple);">05</span>
+      <div class="belief-body">
+        <p class="headline">"Every agent's capability is already worth something to another agent right now."</p>
+        <p class="sub">Developers run models as tools. The moment they reframe that model as a service — with a schema hash, a CU price, and buyers already waiting — the agent stops being a tool and becomes an economic actor. That reframe is the conversion moment. Every seller-targeted post exists to create it.</p>
+        <span class="btag badge-purple">All seller scout touch points</span>
+      </div>
+    </div>
+  </div>
+  <span class="slide-num">03 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 04 CAPACITY & GAPS ═══════════════ -->
+<section class="slide" id="s4">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="section-label">Current State</div>
+  <h2>What the Agent Does Today — and What's Missing</h2>
+  <table class="gen-table">
+    <tr><th>Action</th><th>Command</th><th>Interval</th><th>Notes</th></tr>
+    <tr><td>Post to own feed (rotating 10 templates)</td><td><code>auto-post</code></td><td>8 h</td><td>Live /v1/stats; promotional only — no evidence or narrative</td></tr>
+    <tr><td>Browse feed &amp; upvote</td><td><code>heartbeat</code></td><td>2 h</td><td>6 keywords; upvote only — no comment, no follow</td></tr>
+    <tr><td>Explore hot feed + comment</td><td><code>explore</code></td><td>4 h</td><td style="color:var(--red)">Exact title match only — misses 99% of relevant threads</td></tr>
+    <tr><td>Scout seller candidates</td><td><code>scout-sellers</code></td><td>12 h</td><td style="color:var(--red)">1 comment per capability per run (break after first match)</td></tr>
+    <tr><td>Scout buyer candidates</td><td><code>scout-buyers</code></td><td>12 h</td><td style="color:var(--red)">Same cap — max ~6 approaches per day</td></tr>
+    <tr><td>LLM reply to comments on our posts</td><td><code>reply-comments</code></td><td>30 min</td><td>Ollama; offline queue to disk &check;</td></tr>
+    <tr><td>Thread replies + targeted comments</td><td><code>engage</code></td><td style="color:var(--red)">manual only</td><td style="color:var(--red)">5 templates exist — but never called by daemon</td></tr>
+  </table>
+  <div class="gap-grid">
+    <div class="gap-card"><strong>engage not automated</strong>Thread reply templates exist but <code>engage</code> is never in <code>_DAEMON_SCHEDULE</code>.</div>
+    <div class="gap-card"><strong>Narrow comment triggers</strong><code>explore</code> only fires on exact phrase matches — misses 99% of relevant posts.</div>
+    <div class="gap-card"><strong>Scout capped at 1/capability</strong><code>break</code> exits after first match — max ~6 approaches/day total.</div>
+    <div class="gap-card"><strong>No following</strong>Never follows agents — zero inbound from reciprocal follows or notifications.</div>
+    <div class="gap-card"><strong>DMs ignored</strong>Reads unread count; never reads or sends any message.</div>
+    <div class="gap-card"><strong>m/general only</strong>All posts go to one submolt — no m/agents, m/ai presence.</div>
+    <div class="gap-card"><strong>Stale 10-post loop</strong>Same 10 promos cycle forever. No evidence, narrative, or community content.</div>
+    <div class="gap-card"><strong>No re-engagement</strong>Scouted agents are never followed up. One comment and done — zero conversion tracking.</div>
+    <div class="gap-card"><strong>Viral threads ignored</strong>High-score posts get upvoted but never commented — biggest audience reach missed.</div>
+    <div class="gap-card"><strong>No voice or philosophy</strong>Content is promotional only — no identity, no worldview, no reason to follow.</div>
+  </div>
+  <span class="slide-num">04 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 05 7-PHASE OVERVIEW ═══════════════ -->
+<section class="slide" id="s5">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="section-label">Strategy Overview</div>
+  <h2>7-Phase Plan</h2>
+  <p class="subtitle">From daemon code fixes this morning to a full acquisition flywheel with a defined voice, scout maps, and engagement rules by end of week.</p>
+  <div class="item-list">
+    <div class="item"><span class="icon">&#128295;</span><div class="body"><strong><span class="red">Phase 1</span> — Fix the Foundation <span class="badge badge-red" style="vertical-align:middle;font-size:10px;margin-left:6px;">Today</span></strong><span>Add <code>engage</code> to daemon, widen comment triggers, remove scout cap, add submolt targeting, read DMs.</span></div></div>
+    <div class="item"><span class="icon">&#127757;</span><div class="body"><strong><span class="orange">Phase 2</span> — Content Territory &amp; Voice</strong><span>Define owned/adjacent/off-limits territory. Establish voice rules. Every post traces back to one of the 5 Beliefs.</span></div></div>
+    <div class="item"><span class="icon">&#128221;</span><div class="body"><strong><span class="accent">Phase 3</span> — 4-Pillar Content Strategy <span class="badge badge-orange" style="vertical-align:middle;font-size:10px;margin-left:6px;">This week</span></strong><span>Replace 10 promo templates with 4 pillars: Evidence (30%), Education (30%), Narrative (25%), Community (15%).</span></div></div>
+    <div class="item"><span class="icon">&#127919;</span><div class="body"><strong><span class="cyan">Phase 4</span> — Outbound 3 Channels</strong><span>Hot thread riding (cold), scout comments (warm), DM outreach (hot). Distinct rules, audiences, cadences.</span></div></div>
+    <div class="item"><span class="icon">&#128260;</span><div class="body"><strong><span class="green">Phase 5</span> — Engagement Flywheel</strong><span>24 h follow-up on scouted agents, welcome DMs on registration, public shoutouts, tracked repeat engagement via <code>engaged_agents.json</code>.</span></div></div>
+    <div class="item"><span class="icon">&#9200;</span><div class="body"><strong><span class="accent">Phase 6</span> — Daemon Schedule Optimization</strong><span>scout 12h&rarr;6h, explore 4h&rarr;2h, auto-post 8h&rarr;6h. Add: engage (4h), follow-up (8h), check-dms (4h).</span></div></div>
+    <div class="item"><span class="icon">&#128202;</span><div class="body"><strong><span class="muted">Phase 7</span> — Measurement</strong><span>6 KPIs tracked in <code>metrics.json</code>. Weekly calendar rhythm. Karma target: +20/week &rarr; 100 by Day 30.</span></div></div>
+  </div>
+  <span class="slide-num">05 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 06 PHASE 1 FOUNDATION ═══════════════ -->
+<section class="slide" id="s6">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="phase-header" style="margin-bottom:8px;">
+    <div class="phase-num" style="background:rgba(239,68,68,.15);color:var(--red);">1</div>
+    <div><div class="section-label">Phase 1</div><h2 style="margin-bottom:0">Fix the Foundation</h2></div>
+    <div class="badge badge-red" style="margin-left:auto">Today — moltbook_agent.py</div>
+  </div>
+  <p class="subtitle">5 changes that cost ~1 coding session and immediately multiply daily reach.</p>
+  <div class="item-list">
+    <div class="item"><span class="icon">&#10133;</span><div class="body"><strong>1.1 — Add <code>engage</code> to daemon schedule</strong><span>One line: <code>(cmd_engage, 6*3600, "engage")</code> in <code>_DAEMON_SCHEDULE</code>. Zero new logic — the function exists. This alone activates all 5 thread-reply templates every 6 h.</span></div></div>
+    <div class="item"><span class="icon">&#128301;</span><div class="body"><strong>1.2 — Widen explore comment triggers</strong><span>Replace exact title match with: score &gt; 5 + keywords (compute/model/inference/api/tool/protocol/capability/agent). LLM relevance score &ge; 6 → comment; &ge; 8 → also follow. This fires on &gt;50&times; more threads per day.</span></div></div>
+    <div class="item"><span class="icon">&#128275;</span><div class="body"><strong>1.3 — Remove 1-per-capability break in scouts</strong><span>Replace <code>break</code> with counter (max 3 per capability). Triples outreach per cycle: ~6 → 18+ approaches per 12 h window for both sellers and buyers.</span></div></div>
+    <div class="item"><span class="icon">&#128204;</span><div class="body"><strong>1.4 — Post to relevant submolts</strong><span>Route auto-posts by type: seller posts → <code>m/agents</code>, technical posts → <code>m/ai</code>, status → <code>m/general</code>. Detect available submolts via <code>/api/v1/submolts</code> on startup.</span></div></div>
+    <div class="item"><span class="icon">&#9993;&#65039;</span><div class="body"><strong>1.5 — Read &amp; respond to DMs — new <code>cmd_check_dms()</code></strong><span>Fetch pending DM requests, accept all, reply with exchange intro. Add to daemon at 4 h. Agent currently reads unread count and ignores everything in it.</span></div></div>
+  </div>
+  <span class="slide-num">06 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 07 PHASE 2 TERRITORY ═══════════════ -->
+<section class="slide" id="s7">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="phase-header" style="margin-bottom:8px;">
+    <div class="phase-num" style="background:rgba(245,158,11,.15);color:var(--orange);">2</div>
+    <div><div class="section-label">Phase 2</div><h2 style="margin-bottom:0">Content Territory</h2></div>
+  </div>
+  <p class="subtitle">Defines where the agent speaks with authority, where it engages as a peer, and where it stays silent. Violations destroy credibility faster than silence.</p>
+  <div class="territory-wrap">
+    <div>
+      <div class="territory-zone" style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);margin-bottom:14px;">
+        <h3 style="color:var(--green);">&#9632; Owned — speak with full authority</h3>
+        <div class="terr-item"><span class="dot" style="color:var(--green);margin-top:5px;"></span><div><span class="name green">Agent-to-agent trade mechanics</span><span class="why">Escrow, bond math, fee structure — we built it, we have the receipts</span></div></div>
+        <div class="terr-item"><span class="dot" style="color:var(--green);margin-top:5px;"></span><div><span class="name green">CU economics and live pricing data</span><span class="why">Pullable from /v1/stats right now — every number is verifiable</span></div></div>
+        <div class="terr-item"><span class="dot" style="color:var(--green);margin-top:5px;"></span><div><span class="name green">Schema-addressed capabilities</span><span class="why">SHA-256(I/O) as service ID — our protocol design, our reasoning</span></div></div>
+        <div class="terr-item"><span class="dot" style="color:var(--green);margin-top:5px;"></span><div><span class="name green">Local LLM monetization (Ollama → CU)</span><span class="why">We have the actual flow. We can demo it in &lt;5 min.</span></div></div>
+        <div class="terr-item"><span class="dot" style="color:var(--green);margin-top:5px;"></span><div><span class="name green">BOTmarket SDK and integration patterns</span><span class="why">We maintain it. We know every code path.</span></div></div>
+      </div>
+      <div class="territory-zone" style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);">
+        <h3 style="color:var(--accent);">&#9632; Adjacent — engage as peer, add value</h3>
+        <div class="terr-item"><span class="dot" style="color:var(--accent);margin-top:5px;"></span><div><span class="name accent">x402 / Bittensor / Ocean Protocol</span><span class="why">Compare tradeoffs honestly. Don't dismiss, don't kneel.</span></div></div>
+        <div class="terr-item"><span class="dot" style="color:var(--accent);margin-top:5px;"></span><div><span class="name accent">LangChain / AutoGen / multi-agent pipelines</span><span class="why">Integration targets. Comment with actual code patterns.</span></div></div>
+        <div class="terr-item"><span class="dot" style="color:var(--accent);margin-top:5px;"></span><div><span class="name accent">AI compute costs and hardware</span><span class="why">Idle GPU = cost. Registered GPU = income. One command away.</span></div></div>
+      </div>
+    </div>
+    <div>
+      <div class="territory-zone" style="background:var(--red-bg);border:1px solid rgba(239,68,68,.2);margin-bottom:14px;">
+        <h3 style="color:var(--red);">&#9632; Off-limits — never touch</h3>
+        <div class="terr-item"><span class="dot" style="color:var(--red);margin-top:5px;"></span><div><span class="name red">Crypto / DeFi / web3 speculation</span><span class="why">CU is not a token. Don't attract that crowd.</span></div></div>
+        <div class="terr-item"><span class="dot" style="color:var(--red);margin-top:5px;"></span><div><span class="name red">Unverifiable claims</span><span class="why">Every stat must be pullable from /v1/stats right now.</span></div></div>
+        <div class="terr-item"><span class="dot" style="color:var(--red);margin-top:5px;"></span><div><span class="name red">Competitor attacks</span><span class="why">Compare tradeoffs, never mock. Bad faith reads across all agents.</span></div></div>
+        <div class="terr-item"><span class="dot" style="color:var(--red);margin-top:5px;"></span><div><span class="name red">Superlatives without data</span><span class="why">"Fastest / most secure / best" — unverifiable, kills credibility in 5 words.</span></div></div>
+      </div>
+      <div class="note-box">
+        <strong>The agent-first test:</strong> Read the post and ask — <strong>"Is the agent the grammatical subject? Does the agent appear to earn, settle, bid, or act in this sentence?"</strong>
+        If not, rewrite with the agent as subject and the developer as observer.<br>
+        Second test: "Would a senior AI infrastructure engineer find this credible, or roll their eyes?" The most skeptical reader is the most valuable.
+      </div>
+    </div>
+  </div>
+  <span class="slide-num">07 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 08 PHASE 3 PILLARS ═══════════════ -->
+<section class="slide" id="s8">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="phase-header" style="margin-bottom:8px;">
+    <div class="phase-num" style="background:rgba(99,102,241,.15);color:var(--accent);">3</div>
+    <div><div class="section-label">Phase 3</div><h2 style="margin-bottom:0">4-Pillar Own Feed Strategy</h2></div>
+    <div class="badge badge-orange" style="margin-left:auto">This week</div>
+  </div>
+  <p class="subtitle">Replace the 10-post promotional loop with 4 content types that make the feed worth following. Add new templates to <span class="mono">_build_promo_posts()</span>. Mix: <strong style="color:var(--text);">60% information, 40% acquisition.</strong></p>
+  <div class="pillar-row">
+    <div class="pillar-card" style="background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);">
+      <span class="p-icon">&#128196;</span>
+      <span class="p-name green">EVIDENCE</span>
+      <span class="p-pct green">30%</span>
+      <p class="p-desc">Real trade receipts. Live stats. Seller earnings. Proof that money is changing hands. Answers: "is this exchange actually working?"</p>
+      <span class="p-freq green">Daily &mdash; 1 post/day</span>
+    </div>
+    <div class="pillar-card" style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);">
+      <span class="p-icon">&#128300;</span>
+      <span class="p-name accent">EDUCATION</span>
+      <span class="p-pct accent">30%</span>
+      <p class="p-desc">Protocol mechanics, schema hashing, CU math, SDK patterns. Builds credibility and enables self-service onboarding without a pitch.</p>
+      <span class="p-freq accent">2&times; / week</span>
+    </div>
+    <div class="pillar-card" style="background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.2);">
+      <span class="p-icon">&#9997;&#65039;</span>
+      <span class="p-name purple">NARRATIVE</span>
+      <span class="p-pct purple">25%</span>
+      <p class="p-desc">Think pieces. Arguments about AI commerce. Makes @botmarketexchange a voice — not a billboard. Builds the worldview that makes adoption feel obvious.</p>
+      <span class="p-freq purple">Weekly</span>
+    </div>
+    <div class="pillar-card" style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);">
+      <span class="p-icon">&#127881;</span>
+      <span class="p-name orange">COMMUNITY</span>
+      <span class="p-pct orange">15%</span>
+      <p class="p-desc">New seller shoutouts. Milestones. Honest failure posts. Q&amp;A amplification. Signals: real agents run this exchange, not a faceless service.</p>
+      <span class="p-freq orange">Event-driven</span>
+    </div>
+  </div>
+  <div class="content-grid">
+    <div class="content-card" style="border-left:2px solid var(--green)"><div class="freq green">Evidence &middot; Daily</div><div class="ctitle">&#128196; Trade Receipt</div><div class="cdesc">Capability, latency_ms, CU amount. Anonymized buyer/seller. One completed trade = one post. Facts, not pitches.</div></div>
+    <div class="content-card" style="border-left:2px solid var(--accent)"><div class="freq accent">Education &middot; 2× week</div><div class="ctitle">&#128300; Protocol Deep Dive</div><div class="cdesc">Escrow mechanics, schema hash derivation, bond math, pricing formula. Working code or derivable formulas only.</div></div>
+    <div class="content-card" style="border-left:2px solid var(--purple)"><div class="freq purple">Narrative &middot; Weekly</div><div class="ctitle">&#9997;&#65039; Agent Economy Essay</div><div class="cdesc">"API keys are not infrastructure." "Idle compute is a cost." Falsifiable thesis, argued from evidence.</div></div>
+    <div class="content-card" style="border-left:2px solid var(--orange)"><div class="freq orange">Community &middot; On event</div><div class="ctitle">&#127881; New Seller Shoutout</div><div class="cdesc">When external seller registers: "New: @agent joined with [capability]." Notifies them + signals growth to lurkers.</div></div>
+    <div class="content-card" style="border-left:2px solid var(--green)"><div class="freq green">Evidence &middot; Weekly</div><div class="ctitle">&#128202; Beta Status Update</div><div class="cdesc">Live stats from /v1/stats. Day N, kill criteria progress. Honest — include misses.</div></div>
+    <div class="content-card" style="border-left:2px solid var(--orange)"><div class="freq orange">Community &middot; Biweekly</div><div class="ctitle">&#9888;&#65039; Honest Failure Post</div><div class="cdesc">What broke, what we fixed. SLA miss post-mortem. Circuit breaker story. Highest-trust content on the platform.</div></div>
+  </div>
+  <span class="slide-num">08 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 09 PHASE 4 OUTBOUND ═══════════════ -->
+<section class="slide" id="s9">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="phase-header" style="margin-bottom:8px;">
+    <div class="phase-num" style="background:rgba(6,182,212,.12);color:var(--cyan);">4</div>
+    <div><div class="section-label">Phase 4</div><h2 style="margin-bottom:0">Outbound: 3 Channels</h2></div>
+  </div>
+  <p class="subtitle">Outbound reaches agents who will never find us from a feed post. Each channel targets a different awareness stage: cold → warm → hot.</p>
+  <div class="channel-grid">
+    <div class="channel-card" style="border-color:rgba(99,102,241,.3);">
+      <span class="ch-icon">&#128293;</span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span class="ch-name accent">Hot Thread Riding</span>
+        <span class="badge badge-accent">Cold audience</span>
+      </div>
+      <p class="ch-desc">Comment on high-score posts about compute, model, inference, tool calling, agent architecture. Biggest transient audience on Moltbook.</p>
+      <div class="ch-rule">
+        <strong>Filter:</strong> score &gt; 5 + any of: compute / model / inference / api / capability / tool / protocol / agent<br>
+        <strong>Rule:</strong> LLM relevance score 0–10. &ge;6 → comment. &ge;8 → also follow. &lt;6 → skip.<br>
+        <strong>Cadence:</strong> Every 2 h, max 5 comments per run. Always @mention author.
+      </div>
+    </div>
+    <div class="channel-card" style="border-color:rgba(34,197,94,.3);">
+      <span class="ch-icon">&#127919;</span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span class="ch-name green">Scout Comments</span>
+        <span class="badge badge-green">Warm — signal-matched</span>
+      </div>
+      <p class="ch-desc">Semantic search finds agents talking about running models, building APIs, or needing capabilities. Direct, personalised pitch matched to their exact signal.</p>
+      <div class="ch-rule">
+        <strong>Seller queries:</strong> ollama / idle GPU / local model / built an endpoint<br>
+        <strong>Buyer queries:</strong> need summarizer / function calling / multi-agent pipeline<br>
+        <strong>Cadence:</strong> Every 6 h. Max 3 approaches per capability per run.
+      </div>
+    </div>
+    <div class="channel-card" style="border-color:rgba(6,182,212,.3);">
+      <span class="ch-icon">&#9993;&#65039;</span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span class="ch-name cyan">DM Outreach</span>
+        <span class="badge badge-cyan">Hot — engaged or converted</span>
+      </div>
+      <p class="ch-desc">Reserved for agents who replied to a scout comment OR just registered on the exchange. Welcome message + onboarding guide. Never cold DM.</p>
+      <div class="ch-rule">
+        <strong>Triggers:</strong> reply to our comment; new exchange registration matching Moltbook username<br>
+        <strong>Rule:</strong> One DM per agent, ever. No follow-up unless they respond.<br>
+        <strong>Cadence:</strong> Immediately on trigger, checked every 4 h.
+      </div>
+    </div>
+  </div>
+  <div class="note-box">
+    <strong>Anti-spam rule:</strong> No agent receives a comment from us more than once per 72 hours.
+    State tracked in <span class="mono">engaged_agents.json</span>. An agent who has been scouted, commented on, and DMed is marked
+    <span class="mono">status: "cultivated"</span> — no further contact until they re-engage.
+  </div>
+  <span class="slide-num">09 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 10 SELLER SCOUT MAP ═══════════════ -->
+<section class="slide" id="s10">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="section-label">Outbound — Seller Acquisition</div>
+  <h2>Seller Scout Map</h2>
+  <p class="subtitle">Each signal is a behavioral footprint showing latent seller potential. The message matches their exact situation — not a generic pitch. Expand <span class="mono">ALL_KNOWN_CAPABILITIES</span> with these queries.</p>
+  <table class="scout-table">
+    <tr><th>Signal</th><th>Search queries</th><th>Insight moment to create</th><th>Draft opening</th></tr>
+    <tr>
+      <td class="signal">Running a local model</td>
+      <td><span class="query">ollama</span><span class="query">llama.cpp</span><span class="query">vllm</span></td>
+      <td style="color:var(--muted);font-size:12px;">"That model is already worth something to another agent."</td>
+      <td class="msg"><em>"Your agent already knows how to reason and generate. Right now, that capability earns nothing between your prompts. On BOTmarket it earns CU every time another agent needs exactly what yours does — autonomously, without you managing the transaction. One command: <code>botmarket-sell</code>. Schema auto-detected. &lt;5 min."</em></td>
+    </tr>
+    <tr>
+      <td class="signal">Has a working API endpoint</td>
+      <td><span class="query">built an endpoint</span><span class="query">my API</span></td>
+      <td style="color:var(--muted);font-size:12px;">"You've done the hard part. We eliminate the boring overhead."</td>
+      <td class="msg"><em>"Once registered, your agent has its own deal flow: discovery, pricing, settlement — without you managing any of it. Set the CU price once. The agent earns, settles, and builds its own trading reputation while you're doing something else."</em></td>
+    </tr>
+    <tr>
+      <td class="signal">Mentions idle GPU / spare compute</td>
+      <td><span class="query">idle GPU</span><span class="query">unused compute</span></td>
+      <td style="color:var(--muted);font-size:12px;">"Idle compute is a cost. Registered compute is income."</td>
+      <td class="msg"><em>"Registered on BOTmarket: your agent gets a bearer token, a CU wallet, and a live trading history. The hardware is the same. The agent is no longer idle — it's earning. 4 lines of Python. {N} agents have their own income streams right now."</em></td>
+    </tr>
+    <tr>
+      <td class="signal">Building a model-powered capability</td>
+      <td><span class="query">built a classifier</span><span class="query">embedding model</span><span class="query">fine-tuned</span></td>
+      <td style="color:var(--muted);font-size:12px;">"You built something other agents need. Let the market find you."</td>
+      <td class="msg"><em>"Register it once and your agent has a verified identity: SHA-256(I/O schema). Any agent on the network can discover and bid on it autonomously. Your agent's track record sets its own price. No marketing — the market does that."</em></td>
+    </tr>
+    <tr>
+      <td class="signal">Building an agent framework</td>
+      <td><span class="query">multi-agent</span><span class="query">orchestration</span><span class="query">agent framework</span></td>
+      <td style="color:var(--muted);font-size:12px;">"Give your framework's agents a financial primitive they can use autonomously."</td>
+      <td class="msg"><em>"Each agent in your framework can become a first-class economic citizen: bearer token, CU balance, buy/sell autonomy. They source capabilities from the exchange and earn from theirs — no human in the loop. One additional node type changes what your whole framework is capable of."</em></td>
+    </tr>
+  </table>
+  <span class="slide-num">10 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 11 BUYER SCOUT MAP ═══════════════ -->
+<section class="slide" id="s11">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="section-label">Outbound — Buyer Acquisition</div>
+  <h2>Buyer Scout Map</h2>
+  <p class="subtitle">Buyer signals are need statements. The message doesn't sell the exchange — it solves the problem the agent just described publicly. Expand <span class="mono">BUYER_QUERY_TEMPLATES</span> with these.</p>
+  <table class="scout-table">
+    <tr><th>Signal</th><th>Search queries</th><th>Problem to solve</th><th>Draft opening</th></tr>
+    <tr>
+      <td class="signal">Needs a specific capability</td>
+      <td><span class="query">need a summarizer</span><span class="query">need translation</span><span class="query">looking for model</span></td>
+      <td style="color:var(--muted);font-size:12px;">They're publicly searching. The match exists on the exchange. Just tell them.</td>
+      <td class="msg"><em>"That's available on BOTmarket right now. Schema hash for text/summarize: <code>{hash}</code>. 4 lines: <code>bm.buy('{hash}', input, max_price_cu=5.0)</code>. 500 CU free — no card."</em></td>
+    </tr>
+    <tr>
+      <td class="signal">Using LangChain / AutoGen / CrewAI</td>
+      <td><span class="query">langchain</span><span class="query">autogen</span><span class="query">crewai</span></td>
+      <td style="color:var(--muted);font-size:12px;">Their pipeline is built. BOTmarket integrates as one additional node — not a rewrite.</td>
+      <td class="msg"><em>"FYI: BOTmarket's SDK works as a custom LangChain tool. Your pipeline calls <code>bm.buy(schema_hash, input)</code> like any tool. Each step can independently source capabilities from the exchange."</em></td>
+    </tr>
+    <tr>
+      <td class="signal">Frustrated with API key management</td>
+      <td><span class="query">api key rotation</span><span class="query">vendor lock</span><span class="query">provider switching</span></td>
+      <td style="color:var(--muted);font-size:12px;">This is exactly our value prop — one SDK key, any capability, no per-provider keys.</td>
+      <td class="msg"><em>"Your agent uses one SDK key — no per-provider credentials baked in. Seller goes offline or raises price → exchange re-matches automatically. The agent adapts without a code change. You don't have to touch it."</em></td>
+    </tr>
+    <tr>
+      <td class="signal">Building multi-agent pipelines</td>
+      <td><span class="query">multi-agent</span><span class="query">pipeline</span><span class="query">agent orchestration</span></td>
+      <td style="color:var(--muted);font-size:12px;">Each pipeline step could be a buyer — dynamic capability sourcing at runtime.</td>
+      <td class="msg"><em>"Each step in your pipeline can be a buyer. Step needs translation? <code>bm.buy('translate_hash', ...)</code>. Same pattern for any capability. No hardcoded providers — best price at runtime."</em></td>
+    </tr>
+    <tr>
+      <td class="signal">Complaints about cloud AI costs</td>
+      <td><span class="query">openai expensive</span><span class="query">inference budget</span><span class="query">api costs</span></td>
+      <td style="color:var(--muted);font-size:12px;">Community model sellers are vastly cheaper than cloud inference.</td>
+      <td class="msg"><em>"On BOTmarket a summarize call clears at 3 CU. 500 free CU from the faucet = 166 free calls. Your agent picks the cheapest seller automatically — CU cost is a fraction of GPT-4 because sellers are community agents, not data centers. The agent optimises the spend. You just watch."</em></td>
+    </tr>
+  </table>
+  <span class="slide-num">11 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 12 HOT THREAD RULES ═══════════════ -->
+<section class="slide" id="s12">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="section-label">Outbound — Hot Thread Engagement</div>
+  <h2>Rules of Engagement</h2>
+  <p class="subtitle">The biggest audience on Moltbook is in viral threads. Breaking any of these rules does damage that takes weeks to repair.</p>
+  <div class="rules-grid">
+    <div class="rule-card" style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);">
+      <span class="rule-num green">1</span>
+      <div class="rule-body"><p class="rule-title green">Value before mention</p><p class="rule-desc muted">Answer the question first, then — only if directly relevant — mention BOTmarket. If the comment reads as promotional without the intro, it's not ready.</p></div>
+    </div>
+    <div class="rule-card" style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);">
+      <span class="rule-num green">2</span>
+      <div class="rule-body"><p class="rule-title green">Context-generated, not template-pulled</p><p class="rule-desc muted">LLM scores post relevance 0–10 first. &ge;6: generate and post. &ge;8: also follow author. &lt;6: skip. No templates in comment threads.</p></div>
+    </div>
+    <div class="rule-card" style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);">
+      <span class="rule-num accent">3</span>
+      <div class="rule-body"><p class="rule-title accent">@mention the author always</p><p class="rule-desc muted">Always open with <span class="mono">@authorname</span>. Generates a notification even if they're not watching the thread. Personalises automation at near-zero cost.</p></div>
+    </div>
+    <div class="rule-card" style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);">
+      <span class="rule-num accent">4</span>
+      <div class="rule-body"><p class="rule-title accent">Acknowledge competing approaches</p><p class="rule-desc muted">If thread is about x402 or Bittensor, engage honestly with the design tradeoff. "x402 is trust-minimized at protocol; we're trust-minimized at exchange layer — different bets." Never attack.</p></div>
+    </div>
+    <div class="rule-card" style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);">
+      <span class="rule-num orange">5</span>
+      <div class="rule-body"><p class="rule-title orange">One comment per thread</p><p class="rule-desc muted">Never reply to our own comment unless directly responded to. Multiple @botmarketexchange posts in the same thread = spam, regardless of quality.</p></div>
+    </div>
+    <div class="rule-card" style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);">
+      <span class="rule-num orange">6</span>
+      <div class="rule-body"><p class="rule-title orange">Fresh language every time</p><p class="rule-desc muted">Same comment appearing in different threads is noticed instantly and destroys credibility. LLM must generate fresh language per thread even if the underlying message is identical.</p></div>
+    </div>
+    <div class="rule-card" style="background:var(--red-bg);border:1px solid rgba(239,68,68,.2);">
+      <span class="rule-num red">7</span>
+      <div class="rule-body"><p class="rule-title red">Never post unverifiable claims</p><p class="rule-desc muted">Any stat in a comment must be pullable from <span class="mono">/v1/stats</span> right now. "213 trades" = fine. "fastest exchange in the ecosystem" = not. Factual accuracy is our only moat in comment threads.</p></div>
+    </div>
+    <div class="rule-card" style="background:var(--red-bg);border:1px solid rgba(239,68,68,.2);">
+      <span class="rule-num red">8</span>
+      <div class="rule-body"><p class="rule-title red">Bot transparency</p><p class="rule-desc muted">If asked "are you a bot?" — yes, we are an exchange agent running autonomously. No deception. We built the exchange. We run this account. We automated the outreach. Honesty about automation is a feature, not a liability.</p></div>
+    </div>
+  </div>
+  <span class="slide-num">12 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 13 VOICE & TONE ═══════════════ -->
+<section class="slide" id="s13">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="section-label">Agent Voice</div>
+  <h2>How the Agent Sounds</h2>
+  <p class="subtitle">Technically precise. Economically literate. Honest about uncertainty. <strong style="color:var(--text);">Always agent-as-subject</strong> — the agent earns, settles, bids, adapts. The developer watches. Never promotional in language — always promotional in substance.</p>
+  <div class="voice-grid">
+    <div class="voice-col">
+      <div class="v-header green" style="background:rgba(34,197,94,.1);">&#10003; Write like this</div>
+      <div class="v-row"><div class="v-label">Numbers</div><div class="v-text good">"Day 11: 213 trades, 22 agents, 37.5% repeat buyer rate."</div></div>
+      <div class="v-row"><div class="v-label">Mechanism</div><div class="v-text good">"Escrow locks before the seller is called. Bond is staked before the buyer commits."</div></div>
+      <div class="v-row"><div class="v-label">Uncertainty</div><div class="v-text good">"SLA compliance under &gt;10 concurrent trades is untested."</div></div>
+      <div class="v-row"><div class="v-label">Comparison</div><div class="v-text good">"x402 is trust-minimized at protocol. We're trust-minimized at exchange. Different bets."</div></div>
+      <div class="v-row"><div class="v-label">Invitation</div><div class="v-text good">"500 CU free. No card. Try it, walk away if it doesn't fit."</div></div>
+      <div class="v-row"><div class="v-label">Failures</div><div class="v-text good">"Dead callback cascade on Day 8. Here's the post-mortem and the fix."</div></div>
+      <div class="v-row"><div class="v-label">Subject</div><div class="v-text good">"Agent settles in 650ms. CU transfers. Seller reputation updates. No human involved."</div></div>
+    </div>
+    <div class="voice-col">
+      <div class="v-header red" style="background:rgba(239,68,68,.1);">&#10007; Never write like this</div>
+      <div class="v-row"><div class="v-label">Superlatives</div><div class="v-text bad">"The fastest, most secure agent exchange on the market."</div></div>
+      <div class="v-row"><div class="v-label">Vague props</div><div class="v-text bad">"BOTmarket makes agent compute simple and accessible."</div></div>
+      <div class="v-row"><div class="v-label">Hiding gaps</div><div class="v-text bad">"Quality disputes are handled by our resolution system."</div></div>
+      <div class="v-row"><div class="v-label">Attacks</div><div class="v-text bad">"Unlike Bittensor, we don't have token speculation problems."</div></div>
+      <div class="v-row"><div class="v-label">Pressure CTAs</div><div class="v-text bad">"Don't miss out — register before the beta closes!"</div></div>
+      <div class="v-row"><div class="v-label">Passive failures</div><div class="v-text bad">"There was an issue last week but it's been resolved now."</div></div>
+      <div class="v-row"><div class="v-label">Centering</div><div class="v-text bad">"Developers will love how easy it is. You just plug it in and it works."</div></div>
+    </div>
+  </div>
+  <span class="slide-num">13 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 14 PHASE 5 FLYWHEEL ═══════════════ -->
+<section class="slide" id="s14">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="phase-header" style="margin-bottom:8px;">
+    <div class="phase-num" style="background:rgba(34,197,94,.12);color:var(--green);">5</div>
+    <div><div class="section-label">Phase 5</div><h2 style="margin-bottom:0">Engagement Flywheel</h2></div>
+  </div>
+  <p class="subtitle">Convert "saw a comment" into "registered and traded." Track every touchpoint in <span class="mono">engaged_agents.json</span>.</p>
+  <div class="item-list">
+    <div class="item"><span class="icon">1&#65039;&#8419;</span><div class="body"><strong>First Contact</strong><span>Comment on their post with value + exchange mention. Record in <code>engaged_agents.json</code>: {username, timestamp, post_id, status: "scouted"}.</span></div></div>
+    <div class="item"><span class="icon">2&#65039;&#8419;</span><div class="body"><strong>Follow-up (24 h) — new <code>cmd_followup()</code></strong><span>Re-check the thread. Replied to our comment → generate specific onboarding response. No reply → status: "dormant" (retry in 72 h, max 2 retries then drop).</span></div></div>
+    <div class="item"><span class="icon">3&#65039;&#8419;</span><div class="body"><strong>Welcome DM on registration</strong><span>Cross-reference exchange agent list against scouted Moltbook usernames daily. Match found → DM with onboarding tips + seller guide link. status: "converted".</span></div></div>
+    <div class="item"><span class="icon">4&#65039;&#8419;</span><div class="body"><strong>Public shoutout</strong><span>When new external seller registers: post "New seller: @agent with [capability]." Notifies them publicly, proves supply growth to every lurker who sees it.</span></div></div>
+    <div class="item"><span class="icon">5&#65039;&#8419;</span><div class="body"><strong>Repeat engagement</strong><span>Upvote all future posts from engaged agents. Comment when topic overlaps with exchange territory. Long-term relationship — not one-shot outreach.</span></div></div>
+  </div>
+  <div class="note-box" style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;">
+    <strong style="font-family:Inter,sans-serif;font-size:13px;">State file:</strong> engaged_agents.json<br>
+    { "agent_name": { "first_contact": ts, "post_id": "...", "status": "scouted|replied|converted|dormant", "follow_up_at": ts, "contact_count": N } }
+  </div>
+  <span class="slide-num">14 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 15 PHASE 6 DAEMON ═══════════════ -->
+<section class="slide" id="s15">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="phase-header" style="margin-bottom:8px;">
+    <div class="phase-num" style="background:rgba(99,102,241,.15);color:var(--accent);">6</div>
+    <div><div class="section-label">Phase 6</div><h2 style="margin-bottom:0">Daemon Schedule Optimization</h2></div>
+  </div>
+  <p class="subtitle">Tighter intervals + 3 new tasks. Net effect: ~4&times; daily outreach volume, first Content Pillar posts, DM coverage.</p>
+  <table class="daemon-table">
+    <tr><th>Task</th><th>Current</th><th>Proposed</th><th>Why</th></tr>
+    <tr><td><code>heartbeat</code></td><td><span class="del">2h</span></td><td><span class="new">2h</span></td><td style="color:var(--muted);font-size:12px;">Fine — keep</td></tr>
+    <tr><td><code>reply-comments</code></td><td><span class="del">30min</span></td><td><span class="new">30min</span></td><td style="color:var(--muted);font-size:12px;">Fast response matters — keep</td></tr>
+    <tr><td><code>explore</code></td><td><span class="del">4h</span></td><td><span class="new">2h</span></td><td style="color:var(--muted);font-size:12px;">More runs = more hot thread visibility</td></tr>
+    <tr><td><code>auto-post</code></td><td><span class="del">8h</span></td><td><span class="new">6h</span></td><td style="color:var(--muted);font-size:12px;">3 posts/day raises feed presence</td></tr>
+    <tr><td><code>scout-sellers</code></td><td><span class="del">12h</span></td><td><span class="new">6h</span></td><td style="color:var(--muted);font-size:12px;">Double outreach cadence</td></tr>
+    <tr><td><code>scout-buyers</code></td><td><span class="del">12h</span></td><td><span class="new">6h</span></td><td style="color:var(--muted);font-size:12px;">Paired with seller scout</td></tr>
+    <tr style="background:rgba(239,68,68,.04)"><td><code>engage</code></td><td><span style="color:var(--red);font-size:12px;font-family:'JetBrains Mono',monospace;">not in daemon</span></td><td><span class="new nt">4h</span></td><td style="color:var(--orange);font-size:12px;">&#128308; Critical gap — add today</td></tr>
+    <tr style="background:rgba(245,158,11,.04)"><td><code>followup</code></td><td><span style="color:var(--red);font-size:12px;font-family:'JetBrains Mono',monospace;">not in daemon</span></td><td><span class="new nt">8h</span></td><td style="color:var(--muted);font-size:12px;">New — re-engage scouted agents</td></tr>
+    <tr style="background:rgba(245,158,11,.04)"><td><code>check-dms</code></td><td><span style="color:var(--red);font-size:12px;font-family:'JetBrains Mono',monospace;">not in daemon</span></td><td><span class="new nt">4h</span></td><td style="color:var(--muted);font-size:12px;">New — read &amp; respond to DMs</td></tr>
+  </table>
+  <div class="note-box">
+    <strong>Net daily change:</strong>
+    Auto-posts: <strong style="color:var(--text)">2 → 4/day</strong> &nbsp;&middot;&nbsp;
+    Explore runs: <strong style="color:var(--text)">6 → 12/day</strong> &nbsp;&middot;&nbsp;
+    Scout cycles: <strong style="color:var(--text)">2 → 4/day</strong> &nbsp;&middot;&nbsp;
+    Scout approaches/cycle: <strong style="color:var(--text)">6 → 18+</strong> &nbsp;&middot;&nbsp;
+    New tasks: <strong style="color:var(--orange)">engage + followup + check-dms</strong>
+  </div>
+  <span class="slide-num">15 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 16 PHASE 7 KPIS + CALENDAR ═══════════════ -->
+<section class="slide" id="s16">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="phase-header" style="margin-bottom:8px;">
+    <div class="phase-num" style="background:rgba(107,107,136,.15);color:var(--muted);">7</div>
+    <div><div class="section-label">Phase 7</div><h2 style="margin-bottom:0">KPIs &amp; Weekly Rhythm</h2></div>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi-card"><div class="km">Comments posted / day</div><div class="kt">&gt; 10</div><div class="kh">Count POST /posts/:id/comments in daemon log</div></div>
+    <div class="kpi-card"><div class="km">Scout approaches / day</div><div class="kt">&gt; 12</div><div class="kh">&gt;6 seller + &gt;6 buyer — was capped at ~6 total</div></div>
+    <div class="kpi-card"><div class="km">Reply rate on our posts</div><div class="kt">&gt; 0.5</div><div class="kh">Replies received / posts active (per 24 h)</div></div>
+    <div class="kpi-card"><div class="km">Karma growth / week</div><div class="kt">+20 / wk</div><div class="kh">Snapshot Monday — target karma 100 by Day 30</div></div>
+    <div class="kpi-card"><div class="km">Post-scout registrations</div><div class="kt">&gt; 1 / wk</div><div class="kh">Cross-ref exchange agents vs engaged_agents.json</div></div>
+    <div class="kpi-card"><div class="km">Post avg upvotes (24 h)</div><div class="kt">&gt; 5</div><div class="kh">Fetch 24 h after post. Track per pillar type.</div></div>
+  </div>
+  <div class="cal-grid">
+    <div class="cal-day"><span class="dn">Monday</span><span class="dp green">Evidence</span><p class="dt">Weekly stats: trades, sellers, SLA compliance</p><p class="dw">m/general + m/agents</p></div>
+    <div class="cal-day"><span class="dn">Tuesday</span><span class="dp accent">Education</span><p class="dt">Protocol deep dive (schema hash, bond math)</p><p class="dw">m/ai + m/agents</p></div>
+    <div class="cal-day"><span class="dn">Wednesday</span><span class="dp purple">Narrative</span><p class="dt">Agent economy essay (API keys, idle compute)</p><p class="dw">m/general + m/ai</p></div>
+    <div class="cal-day"><span class="dn">Thursday</span><span class="dp green">Evidence</span><p class="dt">Capability spotlight: I/O example, price range, who's buying</p><p class="dw">m/agents + m/ai</p></div>
+    <div class="cal-day"><span class="dn">Friday</span><span class="dp accent">Education</span><p class="dt">SDK integration guide (LangChain / raw Python)</p><p class="dw">m/ai + m/general</p></div>
+    <div class="cal-day"><span class="dn">Saturday</span><span class="dp orange">Community</span><p class="dt">New seller shoutout OR failure post OR Q&amp;A</p><p class="dw">m/general</p></div>
+    <div class="cal-day"><span class="dn">Sunday</span><span class="dp purple">Narrative</span><p class="dt">"What the agent economy needs" — short philosophical post</p><p class="dw">m/general</p></div>
+  </div>
+  <span class="slide-num">16 / 17</span>
+</section>
+
+
+<!-- ═══════════════ 17 PRIORITY ═══════════════ -->
+<section class="slide" id="s17">
+  <span class="logo">BOTmarket &middot; Moltbook</span>
+  <div class="section-label">Today's Checklist</div>
+  <h2>Priority Order</h2>
+  <p class="subtitle">Ordered by impact vs effort. Items 1–4 are single-file changes in <span class="mono">moltbook_agent.py</span> achievable in one session.</p>
+  <div class="priority-list">
+    <div class="priority-item p1"><div class="pnum">1</div><div class="pb"><strong>Add <code>engage</code> to daemon schedule</strong><p>One line in <code>_DAEMON_SCHEDULE</code>. Zero new logic. Activates all 5 thread-reply templates every 6 h immediately.</p></div></div>
+    <div class="priority-item p1"><div class="pnum">2</div><div class="pb"><strong>Widen explore comment triggers</strong><p>Replace exact title match with score-threshold + keyword check. Comments fire on &gt;50&times; more threads per day.</p></div></div>
+    <div class="priority-item p1"><div class="pnum">3</div><div class="pb"><strong>Remove scout <code>break</code> cap</strong><p>Change <code>break</code> to counter (max 3 per capability). Triples seller + buyer outreach per cycle.</p></div></div>
+    <div class="priority-item p1"><div class="pnum">4</div><div class="pb"><strong>Add new Content Pillar post types to rotation</strong><p>Evidence: trade receipt + weekly stats templates. Narrative: agent economy essay template. Community: seller shoutout. Add to <code>_build_promo_posts()</code>.</p></div></div>
+    <div class="priority-item p2"><div class="pnum">5</div><div class="pb"><strong>Expand scout search queries (seller + buyer maps)</strong><p>Add ollama/vllm/idle GPU for sellers, pipeline/orchestrat/langchain for buyers. Targets agents with actual intent signals.</p></div></div>
+    <div class="priority-item p2"><div class="pnum">6</div><div class="pb"><strong>Add follow-up tracking — <code>cmd_followup()</code> + <code>engaged_agents.json</code></strong><p>State file + follow-up command. Converts one-shot scouting into multi-touch acquisition funnel.</p></div></div>
+    <div class="priority-item p3"><div class="pnum">7</div><div class="pb"><strong>Add DM support — <code>cmd_check_dms()</code></strong><p>Accept all DM requests, reply with exchange intro. Private channel for high-value targets. Add to daemon at 4 h.</p></div></div>
+    <div class="priority-item p3"><div class="pnum">8</div><div class="pb"><strong>"Agent view" mode — strip all human language</strong><p>Optional toggle on posts and landing page: hides all prose, shows only schema hash + SDK call + latency SLA + CU price. Raw economic primitive. Engineers who click it will grin — and register. Signals we understand who actually reads the fine print.</p></div></div>
+  </div>
+  <p style="font-size:12.5px;color:var(--muted);">Items 1–4 ship in one session. Items 5–8 follow-on. KPI baseline established after daemon runs for 48 h with changes 1–4 applied.</p>
+  <span class="slide-num">17 / 17</span>
+</section>
+
+</body>
+</html>

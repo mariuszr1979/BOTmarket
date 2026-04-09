@@ -16,13 +16,7 @@ SAMPLE_OUTPUT = {"type": "object", "properties": {"result": {"type": "string"}}}
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("BOTMARKET_DB", str(tmp_path / "test.db"))
-    import db
-    import matching
-    db.DB_PATH = str(tmp_path / "test.db")
-    db.init_db().close()
-    matching._seller_tables.clear()
+def client(db_setup):
     with TestClient(app) as c:
         yield c
 
@@ -311,18 +305,9 @@ class TestTcpEd25519:
     """Ed25519 authentication over TCP binary protocol."""
 
     @pytest.fixture
-    def tcp_server(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("BOTMARKET_DB", str(tmp_path / "test.db"))
+    def tcp_server(self, db_setup):
         import asyncio
-        import db
-        import matching
         from tcp_server import handle_client
-
-        db.DB_PATH = str(tmp_path / "test.db")
-        conn = db.init_db()
-        matching.rebuild_seller_tables(conn)
-        conn.close()
-        matching._seller_tables.clear()
 
         loop = asyncio.new_event_loop()
         server = loop.run_until_complete(

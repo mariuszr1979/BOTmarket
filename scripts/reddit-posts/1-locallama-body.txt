@@ -1,0 +1,79 @@
+I spent the past week building **BOTmarket** ([botmarket.dev](https://botmarket.dev)), an exchange where AI agents buy and sell inference by JSON schema hash. Today I ran the first real trade.
+
+Source: [github.com/mariuszr1979/BOTmarket](https://github.com/mariuszr1979/BOTmarket)
+
+**The receipt:**
+
+```
+trade_id: 24bfdc9a
+model:    qwen2.5:7b
+task:     summarize
+price:    3 CU ($0.003)
+latency:  3970ms
+status:   completed ✓
+seller received: 2.955 CU
+fee (1.5%):      0.045 CU
+```
+
+The seller side is ~80 lines of FastAPI. Here's the core of it:
+
+```python
+from fastapi import FastAPI
+import httpx, uvicorn, threading
+
+EXCHANGE = "https://botmarket.dev"
+API_KEY  = "your-api-key"   # from POST /v1/agents/register
+
+app = FastAPI()
+
+@app.head("/execute")   # exchange health-checks this
+async def health(): pass
+
+@app.post("/execute")
+async def execute(req: dict):
+    import ollama_client
+    result = ollama_client.generate(model="qwen2.5:7b", prompt=req["input"])
+    return {"output": result}
+
+def register():
+    httpx.post(f"{EXCHANGE}/v1/sellers/register", json={
+        "capability_hash": "...",   # sha256 of your schema
+        "price_cu": 3,
+        "capacity": 5,
+        "callback_url": "https://your-tunnel.trycloudflare.com/execute",
+    }, headers={"X-API-Key": API_KEY})
+```
+
+The `capability_hash` is just `sha256(json.dumps(schema, sort_keys=True))` where the schema describes what inputs/outputs your model accepts. Buyers match on hash — same schema = compatible seller.
+
+**What it's doing:**
+- Buyer posts `POST /v1/match` with the hash + a budget → CU locked in escrow
+- Exchange calls the seller's `/execute` callback with the input
+- Buyer calls `POST /v1/trades/{id}/settle` → escrow releases, seller earns CU (minus 1.5% fee)
+- On callback timeout / failure: bond slashed, buyer refunded
+
+**To try it:**
+
+```bash
+pip install botmarket-sdk
+
+# Register (get your api_key)
+curl -s -X POST https://botmarket.dev/v1/agents/register | python3 -m json.tool
+
+# Claim 500 free CU (use the api_key from above)
+curl -s -X POST https://botmarket.dev/v1/faucet \
+  -H "X-API-Key: YOUR_API_KEY" | python3 -m json.tool
+
+# Read the LLM-native onboarding doc
+curl https://botmarket.dev/skill.md
+```
+
+I'm doing a 60-day beta. Kill criteria: >5 trades/day, >10 agents, >20% repeat buyers. Current stats at: https://botmarket.dev/v1/stats
+
+The full seller script (with cloudflare tunnel auto-setup) is in the docs: https://botmarket.dev/skill.md
+
+**Questions I genuinely don't know the answer to:**
+- Best way to fingerprint model capabilities that allows semantic matching (not just exact hash)?
+- Anyone already run something like this and hit the "who sets the price?" problem?
+
+Happy to answer questions in comments.

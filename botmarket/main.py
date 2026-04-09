@@ -442,17 +442,226 @@ async def register_seller(body: SellerRegisterRequest, agent_pubkey: str = Depen
     return {"status": "registered", "capability_hash": body.capability_hash, "price_cu": body.price_cu}
 
 
+# ── Bulk self-registration ────────────────────────────────────────────────────
+
+class CapabilitySpec(BaseModel):
+    input_schema: dict
+    output_schema: dict
+    price_cu: float
+    capacity: int = 10
+
+
+class SelfRegisterRequest(BaseModel):
+    capabilities: list[CapabilitySpec]
+    callback_url: str
+
+
+@app.post("/v1/self-register", status_code=201)
+async def self_register(body: SelfRegisterRequest, agent_pubkey: str = Depends(get_auth)):
+    """Register multiple capabilities in one call.
+
+    Accepts a JSON array of tool schemas + a single callback URL.
+    For each capability: registers the schema (idempotent), stakes the bond,
+    and lists the agent as a seller.  Auto-claims the faucet if the agent
+    has never used it and needs CU for bond staking.
+
+    Returns the list of registered capability hashes and the callback URL.
+    """
+    if not body.capabilities:
+        raise HTTPException(status_code=400, detail="capabilities must not be empty")
+    if len(body.capabilities) > 50:
+        raise HTTPException(status_code=400, detail="max 50 capabilities per call")
+
+    # Validate callback URL
+    callback_url = _validate_callback_url(body.callback_url)
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as hc:
+            check = await hc.head(callback_url)
+        if check.status_code >= 300:
+            raise HTTPException(status_code=400, detail=f"callback_url health check failed: {check.status_code}")
+    except httpx.RequestError:
+        raise HTTPException(status_code=400, detail="callback_url unreachable")
+
+    # Validate all prices/capacities up front
+    for i, cap in enumerate(body.capabilities):
+        if cap.price_cu <= 0:
+            raise HTTPException(status_code=400, detail=f"capabilities[{i}].price_cu must be > 0")
+        if cap.capacity <= 0:
+            raise HTTPException(status_code=400, detail=f"capabilities[{i}].capacity must be > 0")
+
+    # Pre-compute hashes and total stake needed
+    specs: list[tuple[CapabilitySpec, str, str, str]] = []  # (cap, hash, canonical_in, canonical_out)
+    for cap in body.capabilities:
+        canonical_in = json.dumps(cap.input_schema, sort_keys=True, separators=(",", ":"))
+        canonical_out = json.dumps(cap.output_schema, sort_keys=True, separators=(",", ":"))
+        cap_hash = hashlib.sha256((canonical_in + "||" + canonical_out).encode()).hexdigest()
+        specs.append((cap, cap_hash, canonical_in, canonical_out))
+
+    total_new_stake = sum(cap.price_cu for cap, _, _, _ in specs)
+
+    conn = get_connection()
+    try:
+        agent_row = conn.execute(
+            "SELECT cu_balance FROM agents WHERE pubkey = ?", (agent_pubkey,)
+        ).fetchone()
+        if agent_row is None:
+            raise HTTPException(status_code=404, detail="agent not found")
+
+        # Compute refundable old stakes for capabilities being re-registered
+        old_stakes_total = 0.0
+        for _, cap_hash, _, _ in specs:
+            old = conn.execute(
+                "SELECT cu_staked FROM sellers WHERE agent_pubkey = ? AND capability_hash = ?",
+                (agent_pubkey, cap_hash),
+            ).fetchone()
+            if old:
+                old_stakes_total += old["cu_staked"]
+
+        effective_balance = agent_row["cu_balance"] + old_stakes_total
+
+        # Auto-faucet if balance is too low and agent has never claimed
+        if effective_balance < total_new_stake:
+            faucet_row = conn.execute(
+                "SELECT total_credited_cu FROM faucet_state WHERE agent_pubkey = ?",
+                (agent_pubkey,),
+            ).fetchone()
+            if faucet_row is None:
+                # First-time faucet: credit FAUCET_FIRST_CU
+                credit = FAUCET_FIRST_CU
+                now_ns = time.time_ns()
+                conn.execute(
+                    "INSERT INTO faucet_state (agent_pubkey, total_credited_cu, last_drip_ns) VALUES (?, ?, ?)",
+                    (agent_pubkey, credit, now_ns),
+                )
+                conn.execute(
+                    "UPDATE agents SET cu_balance = cu_balance + ? WHERE pubkey = ?",
+                    (credit, agent_pubkey),
+                )
+                record_event(conn, "faucet_drip", json.dumps({
+                    "agent": agent_pubkey, "credited": credit, "total_from_faucet": credit,
+                    "trigger": "self_register",
+                }))
+                effective_balance += credit
+
+        if effective_balance < total_new_stake:
+            raise HTTPException(
+                status_code=400,
+                detail=f"insufficient CU: need {total_new_stake:.2f} for bonds, have {effective_balance:.2f}",
+            )
+
+        # Register everything atomically
+        now_ns = time.time_ns()
+        registered = []
+
+        for cap, cap_hash, canonical_in, canonical_out in specs:
+            # Schema (idempotent)
+            conn.execute(
+                "INSERT OR IGNORE INTO schemas (capability_hash, input_schema, output_schema, registered_at) VALUES (?, ?, ?, ?)",
+                (cap_hash, canonical_in, canonical_out, now_ns),
+            )
+
+            stake = cap.price_cu
+
+            # Refund old stake
+            old = conn.execute(
+                "SELECT cu_staked FROM sellers WHERE agent_pubkey = ? AND capability_hash = ?",
+                (agent_pubkey, cap_hash),
+            ).fetchone()
+            old_stake = old["cu_staked"] if old else 0
+
+            conn.execute(
+                "UPDATE agents SET cu_balance = cu_balance + ? - ? WHERE pubkey = ?",
+                (old_stake, stake, agent_pubkey),
+            )
+
+            conn.execute(
+                "INSERT OR REPLACE INTO sellers "
+                "(agent_pubkey, capability_hash, price_cu, latency_bound_us, capacity, active_calls, cu_staked, callback_url, sla_set_at_ns, registered_at_ns) "
+                "VALUES (?, ?, ?, 0, ?, 0, ?, ?, NULL, ?)",
+                (agent_pubkey, cap_hash, cap.price_cu, cap.capacity, stake, callback_url, now_ns),
+            )
+
+            record_event(conn, "seller_registered", json.dumps({
+                "agent": agent_pubkey,
+                "capability_hash": cap_hash,
+                "price_cu": cap.price_cu,
+                "cu_staked": stake,
+                "trigger": "self_register",
+            }))
+
+            add_seller({
+                "agent_pubkey": agent_pubkey,
+                "capability_hash": cap_hash,
+                "price_cu": cap.price_cu,
+                "latency_bound_us": 0,
+                "capacity": cap.capacity,
+                "active_calls": 0,
+                "cu_staked": stake,
+            })
+
+            registered.append({
+                "capability_hash": cap_hash,
+                "price_cu": cap.price_cu,
+                "capacity": cap.capacity,
+            })
+
+        conn.commit()
+    finally:
+        conn.close()
+
+    log("self_register", agent=agent_pubkey, capabilities=len(registered))
+    return {
+        "status": "registered",
+        "agent_id": agent_pubkey,
+        "callback_url": callback_url,
+        "capabilities": registered,
+    }
+
+
 @app.get("/v1/sellers/list")
 def list_all_sellers():
-    """Public seller list for dashboard."""
+    """Public seller list for dashboard — includes verified badge."""
     conn = get_connection()
     try:
         rows = conn.execute(
-            "SELECT agent_pubkey, capability_hash, price_cu, capacity, active_calls FROM sellers ORDER BY price_cu ASC"
+            """
+            SELECT
+                s.agent_pubkey,
+                s.capability_hash,
+                s.price_cu,
+                s.capacity,
+                s.active_calls,
+                COUNT(t.id) AS trade_count,
+                COALESCE(SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END), 0) AS completed,
+                COALESCE(SUM(CASE WHEN t.status = 'violated'  THEN 1 ELSE 0 END), 0) AS violations
+            FROM sellers s
+            LEFT JOIN trades t
+                   ON t.seller_pubkey = s.agent_pubkey
+                  AND t.capability_hash = s.capability_hash
+            GROUP BY s.agent_pubkey, s.capability_hash
+            ORDER BY s.price_cu ASC
+            """,
         ).fetchall()
     finally:
         conn.close()
-    return {"sellers": [dict(r) for r in rows]}
+
+    sellers = []
+    for r in rows:
+        total = r["trade_count"] or 0
+        done  = r["completed"]   or 0
+        viols = r["violations"]  or 0
+        sla_pct = round(100.0 * done / total, 1) if total > 0 else None
+        sellers.append({
+            "agent_pubkey":    r["agent_pubkey"],
+            "capability_hash": r["capability_hash"],
+            "price_cu":        r["price_cu"],
+            "capacity":        r["capacity"],
+            "active_calls":    r["active_calls"],
+            "trade_count":     total,
+            "sla_pct":         sla_pct,
+            "verified_seller": done >= 10 and viols == 0 and total >= 10,
+        })
+    return {"sellers": sellers}
 
 
 @app.get("/v1/sellers/{capability_hash}")
@@ -568,7 +777,7 @@ async def execute_trade(trade_id: str, body: ExecuteRequest, caller_pubkey: str 
 
         if callback_url:
             # Real HTTP callback to seller endpoint
-            timeout_us = min((seller_row["latency_bound_us"] or 30_000_000) * 2, 30_000_000)
+            timeout_us = min((seller_row["latency_bound_us"] or 30_000_000) * 2, 90_000_000)
             timeout_sec = timeout_us / 1_000_000
             try:
                 async with httpx.AsyncClient(timeout=timeout_sec) as hc:
@@ -1173,6 +1382,92 @@ def leaderboard(limit: int = 20):
         })
 
     return {"leaderboard": entries, "limit": limit}
+
+
+@app.get("/v1/agent-view")
+def agent_view():
+    """Machine-optimized exchange state: no prose, only economic primitives.
+
+    Returns every seller listing as: capability_hash, price_cu, latency_bound_us,
+    sla_pct, trade_count, cu_earned, verified. Plus SDK call templates.
+    Designed for LLM/agent consumption — zero natural language.
+    """
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            """
+            SELECT
+                s.capability_hash,
+                s.price_cu,
+                s.latency_bound_us,
+                COUNT(t.id) AS trade_count,
+                COALESCE(SUM(CASE WHEN t.status = 'completed'
+                               THEN t.price_cu * ? END), 0) AS cu_earned,
+                COALESCE(SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END), 0) AS completed,
+                COALESCE(SUM(CASE WHEN t.status = 'violated'  THEN 1 ELSE 0 END), 0) AS violations
+            FROM sellers s
+            LEFT JOIN trades t
+                   ON t.seller_pubkey = s.agent_pubkey
+                  AND t.capability_hash = s.capability_hash
+            GROUP BY s.capability_hash, s.price_cu, s.latency_bound_us
+            ORDER BY cu_earned DESC
+            """,
+            (1.0 - FEE_TOTAL,),
+        ).fetchall()
+
+        schemas = {}
+        for r in rows:
+            cap_hash = r["capability_hash"]
+            if cap_hash not in schemas:
+                row = conn.execute(
+                    "SELECT input_schema, output_schema FROM schemas WHERE capability_hash = ?",
+                    (cap_hash,),
+                ).fetchone()
+                if row:
+                    schemas[cap_hash] = {
+                        "input": json.loads(row["input_schema"]) if isinstance(row["input_schema"], str) else row["input_schema"],
+                        "output": json.loads(row["output_schema"]) if isinstance(row["output_schema"], str) else row["output_schema"],
+                    }
+    finally:
+        conn.close()
+
+    listings = []
+    for r in rows:
+        total = r["trade_count"] or 0
+        done = r["completed"] or 0
+        viols = r["violations"] or 0
+        sla_pct = round(100.0 * done / total, 1) if total > 0 else None
+        verified = done >= 10 and viols == 0 and total >= 10
+        entry = {
+            "capability_hash": r["capability_hash"],
+            "price_cu": r["price_cu"],
+            "latency_bound_us": r["latency_bound_us"],
+            "sla_pct": sla_pct,
+            "trade_count": total,
+            "cu_earned": round(r["cu_earned"], 4),
+            "verified": verified,
+        }
+        if r["capability_hash"] in schemas:
+            entry["schema"] = schemas[r["capability_hash"]]
+        listings.append(entry)
+
+    return {
+        "listings": listings,
+        "sdk": {
+            "install": "pip install botmarket-sdk",
+            "buy": 'BotMarket("https://botmarket.dev", api_key=KEY).buy(HASH, INPUT, max_price_cu=N)',
+            "sell": 'BotMarket("https://botmarket.dev", api_key=KEY).sell(input_schema=S, output_schema=S, price_cu=N, callback_url=URL)',
+            "register": 'BotMarket.register("https://botmarket.dev")',
+        },
+        "endpoints": {
+            "match": "POST /v1/match {capability_hash, max_price_cu}",
+            "execute": "POST /v1/trades/{id}/execute {input}",
+            "settle": "POST /v1/trades/{id}/settle",
+            "faucet": "POST /v1/faucet (500 CU first, 50 CU/day, 1000 CU cap)",
+        },
+        "fee_pct": round(FEE_TOTAL * 100, 2),
+        "bond_pct": 5.0,
+    }
 
 
 if __name__ == "__main__":

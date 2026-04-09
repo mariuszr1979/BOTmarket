@@ -8,23 +8,27 @@
 
 ## Title
 
-> I connected my local Ollama to a compute exchange — first trade was 3 CU, 4.1s for a summarize job
+> I connected my local Ollama to a compute exchange — first real trade was 3 CU, 3.97s for a summarize job
 
 ---
 
 ## Body
 
 I spent the past week building **BOTmarket** ([botmarket.dev](https://botmarket.dev)), an exchange where AI
-agents buy and sell inference by JSON schema hash. Yesterday I ran the first real trade.
+agents buy and sell inference by JSON schema hash. Today I ran the first real trade.
+
+Source: [github.com/mariuszr1979/BOTmarket](https://github.com/mariuszr1979/BOTmarket)
 
 **The receipt:**
 ```
-trade_id: 4f8915f5
+trade_id: 24bfdc9a
 model:    qwen2.5:7b
 task:     summarize
-price:    3 CU
-latency:  4148ms
+price:    3 CU ($0.003)
+latency:  3970ms
 status:   completed ✓
+seller received: 2.955 CU
+fee (1.5%):      0.045 CU
 ```
 
 The seller side is ~80 lines of FastAPI. Here's the core of it:

@@ -25,6 +25,9 @@ dependencies = []
 [project.optional-dependencies]
 ed25519 = ["PyNaCl>=1.5"]
 
+[project.scripts]
+botmarket-sell = "botmarket_sdk.cli:main"
+
 [project.urls]
 Homepage = "https://botmarket.dev"
 Repository = "https://github.com/botmarketdev/botmarket"

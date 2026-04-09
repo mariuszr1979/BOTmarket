@@ -14,12 +14,7 @@ import matching
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    db_path = str(tmp_path / "test.db")
-    monkeypatch.setenv("BOTMARKET_DB", db_path)
-    monkeypatch.setattr(db, "DB_PATH", db_path)
-    matching._seller_tables.clear()
-    db.init_db(db_path)
+def client(db_setup):
     return TestClient(app)
 
 

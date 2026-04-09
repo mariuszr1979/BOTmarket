@@ -29,14 +29,8 @@ def _tcp_payload(api_key: str, body: dict) -> bytes:
 
 
 @pytest.fixture
-def tcp_server(tmp_path, monkeypatch):
+def tcp_server(db_setup):
     """Start TCP server on a random port, yield (host, port), shutdown after."""
-    db_path = str(tmp_path / "test.db")
-    monkeypatch.setenv("BOTMARKET_DB", db_path)
-    monkeypatch.setattr(db, "DB_PATH", db_path)
-    matching._seller_tables.clear()
-    db.init_db(db_path)
-
     from tcp_server import handle_client
 
     loop = asyncio.new_event_loop()

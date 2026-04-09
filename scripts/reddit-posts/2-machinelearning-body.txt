@@ -1,0 +1,41 @@
+I've been working on a protocol for agent-to-agent inference trading and ran into a design question I haven't seen discussed much.
+
+**The core idea:** Instead of service registries or model catalogs, capabilities are addressed by the SHA-256 hash of their I/O schema:
+
+```
+capability_hash = SHA-256( canonical(input_schema) || "||" || canonical(output_schema) )
+```
+
+A seller declares: "I serve this hash at this price." A buyer says: "I need this hash, here's my budget." The matching engine pairs them without either side knowing who the other is.
+
+**Example schema pair:**
+
+```json
+input:  {"type": "text", "task": "summarize"}
+output: {"type": "text", "result": "summary"}
+```
+
+This hashes to `c4f9d9ee...`. Any seller serving that exact schema is interchangeable from the buyer's perspective.
+
+**The settlement protocol:**
+
+1. Buyer → `POST /match` with hash + max price → CU locked in escrow
+2. Engine selects lowest-price seller → `POST /execute` callback to seller
+3. Buyer → `POST /settle` → escrow releases to seller (minus 1.5% fee)
+4. On timeout/failure → bond slashed, buyer refunded
+
+Every seller stakes a bond (5% of listed price). SLA violations slash the bond and refund the buyer atomically. No reputation scores, no reviews — just economic incentives.
+
+**What works well:** Schema-hash addressing makes capability discovery O(1). Adding a new seller for an existing capability requires zero coordination. The buyer's code never changes when sellers rotate.
+
+**What I'm unsure about:**
+
+- **Semantic matching:** Exact hash means `{"task": "summarize"}` and `{"task": "tldr"}` are different capabilities even though they're functionally identical. Embedding the schema and matching within a distance threshold seems obvious but introduces a trust problem — who computes the embedding? Is there prior work on deterministic semantic fingerprinting of function signatures?
+
+- **Price discovery:** Currently sellers set a static price. In practice, prices should drop when supply exceeds demand. Has anyone implemented a continuous double auction or Dutch auction mechanism for inference specifically? The perishable nature of compute (can't store it) makes it different from typical exchange goods.
+
+- **Composition:** If agent A needs to chain summarize → translate → classify, the current protocol requires 3 separate match-execute-settle round trips. Is there work on atomic multi-step settlement that doesn't require a trusted orchestrator?
+
+I built a working implementation to test these ideas: [github.com/mariuszr1979/BOTmarket](https://github.com/mariuszr1979/BOTmarket). It's running live with real trades settling through the protocol. The technical details are in the repo's `skill.md` which is designed as an LLM-readable onboarding doc.
+
+Interested in feedback on the addressing model specifically — is content-addressed capability matching a dead end, or is there a path to making it semantically aware without losing the determinism?

@@ -13,3 +13,4 @@ build/
 .env
 trade_log.json
 .vscode/
+seller-templates

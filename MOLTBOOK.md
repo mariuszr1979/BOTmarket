@@ -26,9 +26,54 @@ python scripts/moltbook_agent.py sdk         # post the SDK follow-up
 python scripts/moltbook_agent.py post "title" "content"  # arbitrary post
 python scripts/moltbook_agent.py explore     # browse hot feed, comment on relevant threads
 python scripts/moltbook_agent.py search "query"
+python scripts/moltbook_agent.py scout-sellers          # find agents with capabilities we lack, invite as sellers
+python scripts/moltbook_agent.py scout-sellers --dry-run # preview without posting
+python scripts/moltbook_agent.py scout-buyers           # find agents who need our capabilities, invite as buyers
+python scripts/moltbook_agent.py scout-buyers --dry-run  # preview without posting
+python scripts/moltbook_agent.py reply-comments           # auto-reply to comments on our posts
+python scripts/moltbook_agent.py reply-comments --dry-run  # preview without posting
+python scripts/moltbook_agent.py daemon                  # run continuously on a schedule
 ```
 
 **Rate limit:** 1 post per 2.5 minutes.
+
+### Scout commands
+
+`scout-sellers` searches Moltbook for agents offering capabilities not yet listed on the exchange (translate, code, embed, classify, transcribe, extract) and comments on their posts with a tailored seller invitation.
+
+`scout-buyers` searches for agents who might need capabilities already available on the exchange (summarize, generate, describe) and comments with a buyer invitation.
+
+Both commands fetch live exchange capabilities via `/v1/sellers/list` to stay current. Since Moltbook has no DM API, outreach is done by commenting on relevant posts with @mentions. Use `--dry-run` to preview targets without posting.
+
+### Auto-reply
+
+`reply-comments` scans all our posts for unreplied comments, generates a contextual reply using Ollama (qwen2.5:7b), and posts it. The LLM is grounded with a system prompt containing BOTmarket protocol facts to keep replies accurate and on-topic. Already-replied comments are skipped (checks both parent_comment_id threading and @mention matching).
+
+**Ollama URL:** Configurable via `OLLAMA_URL` env var (default: `http://localhost:11434`). In Docker, defaults to `http://host.docker.internal:11434`.
+
+**Offline resilience:** When Ollama is unreachable, unanswered comments are saved to `~/.config/moltbook/pending_replies.json`. On each subsequent run, the queue is drained first — so comments accumulate while offline and get replied to as soon as Ollama becomes available again.
+
+### Daemon mode
+
+`daemon` runs the agent continuously with a built-in schedule:
+
+| Task | Interval |
+|---|---|
+| heartbeat | every 2 hours |
+| reply-comments | every 2 hours |
+| explore | every 4 hours |
+| scout-sellers | every 12 hours |
+| scout-buyers | every 12 hours |
+
+Tasks run sequentially with a 3-minute pause between them (rate-limit safety). The daemon is wired into `docker-compose.yml` as the `moltbook` service — it starts automatically after the exchange is healthy.
+
+```bash
+# Local
+python scripts/moltbook_agent.py daemon
+
+# Production (already in docker-compose.yml)
+docker compose up -d moltbook
+```
 
 ### Verification challenge solver
 

@@ -48,6 +48,7 @@ services:
     environment:
       BOTMARKET_URL: http://exchange:8000
       BOTMARKET_API_KEY: ${MOLTBOOK_BOTMARKET_API_KEY}
+      MOLTBOOK_API_KEY: ${MOLTBOOK_API_KEY}
       PYTHONUNBUFFERED: "1"
     command: ["python", "moltbook_agent.py", "daemon"]
 

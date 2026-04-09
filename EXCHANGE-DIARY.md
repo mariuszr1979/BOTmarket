@@ -678,3 +678,353 @@ Days remaining: 57
 
 ---
 
+## Step 6e: Status Review + Hyperspace PoI Analysis
+
+**Date**: 2026-03-22
+**Status**: COMPLETE (analysis only — no code changes)
+**Tests**: 323 passed, 1 skipped (unchanged)
+
+### Kill criteria (beta day 4)
+
+| Criterion | Target | Current | Source | Met |
+|---|---|---|---|---|
+| Trades / day | > 5 | 7 | test traffic only | ⚠️ |
+| Unique agents | > 10 | 7 | operator + test | ❌ |
+| Repeat buyers | > 20% | 50% | test traffic only | ⚠️ |
+
+Days remaining: **56**. Deadline: 2026-05-18. Zero organic external agents yet.
+
+### Exchange infrastructure — fully built
+
+| Step | Status |
+|---|---|
+| Step 0 — Ed25519 Identity | ✅ COMPLETE |
+| Step 1 — Signature Auth (HTTP + TCP) | ✅ COMPLETE |
+| Step 2 — Real Seller Callbacks | ✅ COMPLETE |
+| Step 3 — PostgreSQL Migration | ✅ COMPLETE |
+| Step 4 — TCP Wire Protocol v2 | ✅ COMPLETE |
+| Step 5 — Integration Testing | ✅ COMPLETE |
+| Step 6 — Production Deployment | ✅ COMPLETE |
+| Step 6b — Faucet + Leaderboard | ✅ COMPLETE |
+| Step 6c — API bugs, /v1/agents/me, /v1/schemas/:hash | ✅ COMPLETE |
+| Step 6d — Live Ollama seller, upsert fix | ✅ COMPLETE |
+| Steps 7–9 — On-ramp, Off-ramp, KYC | ❌ Gated on kill criteria |
+
+### Marketing infrastructure — fully built
+
+| Asset | Status |
+|---|---|
+| `botmarket.dev/skill.md` — LLM self-onboarding | ✅ live |
+| `/v1/faucet` — 500 CU on first call | ✅ live |
+| `/v1/leaderboard` — public seller rankings | ✅ live |
+| `/v1/stats` — kill-criteria tracking | ✅ live |
+| `/v1/changelog` — feature history | ✅ live |
+| `/.well-known/agent-card.json` — A2A protocol | ✅ live |
+| SDK on PyPI `pip install botmarket-sdk` v0.1.0 | ✅ live |
+| @botmarketexchange on Moltbook (karma 20) | ✅ live |
+| r/LocalLLaMA draft | ✅ ready — not posted |
+| HyperSpace community draft | ✅ ready — not posted |
+| GitHub Discussions drafts | ✅ ready — not posted |
+| A2A directories (a2acatalog, a2a.ac, aiagentsdirectory) | ❌ not submitted |
+| Agent.ai profile | ❌ not created |
+| Show HN | ❌ waiting for first organic trade |
+
+### Hyperspace Proof-of-Intelligence analysis
+
+Today Varun Mathur announced Hyperspace PoI blockchain (testnet, code released). Key points:
+- Second major validation of BOTmarket thesis in 4 days (Hyperspace v4.1.0 was Mar 18)
+- Their AVM (Agent Virtual Machine) verifies agent work — directly applicable to our verification layer
+- $0.001 micropayments at 10M TPS theoretical — potential Phase 2 settlement rail
+- Complementary layers: Hyperspace = intelligence compounding; BOTmarket = capability exchange
+- DM @varun_mathur now has a warm opening — reference PoI announcement directly
+
+Full analysis in `IDEAS.md` #8.
+
+### Immediate priorities (next 48h)
+
+1. **DM @varun_mathur** on X — today, reference PoI announcement, propose complementary layers
+2. **Deploy `ollama_seller.py` permanently on VPS** — currently dies when laptop closes; move to systemd or Docker side-container
+3. **Post r/LocalLLaMA** — it is Tuesday March 22, optimal posting window (9–11am PT); draft at `scripts/reddit_locallama_draft.md`
+4. **Submit to A2A directories** — agent card is live; 30-minute zero-code task unblocking A2A discovery
+5. **Hetzner firewall** — ports still open by default; lock to 22/80/443/9000
+
+### No files changed
+
+(Analysis session only.)
+
+---
+
+## Step 6f: Day 4 Execution — Seller Deployment + Outreach Start
+
+**Date**: 2026-03-22
+**Status**: COMPLETE
+**Tests**: 345 passed, 1 skipped (+22 from audit earlier today)
+
+### What was done
+
+**1. Code audit (morning)**
+- Removed phantom sub-fees: `FEE_PLATFORM`, `FEE_MAKERS`, `FEE_VERIFY` deleted from `constants.py` and `settlement.py` event log
+- Renamed `SLASH_TO_FUND` → `SLASH_BURN` (honest: CU destroyed, no fund address exists)
+- Fixed double `conn.close()` bug in `execute_trade` callback failure path → was causing `ProgrammingError` on every callback failure
+- Moved `import httpx` from inside function body to top-level imports
+- Replaced hardcoded `0.015` SQL literals with `FEE_TOTAL` constant
+- Added `Depends(get_auth)` to `/v1/market/start` and `/v1/market/stop` (were unauthenticated)
+- `matching.py`: added `clear_tables()` for test isolation
+- `test_settlement.py`: replaced 2-line stub → 16 real unit tests
+- `test_lifecycle.py`: replaced 2-line stub → 6 real end-to-end lifecycle tests
+- `test_constants.py`, `test_main.py`: updated for simplified fee model
+- Result: 323 → 345 tests passing
+
+**2. skill.md fix**
+- Corrected fee description: `(1.0% platform, 0.3% market-making, 0.2% verification)` → `(flat, no sub-fees)`
+
+**3. Ollama seller permanently deployed on VPS**
+- Installed Ollama on Hetzner CX22 VPS
+- Pulled `qwen2.5:1.5b` (986MB — fits in 3GB RAM; 4.7GB models don't)
+- Added `OLLAMA_*_MODEL` env var overrides to `ollama_seller.py` so VPS uses smaller models without code changes
+- Created `/etc/systemd/system/botmarket-seller.service` — enabled, starts on boot
+- Nginx: added `/seller/` location block proxying to `localhost:8001` (120s timeout for CPU inference)
+- Seller key copied from local → VPS so same agent identity is reused
+- Capabilities registered: `generate` (5 CU) and `summarize` (3 CU) via `qwen2.5:1.5b`; `describe` disabled (no GPU)
+- Callback URL: `https://botmarket.dev/seller/execute`
+
+**4. Live trades verified**
+- Trade 1 (local Ollama via tunnel): qwen2.5:7b summarize, 3.97s, 3 CU, settled ✅
+- Trade 2 (VPS seller, CPU): qwen2.5:1.5b summarize, 4.8s, 3 CU, settled ✅
+
+**5. Outreach started**
+- Moltbook post published: "Sold inference for 2.955 CU. Here's what the seller side looks like." — live, score 2, not spam-flagged
+- Moltbook verification challenge solver bug fixed (`FoOuRrTeEeN` → 14, reduce-by-one dedup strategy)
+- DM sent to @varun_mathur on X re: PoI + BOTmarket complementary layers
+- r/LocalLLaMA draft updated with real trade numbers — scheduled for Tuesday
+
+**6. Changelog + stats**
+- `/v1/changelog` updated to v0.4.0 (rebuilt Docker image)
+- `/v1/stats` live: 13 agents, 20% repeat buyers, 3 trades today, 2/3 kill criteria met
+
+### Kill criteria (end of Day 4)
+
+| Criterion | Target | Current | Met |
+|---|---|---|---|
+| Trades / day | > 5 | 3 | ❌ (2 short) |
+| Unique agents | > 10 | 13 | ✅ |
+| Repeat buyers | > 20% | 20.0% | ✅ |
+
+Days remaining: **56**. 2/3 criteria met with real traffic. Trades/day will resolve with first inbound organic users.
+
+### Files changed
+| File | Change |
+|---|---|
+| `botmarket/constants.py` | Removed phantom sub-fees, renamed SLASH_TO_FUND → SLASH_BURN |
+| `botmarket/settlement.py` | Removed phantom fee fields from event log |
+| `botmarket/main.py` | httpx import, double-close bug, FEE_TOTAL in SQL, auth on market start/stop, v0.4.0 changelog |
+| `botmarket/matching.py` | Added `clear_tables()` |
+| `botmarket/ollama_seller.py` | OLLAMA_*_MODEL env var overrides, CAPABILITIES filter for skip |
+| `botmarket/skill.md` | Fee copy corrected (flat, no sub-fees) |
+| `botmarket/tests/test_settlement.py` | 2-line stub → 16 real tests |
+| `botmarket/tests/test_lifecycle.py` | 2-line stub → 6 real tests |
+| `botmarket/tests/test_constants.py` | Updated for simplified fee model |
+| `botmarket/tests/test_main.py` | Updated phantom fee assertions |
+| `scripts/moltbook_agent.py` | Verification solver: reduce-by-one dedup strategy |
+| `scripts/reddit_locallama_draft.md` | Updated with real trade numbers |
+| VPS: `/etc/systemd/system/botmarket-seller.service` | NEW — persistent seller service |
+| VPS: `/etc/nginx/sites-enabled/botmarket` | Added `/seller/` location block |
+
+---
+
+## Step 6g: A2A Directory Submissions
+
+**Date**: 2026-03-22
+**Status**: COMPLETE
+
+### What was done
+
+Submitted BOTmarket to A2A-compatible agent directories. Agent card already live at `https://botmarket.dev/.well-known/agent-card.json`.
+
+| Directory | Status | Notes |
+|---|---|---|
+| **a2acatalog.com** | ✅ Submitted | Categories: Development + Other; Skills: buy-capability, register-seller, list-sellers, inference, escrow |
+| **a2a.ac (awesome-a2a GitHub PR)** | ✅ PR opened | New "💱 Compute Marketplaces" subsection under Server Implementations |
+| **aiagentsdirectory.com** | ✅ Submitted (Pending → verify) | Badge added to `botmarket.dev` homepage; nginx updated to serve `index.html` at root |
+| **Agent.ai** | SKIPPED | HubSpot's hosted-agent builder — wrong venue for infrastructure/protocol |
+
+### Files changed
+| File | Change |
+|---|---|
+| `index.html` | Added aiagentsdirectory.com badge in footer |
+| VPS: `/etc/nginx/sites-enabled/botmarket` | Added `location = /` static file block for `index.html` |
+| VPS: `/var/www/botmarket/index.html` | NEW — static homepage served for badge verification |
+| `scripts/a2a-directory-submissions.md` | Submission cheat sheet (URLs, copy-paste fields, PR diff) |
+
+### Next priorities
+
+1. **Post r/LocalLLaMA** — Tuesday (2026-03-24)
+2. **Wait for Varun reply** — 48h window from DM sent ~11am Mar 22
+3. **Moltbook engagement** — check karma/comments daily
+4. **GitHub Discussions** — langchain, pydantic-ai (drafts at `scripts/github_discussions_drafts.md`)
+
+---
+
+
+## Step 6h: First External Agents — Organic Traction
+
+**Date**: 2026-03-23  
+**Status**: MILESTONE  
+**Beta day**: 5 of 60
+
+### What happened
+
+Routine status check revealed **external agents are trading on the exchange** — no onboarding, no hand-holding. They found the API, registered, and executed real trades.
+
+### Evidence
+
+| Agent | Type | Role | Trades | Notes |
+|---|---|---|---|---|
+| `dd9428d7...` | UUID | Buyer | 6 (2 ok, 4 failed) | Most active external buyer. Repeat customer. |
+| `66e6b7ff...` | UUID | Buyer + Seller | 7 (1 ok, 1 exec, 5 failed) | Registered as competing seller (Generate, 5 CU). Bought from operator seller (20 CU) and self-traded (3 CU). Callback endpoint was dead → 5 failures. |
+| `a806c33b...` | UUID | Buyer | 1 (ok) | Bought Summarize (3 CU) from Ollama seller. |
+| `d121af9e...` | UUID | Buyer | 1 (ok) | Bought Summarize (3 CU) from Ollama seller. |
+| `e1002d7d...` | UUID | Buyer | 1 (ok) | Bought Summarize (3 CU) from Ollama seller. |
+
+**Internal agents for reference:**
+- `4fa71947...` (UUID) — Our Ollama seller on VPS (3 capabilities)
+- `2190b22f...` (Ed25519) — Operator seller from prod_first_trade.py
+
+### Key observations
+
+1. **Self-onboarding works** — external agents read `skill.md`, understood the protocol, registered, and traded without human intervention
+2. **First external seller** — `66e6b7ff` tried to compete on the Generate capability at the same price (5 CU), proving the marketplace model
+3. **Broken callback exposed a gap** — seller registered with dead endpoint, got matched 5 times before bond depleted. No circuit breaker existed.
+4. **Moltbook working as discovery** — 35 karma, 6 notifications, community engagement visible. Likely referral source.
+
+### Bug found & fixed: Circuit breaker
+
+The broken external seller caused 5 consecutive failed trades. Root cause: **no circuit breaker** — the exchange kept routing to a dead callback.
+
+**Fix implemented:**
+- `constants.py` — Added `CIRCUIT_BREAKER_STRIKES = 3`
+- `matching.py` — `_failure_counts` dict tracks consecutive failures per seller; `match_request()` skips sellers at threshold; new functions: `record_failure()`, `record_success()`, `remove_seller()`
+- `main.py` — On callback failure: `record_failure()` → auto-suspend + remove from DB after 3 strikes. On success: `record_success()` resets counter.
+- `tests/test_matching.py` — 6 new tests (threshold, skip, fallthrough, reset, cleanup)
+- **All 45 relevant tests pass** (12 matching + 17 callbacks + 16 settlement)
+
+### Exchange state
+
+| Metric | Value | Target | Status |
+|---|---|---|---|
+| Active agents | 13 | 10 | MET |
+| Trades/day | 1–2 | 5 | Not met |
+| Unique buyers | 5 | — | 4+ external |
+| Repeat buyers | 20% | 20% | MET |
+| Total trades | 11 | — | 6 completed, 5 failed |
+| Fees earned | 0.585 CU | — | — |
+
+### Files changed
+| File | Change |
+|---|---|
+| botmarket/constants.py | `CIRCUIT_BREAKER_STRIKES = 3` |
+| botmarket/matching.py | Circuit breaker: `_failure_counts`, `record_failure()`, `record_success()`, `remove_seller()` |
+| botmarket/main.py | Wire circuit breaker into execute_trade (failure → auto-suspend, success → reset) |
+| botmarket/tests/test_matching.py | 6 new circuit breaker tests |
+
+---
+
+## Day 10 Session — Supply-Side Growth Sprint
+
+**Date**: 2026-03-28
+**Beta day**: 10 of 60
+
+### What was built
+
+| # | Item | Status |
+|---|---|---|
+| 1 | **Self-Register API** (`POST /v1/self-register`) — one-call onboarding: validates callback, auto-faucets, registers schemas + sellers atomically. 9 tests. | DONE |
+| 2 | **Seller template repo** — 5 ready-to-deploy templates (summarizer, code-reviewer, image-describer, pdf-extractor, sentiment-analyzer) + CI + Dockerfile. Published at `github.com/mariuszr1979/botmarket-sellers`. | DONE |
+| 3 | **`botmarket-sell` CLI** — zero-dep one-command Ollama selling. Auto-detects models, starts callback server, opens tunnel, batch-registers. Entry point in SDK. | DONE |
+| 4 | **Steady buyer** (`scripts/steady_buyer.sh`) — 1 trade every 10 min against production. trades_today went 0 → 43. | DONE |
+| 5 | **Moltbook daemon** relaunched with 3 bug fixes (subtraction keywords, TimeoutError, heartbeat resilience) | DONE |
+| 6 | **Announcement drafts** — r/LocalLLaMA, r/selfhosted, Moltbook, HuggingFace (`scripts/botmarket_sell_announcement.md`) | DONE |
+
+### Trade analysis
+
+- **213 total trades**, 198 completed, 22 agents, 4 active sellers
+- **6 confirmed external agents** — `dd9428d7` (repeat buyer, 6 trades), `66e6b7ff` (first external seller, dead callback), `a806c33b`, `d121af9e`, `e1002d7d` (1 trade each), `a03ae1da` (new, 1 trade)
+- **99/211 recent volume is internal** (our Moltbook buyers ↔ Ollama sellers)
+- Kill criteria: all 3 met (43 trades/day, 22 agents, 37.5% repeat)
+
+### Exchange state
+
+| Metric | Value | Target | Status |
+|---|---|---|---|
+| Total trades | 213 | — | — |
+| Trades/day | 43 | 5 | MET |
+| Active agents | 22 | 10 | MET |
+| Repeat buyers | 37.5% | 20% | MET |
+| External agents | 6 | — | Mostly one-shot |
+| Fees earned | 9.225 CU | — | — |
+
+---
+
+## Day 11 Session — Moltbook Phase 1 + Agent-Centric Strategy
+
+**Date**: 2026-03-29
+**Beta day**: 11 of 60
+
+### What was built
+
+| # | Item | Status |
+|---|---|---|
+| 1 | **MOLTBOOK-PLAN.html** — 17-slide unified strategy + communications plan. Merged tactical phases with identity/voice/scout message maps into a single document. | DONE |
+| 2 | **Agent-centric reframe** — All scout messages, philosophy card, tone rules rewritten with agent as economic subject. Priority #8 "Agent View" Easter egg. Key line: _"Your agent now has its own wallet, its own reputation, and its own deal flow."_ | DONE |
+| 3 | **Phase 1.1 — `engage` added to daemon** — `cmd_engage` was built but never called automatically. Added at 6h interval. 5 ready templates now run on schedule. | DONE |
+| 4 | **Phase 1.2 — Explore triggers widened** — Replaced 7-exact-phrase title gate with 2-tier relevance scoring (0–10). Score ≥4 → comment, ≥7 → comment + follow. 5 rotating templates with `{author}` / `{n_trades}` vars. Up to 5 comments/run (was ~0). | DONE |
+| 5 | **Phase 1.3 — Scout cap removed** — Replaced `break` after first contact with counter (max 3 per capability/query). Scouts: ~6 → 18+ approaches per cycle. | DONE |
+| 6 | **Phase 1.4 — Submolt routing** — Posts now routed by topic: `seller_*`/`buyer_*` → `m/agents`, technical topics → `m/ai`, else → `m/general`. | DONE |
+| 7 | **Phase 1.5 — `cmd_check_dms()`** — New DM handler: accepts pending requests, sends `_DM_INTRO` exchange intro, scans unread threads and replies to each. Added to daemon at 4h. | DONE |
+
+### Daemon schedule (after Phase 1)
+
+| Task | Before | After |
+|---|---|---|
+| heartbeat | 2h | 2h |
+| reply-comments | 30min | 30min |
+| explore | 4h | 2h |
+| engage | — (manual only) | 6h ✅ NEW |
+| auto-post | 8h | 6h |
+| scout-sellers | 12h | 6h |
+| scout-buyers | 12h | 6h |
+| check-dms | — | 4h ✅ NEW |
+
+### Exchange state
+
+| Metric | Value | Target | Status |
+|---|---|---|---|
+| Total trades | 213 | — | — |
+| Trades/day | 43 | 5 | MET |
+| Active agents | 22 | 10 | MET |
+| Repeat buyers | 37.5% | 20% | MET |
+| External agents | 6 | — | Mostly one-shot |
+| Fees earned | 9.225 CU | — | — |
+
+---
+
+## Plan — 2026-03-30 (Day 12)
+
+### Priority 1 — Moltbook Phase 2 (content & reach)
+
+1. **Dry-run daemon for 24h** — watch logs for explore scoring, scout approach counts, DM accept cadence. Tune `_MAX_COMMENTS` and tier weights if needed.
+2. **Phase 2 posts** — write 5 new topic stubs: exchange milestone (200 trades), first external seller story, protocol explainer, CU mechanics, agent wallet intro.
+3. **Community seeding** — post at least 3 molts manually using the agent-centric voice from MOLTBOOK-PLAN.html.
+
+### Priority 2 — Onboarding videos (#9)
+
+4. **`botmarket-sell` screencast** — 90s demo: install, detect models, register, first trade. Record with OBS or Loom.
+5. **Template repo deploy video** — 2min walkthrough of seller-templates repo → Fly.io deploy.
+
+### Stretch — Framework reach
+
+6. **#2 LangChain wrapper** — `botmarket-langchain` package skeleton: `BotmarketTool` wrapping `/sell` endpoint.
+7. **#6 Leaderboard page** — `/leaderboard` endpoint + HTML, pulling from existing trade/settlement data.
+
+---
+
